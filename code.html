@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="fa"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Persian Auction Marketplace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;family=Vazirmatn:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "secondary": "#f97316", // Orange accent for urgency
+                        "background-light": "#f8f9fc",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Vazirmatn", "Manrope", "sans-serif"],
+                        "body": ["Vazirmatn", "Manrope", "sans-serif"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "0.75rem",
+                        "xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Vazirmatn', 'Manrope', sans-serif;
+        }
+        /* Custom scrollbar for horizontal categories */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex flex-col">
+<!-- Sticky Header -->
+<header class="sticky top-0 z-50 bg-white border-b border-[#e7ebf3] shadow-sm">
+<div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex items-center justify-between h-20 gap-4">
+<!-- Right Side: Logo -->
+<div class="flex items-center gap-3 shrink-0">
+<div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-2xl">gavel</span>
+</div>
+<h1 class="text-2xl font-black tracking-tight text-[#0d121b]">پرشین<span class="text-primary">آکشن</span></h1>
+</div>
+<!-- Center: Search Bar (Hidden on mobile, visible on desktop) -->
+<div class="hidden md:flex flex-1 max-w-2xl px-8">
+<div class="relative w-full group">
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="block w-full h-12 pr-10 pl-4 bg-[#f1f3f7] border-transparent rounded-xl focus:bg-white focus:border-primary focus:ring-primary sm:text-sm transition-all duration-200" placeholder="جستجو در بین هزاران کالا..." type="text"/>
+<button class="absolute inset-y-1 left-1 bg-primary text-white px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                            جستجو
+                        </button>
+</div>
+</div>
+<!-- Left Side: User Actions -->
+<div class="flex items-center gap-2 sm:gap-4 shrink-0">
+<button class="p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors relative">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+</button>
+<button class="p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-8 w-[1px] bg-gray-200 mx-1 hidden sm:block"></div>
+<button class="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors">
+<span class="material-symbols-outlined text-[20px]">person</span>
+<span>ورود / ثبت نام</span>
+</button>
+<button class="sm:hidden p-2 text-gray-500 rounded-full">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Secondary Nav (Categories) -->
+<div class="border-t border-[#e7ebf3] bg-white hidden md:block">
+<div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+<nav class="flex items-center gap-8 h-12 overflow-x-auto no-scrollbar text-sm font-medium text-gray-600">
+<a class="text-primary hover:text-primary whitespace-nowrap border-b-2 border-primary h-full flex items-center px-1" href="#">خانه</a>
+<a class="hover:text-primary whitespace-nowrap h-full flex items-center px-1 transition-colors" href="#">کالای دیجیتال</a>
+<a class="hover:text-primary whitespace-nowrap h-full flex items-center px-1 transition-colors" href="#">مد و پوشاک</a>
+<a class="hover:text-primary whitespace-nowrap h-full flex items-center px-1 transition-colors" href="#">خانه و آشپزخانه</a>
+<a class="hover:text-primary whitespace-nowrap h-full flex items-center px-1 transition-colors" href="#">فرش دستباف</a>
+<a class="hover:text-primary whitespace-nowrap h-full flex items-center px-1 transition-colors" href="#">آنتیک و کلکسیونی</a>
+<a class="hover:text-primary whitespace-nowrap h-full flex items-center px-1 transition-colors text-red-500" href="#">تخفیف‌های ویژه</a>
+</nav>
+</div>
+</div>
+</header>
+<main class="flex-grow w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-12">
+<!-- Hero Section -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-[480px]">
+<!-- Main Slider -->
+<div class="lg:col-span-8 relative rounded-2xl overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-l from-black/70 to-transparent z-10"></div>
+<img alt="Hero Banner" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" data-alt="Persian handmade rug detail shot" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAGbpvjygdH1kviPkLE3nFqQpfKLQHSiB47VVhTAFFWhZMV2CG0UslDc1P5gj_RtA6I3Flvk1vmorLJ7fvmVW0hTMqjqbadzBRdhON74ePElldkk2tsg-M0IrJ8MROpObSfqocakvM3y__X320rrSl-M8FxSiIfZW0UmlwRI2Wp3VSgZYIswkyt-peOeNVZR2lkeOg3hk0d2ZOoRgrx-ibXIetxRostQZtk7LrZiO5pYwY_idrXgaEuP6n_JGah7weF5UIAL8qarb0"/>
+<div class="absolute bottom-0 right-0 p-8 z-20 max-w-xl text-white">
+<span class="inline-block px-3 py-1 bg-secondary text-white text-xs font-bold rounded-full mb-4">ویژه</span>
+<h2 class="text-3xl md:text-5xl font-black mb-4 leading-tight">کلکسیون نفیس فرش دستباف ایرانی</h2>
+<p class="text-gray-200 text-lg mb-6 leading-relaxed">مزایده بی‌نظیر آثار استادکاران تبریز و کاشان. شروع قیمت از ۵۰,۰۰۰,۰۰۰ تومان.</p>
+<button class="bg-primary hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-lg transition-all shadow-lg shadow-primary/30 flex items-center gap-2">
+<span>شرکت در مزایده</span>
+<span class="material-symbols-outlined rtl:rotate-180">arrow_right_alt</span>
+</button>
+</div>
+</div>
+<!-- Side Banners -->
+<div class="lg:col-span-4 flex flex-col gap-6">
+<div class="flex-1 relative rounded-2xl overflow-hidden bg-[#e0e7ff] flex flex-col justify-center p-6 items-start">
+<div class="z-10">
+<span class="text-primary font-bold text-sm">محصولات اپل</span>
+<h3 class="text-2xl font-black text-gray-900 mt-1 mb-2">آیفون ۱۳ پرو مکس</h3>
+<p class="text-gray-600 text-sm mb-4">نسخه ۲۵۶ گیگابایت، رجیستر شده</p>
+<a class="text-primary font-bold hover:underline text-sm flex items-center gap-1" href="#">
+                            مشاهده جزئیات <span class="material-symbols-outlined text-sm rtl:rotate-180">chevron_right</span>
+</a>
+</div>
+<img alt="iPhone" class="absolute -left-12 bottom-0 w-48 h-auto object-contain z-0 opacity-80" data-alt="Modern smartphone floating" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCags2xX6-Sxa_RQwonxzWuQdz0-ywNB7SJ45FjDrmvzAj-3468rjlChy9ftWbPM9W2QBdKNw4KD67D6g8e7wOhZH2Fez63rGwQw9Q6oj-bnurFafZLcuH9vLehiFxacZTYL6uISeaTBlOJq0AuZJwRgSFYuEjpTIn9WCGiHnwTKO9SUAP9i73R6sfGdEHy3gXOPliWsYevd27_L7z-Y2NuxKRpvk6vRge-e16RjDDXeqXKmEVsTSwmuwEkVa-DjondeIvj0On3cyOB"/>
+</div>
+<div class="flex-1 relative rounded-2xl overflow-hidden bg-[#fff7ed] flex flex-col justify-center p-6 items-start">
+<div class="z-10">
+<span class="text-secondary font-bold text-sm">ساعت و جواهرات</span>
+<h3 class="text-2xl font-black text-gray-900 mt-1 mb-2">ساعت‌های کلاسیک</h3>
+<p class="text-gray-600 text-sm mb-4">تخفیف ویژه برای برندهای سوئیسی</p>
+<a class="text-secondary font-bold hover:underline text-sm flex items-center gap-1" href="#">
+                            مشاهده کاتالوگ <span class="material-symbols-outlined text-sm rtl:rotate-180">chevron_right</span>
+</a>
+</div>
+<img alt="Watch" class="absolute -left-4 bottom-[-20px] w-40 h-auto object-contain z-0 mix-blend-multiply opacity-80" data-alt="Luxury watch close up" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnhjDliz3Y_HeiA2FIdV_WhmSSqa_oOwOl4UdSTdpDRQ_LFrQSXJqwtyRKq1FjUztrx3uzd3itZt3fL3MrywwyB22hEBo6I4qqiP-DVF96Y4zoBSv5N0YbtuY7f2t6vIbAysuMSdyy_0Fe_-g3FzM0GjRF1tC7Z91_SHa6Nr8PUy9Krdynjf7MSkLRifd1CY1sMdl6Zw4w0gs4RIY-UsHIyZIfL9a0QpQzlaAuM5MbtgzSPJRk2ULW4NAOV9iAoJZGiPDakwJ83HE8"/>
+</div>
+</div>
+</section>
+<!-- Categories Section -->
+<section>
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-2xl font-bold text-gray-900">دسته‌بندی‌های محبوب</h2>
+<a class="text-primary text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all" href="#">
+                    مشاهده همه <span class="material-symbols-outlined text-lg rtl:rotate-180">arrow_right_alt</span>
+</a>
+</div>
+<div class="flex gap-6 overflow-x-auto no-scrollbar pb-4 snap-x">
+<!-- Category Item -->
+<a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="#">
+<div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
+<span class="material-symbols-outlined text-3xl">devices</span>
+</div>
+<span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">دیجیتال</span>
+</a>
+<a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="#">
+<div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
+<span class="material-symbols-outlined text-3xl">checkroom</span>
+</div>
+<span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">مد و پوشاک</span>
+</a>
+<a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="#">
+<div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
+<span class="material-symbols-outlined text-3xl">diamond</span>
+</div>
+<span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">جواهرات</span>
+</a>
+<a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="#">
+<div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
+<span class="material-symbols-outlined text-3xl">chair</span>
+</div>
+<span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">دکوراسیون</span>
+</a>
+<a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="#">
+<div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
+<span class="material-symbols-outlined text-3xl">brush</span>
+</div>
+<span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">هنر</span>
+</a>
+<a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="#">
+<div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
+<span class="material-symbols-outlined text-3xl">directions_car</span>
+</div>
+<span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">خودرو</span>
+</a>
+<a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="#">
+<div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
+<span class="material-symbols-outlined text-3xl">sports_esports</span>
+</div>
+<span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">سرگرمی</span>
+</a>
+</div>
+</section>
+<!-- Hot Auctions Grid -->
+<section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+<div class="flex items-center gap-3 mb-8">
+<div class="p-2 bg-red-100 text-red-600 rounded-lg">
+<span class="material-symbols-outlined">local_fire_department</span>
+</div>
+<div>
+<h2 class="text-2xl font-black text-gray-900">مزایده‌های داغ</h2>
+<p class="text-gray-500 text-sm">فرصت‌های استثنایی با زمان محدود</p>
+</div>
+<div class="mr-auto hidden sm:flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600">
+<span class="material-symbols-outlined text-lg">timer</span>
+<span>پایان تا: ۲۴ ساعت آینده</span>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Auction Card 1 -->
+<div class="group bg-white rounded-xl border border-gray-100 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full relative overflow-hidden">
+<div class="absolute top-3 left-3 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm animate-pulse">
+                        ۰۲:۱۴:۵۵ مانده
+                    </div>
+<div class="h-56 w-full bg-gray-50 relative overflow-hidden">
+<img alt="Product" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" data-alt="Smartwatch on wrist" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmIr5ej3rLupZupENZHj3j-T-3FYinv-aE7s7fj2Hpy1FCMpfoQIUcZJ5sFK8G96pN0juy3KKU-p7O3VJy2m1LiMKyRttj3ZNuoqQhFp5ndZVr2SJJaDRbEEnTCsY_djwglUVEJDI0SVUkoNx-mfqjn7ypv9efnl5_D1lJzl8ah4c_mYlEl_oYXVj58KSEPuWY-7awRFvPXp9SN4tu9BPyFnrP8V7cEeNsTmVK9egRlmadNvfJU0zTZXEt0kp4qaWkLDRDoPqvqUi0"/>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="flex items-center gap-1 mb-2">
+<span class="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">دیجیتال</span>
+</div>
+<h3 class="text-lg font-bold text-gray-900 mb-1 group-hover:text-primary transition-colors line-clamp-1">اپل واچ سری ۸</h3>
+<p class="text-sm text-gray-500 mb-4 line-clamp-2">سالم، همراه با بند اضافی اورجینال، بدون خط و خش</p>
+<div class="mt-auto space-y-3">
+<div class="flex justify-between items-end border-t border-dashed border-gray-200 pt-3">
+<span class="text-xs text-gray-500 mb-1">آخرین پیشنهاد:</span>
+<div class="text-right">
+<span class="text-lg font-black text-primary">۱۲,۵۰۰,۰۰۰</span>
+<span class="text-xs text-gray-400">تومان</span>
+</div>
+</div>
+<button class="w-full py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20">
+                                ثبت پیشنهاد
+                            </button>
+</div>
+</div>
+</div>
+<!-- Auction Card 2 -->
+<div class="group bg-white rounded-xl border border-gray-100 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full relative overflow-hidden">
+<div class="absolute top-3 left-3 z-10 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">
+                        ۰۵:۳۰:۰۰ مانده
+                    </div>
+<div class="h-56 w-full bg-gray-50 relative overflow-hidden">
+<img alt="Product" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" data-alt="Modern minimal white watch" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQEA2ztxerrMdKVAuqujbsn9JqN9fdOZsrNz1KPhCTmspJyBMwSf6sTNKnN6u1SKnYiw0gd0AEcovdv5lcUUnBr96bdg9Lq5IJMXoPxnvU9CVoIUIqpGvP_FmzVavjfXzD6Orlj8ulMpey_jgjxg1_itLFMkZ1HtXmpith1L1Zy3LUMDXME6xwx2vmaQB-Wy4oopsYgBdPyeWhliPjM9N8n-E9Kl2zon2VvVyX3oHbL5E8BbWThhrTLBWPr4yML9y20wEKZfPS7Z8T"/>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="flex items-center gap-1 mb-2">
+<span class="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">اکسسوری</span>
+</div>
+<h3 class="text-lg font-bold text-gray-900 mb-1 group-hover:text-primary transition-colors line-clamp-1">ساعت مچی رولکس (کپی)</h3>
+<p class="text-sm text-gray-500 mb-4 line-clamp-2">کیفیت مستر، موتور سوئیسی، جعبه اصلی</p>
+<div class="mt-auto space-y-3">
+<div class="flex justify-between items-end border-t border-dashed border-gray-200 pt-3">
+<span class="text-xs text-gray-500 mb-1">آخرین پیشنهاد:</span>
+<div class="text-right">
+<span class="text-lg font-black text-primary">۴,۲۰۰,۰۰۰</span>
+<span class="text-xs text-gray-400">تومان</span>
+</div>
+</div>
+<button class="w-full py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20">
+                                ثبت پیشنهاد
+                            </button>
+</div>
+</div>
+</div>
+<!-- Auction Card 3 -->
+<div class="group bg-white rounded-xl border border-gray-100 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full relative overflow-hidden">
+<div class="absolute top-3 left-3 z-10 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">
+                        ۰۱:۴۵:۱۰ مانده
+                    </div>
+<div class="h-56 w-full bg-gray-50 relative overflow-hidden">
+<img alt="Product" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" data-alt="Vintage camera on wooden table" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAle9nhdO6oA9plAOGaaGtVAsJ98onwwkazi3HXnIapDaWURH856sp1Q_vcB3vWUW1MY9z0QerFC8B2zpbWTW-PQIxhGolEyQVEeHEGm42ZJi3v5cxGeYm7ahMd3MR3vBsRWUBcCqnyTnw8iLka5fnVoKBUwi3BZhVSXGkjEz9qWvMM5GvddnKPA36z8AjTFePTSuRas0TQdRzHp6gHtSWfWYbzB8A5ODKGIhWWX9J1WXTPOFpV29sC0CtutVYBinO-ZWAQM8WHrfMQ"/>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="flex items-center gap-1 mb-2">
+<span class="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">آنتیک</span>
+</div>
+<h3 class="text-lg font-bold text-gray-900 mb-1 group-hover:text-primary transition-colors line-clamp-1">دوربین عکاسی قدیمی</h3>
+<p class="text-sm text-gray-500 mb-4 line-clamp-2">مدل ۱۹۷۰، کلکسیونی و بسیار کمیاب، لنز سالم</p>
+<div class="mt-auto space-y-3">
+<div class="flex justify-between items-end border-t border-dashed border-gray-200 pt-3">
+<span class="text-xs text-gray-500 mb-1">آخرین پیشنهاد:</span>
+<div class="text-right">
+<span class="text-lg font-black text-primary">۱۸,۰۰۰,۰۰۰</span>
+<span class="text-xs text-gray-400">تومان</span>
+</div>
+</div>
+<button class="w-full py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20">
+                                ثبت پیشنهاد
+                            </button>
+</div>
+</div>
+</div>
+<!-- Auction Card 4 -->
+<div class="group bg-white rounded-xl border border-gray-100 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full relative overflow-hidden">
+<div class="absolute top-3 left-3 z-10 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm animate-pulse">
+                        ۰۰:۴۵:۱۰ مانده
+                    </div>
+<div class="h-56 w-full bg-gray-50 relative overflow-hidden">
+<img alt="Product" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" data-alt="Electronics circuit board texture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyMpAj2-vyV1ARdx3EfW_jrsqR7DC0VS6B981nBHwz8jUaFGvqNQ9EKN88y4A_Sa04s_JxgzM4Gy2lumq36ndFM9BKzC9znYgRdn89oLnYA52wLGTKA3s4I-fUoU2pr89oeMCnzO19keQsOF3DXrScFtqThQI4MBp98bRcpuDs4XYGQ86Eic0UMG24bx8I734vqlRiodUeRCzqYfy2HbS_Ws6wOm2JxKO6f5Xkl4KPign9vsesMrErnCLsp0DC3ZQfR3-xhvNya2Gt"/>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="flex items-center gap-1 mb-2">
+<span class="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">الکترونیک</span>
+</div>
+<h3 class="text-lg font-bold text-gray-900 mb-1 group-hover:text-primary transition-colors line-clamp-1">کارت گرافیک RTX 3080</h3>
+<p class="text-sm text-gray-500 mb-4 line-clamp-2">کم کارکرد، مناسب گیمینگ و رندرینگ</p>
+<div class="mt-auto space-y-3">
+<div class="flex justify-between items-end border-t border-dashed border-gray-200 pt-3">
+<span class="text-xs text-gray-500 mb-1">آخرین پیشنهاد:</span>
+<div class="text-right">
+<span class="text-lg font-black text-primary">۲۲,۱۰۰,۰۰۰</span>
+<span class="text-xs text-gray-400">تومان</span>
+</div>
+</div>
+<button class="w-full py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20">
+                                ثبت پیشنهاد
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Direct Sale Section -->
+<section>
+<div class="flex items-center justify-between mb-6">
+<div>
+<h2 class="text-2xl font-bold text-gray-900">فروش مستقیم (بدون مزایده)</h2>
+<p class="text-gray-500 text-sm mt-1">خرید آنی با قیمت مقطوع و ارسال سریع</p>
+</div>
+<a class="text-primary text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all" href="#">
+                    مشاهده همه <span class="material-symbols-outlined text-lg rtl:rotate-180">arrow_right_alt</span>
+</a>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+<!-- Item 1 -->
+<div class="bg-white p-4 rounded-xl border border-gray-100 hover:shadow-md transition-shadow group">
+<div class="aspect-square bg-gray-50 rounded-lg mb-3 overflow-hidden relative">
+<img alt="Headphones" class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Headphones product shot" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBe0I3apJOLd4ZILcrSwsTTuCkndX7f9zyLguKr_KuM2XRHKcVWPk1iJNJWjdjU7x8t5i2NSUDIHRKB1fV8MEMLrD-qG-5fMULs415QMBBESDnerTT04KRlTMLGLcDhJQJvZlphYRZWvB3lXMqkPrSGaknoXCguBcnN_L_RaWRljJ_K6J0foZNX0DX_XKnZFScq9YJ9Jhw6NP1BLB2P3N8TXKCR8ULsNjrZpt5MPo7hUUMPxaN2SSFpdQcFkMgzlVFYl2y5Fjbupi2y"/>
+</div>
+<h4 class="font-bold text-gray-800 text-sm mb-1 line-clamp-1">هدفون بی سیم سونی</h4>
+<p class="text-primary font-black text-base">۳,۵۰۰,۰۰۰ <span class="text-[10px] text-gray-400 font-normal">تومان</span></p>
+<button class="mt-3 w-full py-2 border border-primary text-primary text-xs font-bold rounded hover:bg-primary hover:text-white transition-colors">
+                        افزودن به سبد
+                    </button>
+</div>
+<!-- Item 2 -->
+<div class="bg-white p-4 rounded-xl border border-gray-100 hover:shadow-md transition-shadow group">
+<div class="aspect-square bg-gray-50 rounded-lg mb-3 overflow-hidden relative">
+<img alt="Shoe" class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Red sport shoe" src="https://lh3.googleusercontent.com/aida-public/AB6AXuChooRGa3Lg7AHPIKd-jusny9-bFbNJX0tVUjEBjQx09oSHm8mEHAMiqBrlOIamh61JSY3l8PTLcHBsVczMD67jofU2YicMHaq7B0Y-dcdWuXE4eAL8uRgfufg0ASOCvBq0_puqXsQ79sO-gwlAADq_P7AWYxY0QfEIaADvInsvtEYI0irVN2Jjlf4k6nIl0jiAapT5t33uiQy-BbHsp1GEiJXmj7U0dOMXO6fKv_fx3rQTBeQhu4uehoqiLaQQM3Oa6fE0VTPh9nU3"/>
+</div>
+<h4 class="font-bold text-gray-800 text-sm mb-1 line-clamp-1">کفش نایک مدل Air Max</h4>
+<p class="text-primary font-black text-base">۴,۸۰۰,۰۰۰ <span class="text-[10px] text-gray-400 font-normal">تومان</span></p>
+<button class="mt-3 w-full py-2 border border-primary text-primary text-xs font-bold rounded hover:bg-primary hover:text-white transition-colors">
+                        افزودن به سبد
+                    </button>
+</div>
+<!-- Item 3 -->
+<div class="bg-white p-4 rounded-xl border border-gray-100 hover:shadow-md transition-shadow group">
+<div class="aspect-square bg-gray-50 rounded-lg mb-3 overflow-hidden relative">
+<img alt="Camera" class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Polaroid camera" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAopiZXYsiVUcj1Wcyykhy0pxxP9B724k9YdH_55UiaonNNchEOikjZmZyGdnD2f7ZXpvh1tav-oOtttRkGBWENOqBNR9893uKkagjgHAfyFvfZYRiKNQt324k5Zq7Y9RK24wTMi6hOmI2VKHISMtILuhKa20HMBZk8A043HtNtG4ZbJ63yIK_yQOVJ2bhtyS7tuAEBQCG2nl3mz6P05DW-kdBsEf-drdpeaQb8xAdO-wFcpR-13fHg_u7ZVAUJrpnD2uuHIOnK9c6Y"/>
+</div>
+<h4 class="font-bold text-gray-800 text-sm mb-1 line-clamp-1">دوربین فوری پولاروید</h4>
+<p class="text-primary font-black text-base">۶,۲۰۰,۰۰۰ <span class="text-[10px] text-gray-400 font-normal">تومان</span></p>
+<button class="mt-3 w-full py-2 border border-primary text-primary text-xs font-bold rounded hover:bg-primary hover:text-white transition-colors">
+                        افزودن به سبد
+                    </button>
+</div>
+<!-- Item 4 -->
+<div class="bg-white p-4 rounded-xl border border-gray-100 hover:shadow-md transition-shadow group">
+<div class="aspect-square bg-gray-50 rounded-lg mb-3 overflow-hidden relative">
+<img alt="Kitchen" class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Modern kitchen blender" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8hQJzkLQRtYL8utbiYZzUYJxs-9uUERu4QdWGarqMWyzl9D0U14I0ioZvyK97dw9uE4pg-BZlXQWNiuZeg4Rkg1526g-wqsGMZv03JVRICx9RCmdC2F3WTFd7t1LzSU_lzgVGcPxEZoH0gssbJS5Q4JJvoOSxr9kI0NnB21ZKEHPGB6o0mAkNba0muLuE8EerRI-SM755ImneLnThwMKGfr7bAkMk2iMnETOlVHiKrEHwlISDyzV1B2m7dJAyzZYn9TpaNci69KHX"/>
+</div>
+<h4 class="font-bold text-gray-800 text-sm mb-1 line-clamp-1">مخلوط کن حرفه ای</h4>
+<p class="text-primary font-black text-base">۲,۱۰۰,۰۰۰ <span class="text-[10px] text-gray-400 font-normal">تومان</span></p>
+<button class="mt-3 w-full py-2 border border-primary text-primary text-xs font-bold rounded hover:bg-primary hover:text-white transition-colors">
+                        افزودن به سبد
+                    </button>
+</div>
+<!-- Item 5 -->
+<div class="bg-white p-4 rounded-xl border border-gray-100 hover:shadow-md transition-shadow group">
+<div class="aspect-square bg-gray-50 rounded-lg mb-3 overflow-hidden relative">
+<img alt="Sneaker" class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Sneaker shoe" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVzdE6E2WOZ2Q6aNnfBHBe-YOhB1OWk6TY5VdRl3Daw_PS-9cQ0-P_cSbPuODPY648jNbtVaU8jEU4i1cjIORJOaVPPzF4_SIM0fKiXUNJ_-Ij55wnBAxmsIk0tlC0EfuW1M0vBKg85vSq-c0b1uZYt9v-55QT5IzFBrZLwU9bZUlC2U-rnODMMc3tEDZcog0omdcaPxWodvnbiClndx4aMsNgVB_fPCmC2viNSVhx9hanGNhP5Xq9Zz6HXcW34GY22LDSv8zAZVEB"/>
+</div>
+<h4 class="font-bold text-gray-800 text-sm mb-1 line-clamp-1">کتانی آدیداس اورجینال</h4>
+<p class="text-primary font-black text-base">۵,۵۰۰,۰۰۰ <span class="text-[10px] text-gray-400 font-normal">تومان</span></p>
+<button class="mt-3 w-full py-2 border border-primary text-primary text-xs font-bold rounded hover:bg-primary hover:text-white transition-colors">
+                        افزودن به سبد
+                    </button>
+</div>
+</div>
+</section>
+<!-- Trust Badges -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6 py-8 border-t border-gray-200">
+<div class="flex items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+<div class="w-12 h-12 bg-blue-50 text-primary rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl">verified_user</span>
+</div>
+<div>
+<h3 class="font-bold text-gray-900">ضمانت اصالت کالا</h3>
+<p class="text-xs text-gray-500 mt-1">تایید کارشناسی تمامی کالاها قبل از مزایده</p>
+</div>
+</div>
+<div class="flex items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+<div class="w-12 h-12 bg-blue-50 text-primary rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl">local_shipping</span>
+</div>
+<div>
+<h3 class="font-bold text-gray-900">ارسال سریع و بیمه شده</h3>
+<p class="text-xs text-gray-500 mt-1">ارسال به سراسر کشور با بسته بندی ایمن</p>
+</div>
+</div>
+<div class="flex items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+<div class="w-12 h-12 bg-blue-50 text-primary rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl">support_agent</span>
+</div>
+<div>
+<h3 class="font-bold text-gray-900">پشتیبانی ۲۴ ساعته</h3>
+<p class="text-xs text-gray-500 mt-1">پاسخگویی به سوالات شما در تمام مراحل</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-white border-t border-[#e7ebf3] pt-12 pb-8 mt-auto">
+<div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+<div>
+<div class="flex items-center gap-3 mb-4">
+<div class="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">gavel</span>
+</div>
+<h2 class="text-xl font-black text-[#0d121b]">پرشین<span class="text-primary">آکشن</span></h2>
+</div>
+<p class="text-sm text-gray-500 leading-relaxed mb-4">
+                        اولین و بزرگترین پلتفرم برگزاری مزایدات آنلاین در ایران. با ما تجربه‌ای امن و هیجان‌انگیز از خرید و فروش کالاهای خاص داشته باشید.
+                    </p>
+<div class="flex gap-3">
+<a class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-primary hover:text-white transition-colors" href="#">
+<i class="material-symbols-outlined text-sm">alternate_email</i> <!-- Placeholder for social icon -->
+</a>
+<a class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-primary hover:text-white transition-colors" href="#">
+<i class="material-symbols-outlined text-sm">public</i> <!-- Placeholder for social icon -->
+</a>
+</div>
+</div>
+<div>
+<h3 class="font-bold text-gray-900 mb-4">دسترسی سریع</h3>
+<ul class="space-y-2 text-sm text-gray-600">
+<li><a class="hover:text-primary transition-colors" href="#">خانه</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">مزایده‌های جاری</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">فروش مستقیم</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">بلاگ آموزشی</a></li>
+</ul>
+</div>
+<div>
+<h3 class="font-bold text-gray-900 mb-4">راهنمای مشتریان</h3>
+<ul class="space-y-2 text-sm text-gray-600">
+<li><a class="hover:text-primary transition-colors" href="#">قوانین و مقررات</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">رویه‌های ارسال سفارش</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">شیوه‌های پرداخت</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">پاسخ به پرسش‌های متداول</a></li>
+</ul>
+</div>
+<div>
+<h3 class="font-bold text-gray-900 mb-4">نماد اعتماد</h3>
+<div class="bg-gray-50 p-4 rounded-xl border border-dashed border-gray-200 text-center">
+<p class="text-xs text-gray-400 mb-2">محل قرارگیری نماد اعتماد الکترونیک</p>
+<div class="w-16 h-16 bg-gray-200 rounded-lg mx-auto flex items-center justify-center">
+<span class="material-symbols-outlined text-gray-400">verified</span>
+</div>
+</div>
+</div>
+</div>
+<div class="border-t border-gray-100 pt-6 text-center text-sm text-gray-500 flex flex-col md:flex-row justify-between items-center gap-4">
+<p>تمامی حقوق این وبسایت محفوظ است © ۱۴۰۳</p>
+<div class="flex gap-6">
+<a class="hover:text-gray-900" href="#">حریم خصوصی</a>
+<a class="hover:text-gray-900" href="#">شرایط استفاده</a>
+</div>
+</div>
+</div>
+</footer>
+</body></html>

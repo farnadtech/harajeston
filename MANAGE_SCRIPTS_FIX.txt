@@ -1,0 +1,38 @@
+در فایل resources/views/admin/listings/manage.blade.php، تمام خطوط زیر را جستجو و جایگزین کنید:
+
+1. جستجو: fetch(`/admin/
+   جایگزین: fetch(`{{ url('/admin') }}/
+
+2. جستجو: fetch(`/admin/listings/{{ $listing->id }}/images
+   جایگزین: fetch(`{{ url('/admin/listings/' . $listing->id . '/images') }}
+
+3. جستجو: fetch(`/admin/listings/{{ $listing->id }}/tags
+   جایگزین: fetch(`{{ url('/admin/listings/' . $listing->id . '/tags') }}
+
+4. جستجو: fetch(`/admin/listings/{{ $listing->id }}/settings
+   جایگزین: fetch(`{{ url('/admin/listings/' . $listing->id . '/settings') }}
+
+5. جستجو: fetch(`/admin/bids/${bidId}/cancel
+   جایگزین: fetch(`{{ url('/admin/bids') }}/${bidId}/cancel
+
+6. جستجو: fetch(`/admin/listings/{{ $listing->id }}/end-early
+   جایگزین: fetch(`{{ url('/admin/listings/' . $listing->id . '/end-early') }}
+
+7. جستجو: fetch(`/admin/listings/{{ $listing->id }}/suspend
+   جایگزین: fetch(`{{ url('/admin/listings/' . $listing->id . '/suspend') }}
+
+8. جستجو: fetch(`/admin/listings/{{ $listing->id }}/activate
+   جایگزین: fetch(`{{ url('/admin/listings/' . $listing->id . '/activate') }}
+
+9. جستجو: fetch(`/admin/listings/{{ $listing->id }}`, {
+        method: 'POST',
+   جایگزین: fetch(`{{ url('/admin/listings/' . $listing->id) }}`, {
+        method: 'POST',
+
+10. جستجو: fetch(`/admin/listings/{{ $listing->id }}/bids
+    جایگزین: fetch(`{{ url('/admin/listings/' . $listing->id . '/bids') }}
+
+یا به سادگی، در ابتدای بخش <script> این خط را اضافه کنید:
+const API_BASE = '{{ url("/") }}';
+
+و سپس تمام `/admin/` را با `${API_BASE}/admin/` جایگزین کنید.
