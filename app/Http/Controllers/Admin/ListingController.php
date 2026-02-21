@@ -118,7 +118,17 @@ class ListingController extends Controller
                     }
                 },
             ],
-            'buy_now_price' => 'nullable|numeric|min:0',
+            'buy_now_price' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                function ($attribute, $value, $fail) {
+                    $startingPrice = request()->input('starting_price');
+                    if ($value && $startingPrice && $value <= $startingPrice) {
+                        $fail('قیمت خرید فوری باید بیشتر از قیمت شروع باشد.');
+                    }
+                },
+            ],
             'deposit_amount' => 'nullable|numeric|min:0',
             'bid_increment' => 'nullable|numeric|min:0',
             'starts_at' => 'required|date',
@@ -132,17 +142,24 @@ class ListingController extends Controller
             'shipping_methods.*' => 'exists:shipping_methods,id',
             'shipping_costs' => 'nullable|array',
             'shipping_costs.*' => 'nullable|numeric|min:0',
+            'images' => 'nullable|array|max:8',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
         ], [
             'category_id.required' => 'لطفاً دسته‌بندی محصول را انتخاب کنید.',
             'category_id.exists' => 'دسته‌بندی انتخاب شده معتبر نیست.',
             'title.required' => 'عنوان محصول الزامی است.',
             'description.required' => 'توضیحات محصول الزامی است.',
             'starting_price.required' => 'قیمت شروع الزامی است.',
+            'buy_now_price.gt' => 'قیمت خرید فوری باید بیشتر از قیمت شروع باشد.',
             'starts_at.required' => 'زمان شروع مزایده الزامی است.',
             'ends_at.required' => 'زمان پایان مزایده الزامی است.',
             'ends_at.after' => 'زمان پایان باید بعد از زمان شروع باشد.',
             'shipping_methods.required' => 'لطفاً حداقل یک روش ارسال را انتخاب کنید.',
             'shipping_methods.min' => 'لطفاً حداقل یک روش ارسال را انتخاب کنید.',
+            'images.max' => 'حداکثر 8 تصویر می‌توانید آپلود کنید.',
+            'images.*.image' => 'فایل باید تصویر باشد.',
+            'images.*.mimes' => 'فرمت تصویر باید jpeg, png, jpg یا gif باشد.',
+            'images.*.max' => 'حجم هر تصویر نباید بیشتر از 2MB باشد.',
         ]);
 
         // Process tags
@@ -153,6 +170,15 @@ class ListingController extends Controller
             $validated['tags'] = array_values($tags);
         } else {
             $validated['tags'] = [];
+        }
+
+        // تعیین وضعیت بر اساس زمان شروع
+        $startsAt = \Carbon\Carbon::parse($validated['starts_at']);
+        $status = $validated['status'];
+        
+        // اگر status فعال انتخاب شده ولی زمان شروع در آینده است، به pending تغییر بده
+        if ($status === 'active' && $startsAt->isFuture()) {
+            $status = 'pending';
         }
 
         $listing = Listing::create([
@@ -171,7 +197,7 @@ class ListingController extends Controller
             'ends_at' => $validated['ends_at'],
             'auto_extend' => $validated['auto_extend'] ?? false,
             'tags' => $validated['tags'],
-            'status' => $validated['status'],
+            'status' => $status,
         ]);
 
         // ذخیره ویژگی‌ها
@@ -210,6 +236,19 @@ class ListingController extends Controller
             'description' => 'حراجی توسط ادمین ایجاد شد',
             'icon' => 'add_circle'
         ]);
+
+        // آپلود تصاویر
+        if (request()->hasFile('images')) {
+            $images = request()->file('images');
+            foreach ($images as $index => $image) {
+                $path = $image->store('listings', 'public');
+                $listing->images()->create([
+                    'file_path' => $path,
+                    'file_name' => $image->getClientOriginalName(),
+                    'display_order' => $index + 1
+                ]);
+            }
+        }
 
         return redirect()->route('admin.listings.manage', $listing)
             ->with('success', 'حراجی با موفقیت ایجاد شد.');
@@ -310,7 +349,30 @@ class ListingController extends Controller
             'bid_increment' => 'nullable|numeric|min:0',
             'buy_now_price' => 'nullable|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',
-            'ends_at' => 'nullable|date',
+            'starts_at' => [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) use ($listing) {
+                    // فقط برای حراجی‌های pending یا آینده قابل تغییر است
+                    if (!$listing->isPending()) {
+                        $fail('زمان شروع فقط برای حراجی‌های هنوز شروع نشده قابل تغییر است.');
+                    }
+                    // زمان شروع نباید در گذشته باشد
+                    if ($value && \Carbon\Carbon::parse($value)->isPast()) {
+                        $fail('زمان شروع نمی‌تواند در گذشته باشد.');
+                    }
+                },
+            ],
+            'ends_at' => [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) {
+                    $startsAt = request()->input('starts_at') ?? request()->old('starts_at');
+                    if ($value && $startsAt && \Carbon\Carbon::parse($value)->lte(\Carbon\Carbon::parse($startsAt))) {
+                        $fail('زمان پایان باید بعد از زمان شروع باشد.');
+                    }
+                },
+            ],
             'auto_extend' => 'nullable|boolean'
         ]);
 
@@ -516,6 +578,25 @@ class ListingController extends Controller
         
         // Delete record
         $image->delete();
+
+        return response()->json(['success' => true]);
+    }
+    
+    public function setMainImage(Listing $listing, $imageId)
+    {
+        $image = $listing->images()->findOrFail($imageId);
+        
+        // Set all images display_order to their current order + 1
+        $listing->images()->where('id', '!=', $imageId)->increment('display_order');
+        
+        // Set selected image as main (display_order = 1)
+        $image->update(['display_order' => 1]);
+        
+        // Reorder all images to have sequential display_order
+        $images = $listing->images()->orderBy('display_order')->get();
+        foreach ($images as $index => $img) {
+            $img->update(['display_order' => $index + 1]);
+        }
 
         return response()->json(['success' => true]);
     }

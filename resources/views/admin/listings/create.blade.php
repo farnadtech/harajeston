@@ -142,19 +142,25 @@
                                required
                                class="persian-datepicker-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                                placeholder="انتخاب تاریخ و زمان"
-                               autocomplete="off">
+                               autocomplete="off"
+                               onchange="calculateEndDate()">
                         @error('starts_at')
                         <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                         @enderror
                     </div>
 
-                    <div>
+                    @php
+                        $forceDuration = \App\Models\SiteSetting::get('force_auction_duration', false);
+                        $durationDays = \App\Models\SiteSetting::get('auction_duration_days', 7);
+                    @endphp
+
+                    <div id="ends_at_container" class="{{ $forceDuration ? 'hidden' : '' }}">
                         <label class="block text-sm font-medium text-gray-700 mb-2">زمان پایان *</label>
                         <input type="text" 
                                name="ends_at" 
                                id="ends_at" 
                                value="{{ old('ends_at') }}" 
-                               required
+                               {{ $forceDuration ? '' : 'required' }}
                                class="persian-datepicker-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                                placeholder="انتخاب تاریخ و زمان"
                                autocomplete="off">
@@ -162,6 +168,23 @@
                         <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                         @enderror
                     </div>
+
+                    @if($forceDuration)
+                    <div class="col-span-2">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-blue-600 mt-0.5">info</span>
+                                <div>
+                                    <p class="text-sm font-medium text-blue-900">محاسبه خودکار زمان پایان</p>
+                                    <p class="text-sm text-blue-700 mt-1">
+                                        زمان پایان حراجی به صورت خودکار {{ \App\Services\PersianNumberService::convertToPersian($durationDays) }} روز بعد از زمان شروع محاسبه می‌شود.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="ends_at" id="ends_at_hidden" value="{{ old('ends_at') }}">
+                    </div>
+                    @endif
                 </div>
                 <div class="mt-4">
                     <label class="flex items-center gap-2 cursor-pointer">
@@ -247,9 +270,50 @@
                     <option value="active" {{ old('status', 'active') === 'active' ? 'selected' : '' }}>فعال</option>
                     <option value="suspended" {{ old('status') === 'suspended' ? 'selected' : '' }}>معلق</option>
                 </select>
+                <p class="text-xs text-gray-500 mt-2">
+                    <span class="material-symbols-outlined text-[14px] align-middle">info</span>
+                    اگر زمان شروع در آینده باشد، حراجی به صورت خودکار در وضعیت "در انتظار" قرار می‌گیرد و در زمان مقرر فعال می‌شود.
+                </p>
                 @error('status')
                 <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                 @enderror
+            </div>
+        </div>
+
+        <!-- Images Section -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">تصاویر محصول</h3>
+            <p class="text-sm text-gray-600 mb-4">حداکثر 8 تصویر می‌توانید آپلود کنید. اولین تصویر به عنوان تصویر اصلی نمایش داده می‌شود.</p>
+            
+            <div class="space-y-4">
+                <!-- Image Upload Input -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">انتخاب تصاویر</label>
+                    <input type="file" 
+                           name="images[]" 
+                           id="images" 
+                           multiple 
+                           accept="image/*"
+                           class="block w-full text-sm text-gray-500
+                                  file:mr-4 file:py-2 file:px-4
+                                  file:rounded-lg file:border-0
+                                  file:text-sm file:font-semibold
+                                  file:bg-primary file:text-white
+                                  hover:file:bg-blue-600
+                                  cursor-pointer">
+                    <p class="text-xs text-gray-500 mt-1">فرمت‌های مجاز: JPG, PNG, GIF - حداکثر حجم هر تصویر: 2MB</p>
+                    @error('images')
+                    <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                    @error('images.*')
+                    <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Image Preview -->
+                <div id="imagePreview" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4" style="display: none;">
+                    <!-- Previews will be added here by JavaScript -->
+                </div>
             </div>
         </div>
 
@@ -268,6 +332,9 @@
 @push('scripts')
 <script src="{{ url('js/persian-datepicker-package.js') }}?v={{ now()->timestamp }}"></script>
 <script>
+const FORCE_DURATION = {{ $forceDuration ? 'true' : 'false' }};
+const DURATION_DAYS = {{ $durationDays }};
+
 // Initialize datepickers with minDate for starts_at
 document.addEventListener('DOMContentLoaded', function() {
     // Starts at - can't be in the past
@@ -280,10 +347,53 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Ends at - no restriction (will be validated to be after starts_at on server)
     const endsAtInput = document.getElementById('ends_at');
-    if (endsAtInput && !endsAtInput.dataset.pickerInitialized) {
+    if (endsAtInput && !endsAtInput.dataset.pickerInitialized && !FORCE_DURATION) {
         new PersianDatePicker(endsAtInput);
     }
 });
+
+// Calculate end date automatically if force duration is enabled
+function calculateEndDate() {
+    if (!FORCE_DURATION) return;
+    
+    const startsAtInput = document.getElementById('starts_at');
+    const endsAtHidden = document.getElementById('ends_at_hidden');
+    
+    if (!startsAtInput || !endsAtHidden) return;
+    
+    const startsAtValue = startsAtInput.value;
+    if (!startsAtValue) return;
+    
+    // Parse Persian date: 1404/12/01 12:00
+    const match = startsAtValue.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{1,2})$/);
+    if (!match) return;
+    
+    const jy = parseInt(match[1]);
+    const jm = parseInt(match[2]);
+    const jd = parseInt(match[3]);
+    const hour = parseInt(match[4]);
+    const minute = parseInt(match[5]);
+    
+    // Add duration days to the date
+    let newJd = jd + DURATION_DAYS;
+    let newJm = jm;
+    let newJy = jy;
+    
+    // Simple month overflow handling (approximate)
+    const daysInMonth = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29]; // Jalali calendar
+    while (newJd > daysInMonth[newJm - 1]) {
+        newJd -= daysInMonth[newJm - 1];
+        newJm++;
+        if (newJm > 12) {
+            newJm = 1;
+            newJy++;
+        }
+    }
+    
+    // Format the new date
+    const endsAtValue = `${newJy}/${String(newJm).padStart(2, '0')}/${String(newJd).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    endsAtHidden.value = endsAtValue;
+}
 
 // Toggle price input visibility when checkbox is checked
 function togglePriceInput(checkbox, methodId) {
@@ -328,5 +438,57 @@ document.querySelector('form').addEventListener('submit', function(e) {
         }
     });
 @endif
+
+// Image preview functionality
+document.getElementById('images').addEventListener('change', function(e) {
+    const files = Array.from(e.target.files);
+    const previewContainer = document.getElementById('imagePreview');
+    
+    // Clear previous previews
+    previewContainer.innerHTML = '';
+    
+    if (files.length === 0) {
+        previewContainer.style.display = 'none';
+        return;
+    }
+    
+    // Check max 8 images
+    if (files.length > 8) {
+        alert('حداکثر 8 تصویر می‌توانید انتخاب کنید.');
+        e.target.value = '';
+        return;
+    }
+    
+    previewContainer.style.display = 'grid';
+    
+    files.forEach((file, index) => {
+        // Check file size (2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            alert(`حجم تصویر "${file.name}" بیش از 2MB است.`);
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const div = document.createElement('div');
+            div.className = 'relative group';
+            div.innerHTML = `
+                <img src="${event.target.result}" 
+                     class="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                     alt="Preview ${index + 1}">
+                <div class="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded">
+                    ${index === 0 ? 'تصویر اصلی' : index + 1}
+                </div>
+                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
+                    <span class="text-white opacity-0 group-hover:opacity-100 text-sm">
+                        ${(file.size / 1024).toFixed(0)} KB
+                    </span>
+                </div>
+            `;
+            previewContainer.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+    });
+});
 </script>
 @endpush

@@ -152,6 +152,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/deposit', [SettingsController::class, 'updateDeposit'])->name('admin.settings.deposit.update');
         Route::put('/settings/commission', [SettingsController::class, 'updateCommission'])->name('admin.settings.commission.update');
         Route::put('/settings/seller', [SettingsController::class, 'updateSeller'])->name('admin.settings.seller.update');
+        Route::put('/settings/auction-duration', [SettingsController::class, 'updateAuctionDuration'])->name('admin.settings.auction-duration.update');
         
         // Financial Reports
         Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('admin.financial-reports.index');
@@ -183,6 +184,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/listings/{listing}/bids', [AdminListingController::class, 'getBids'])->name('admin.listings.bids');
         Route::post('/listings/{listing}/images', [AdminListingController::class, 'uploadImage'])->name('admin.listings.images.upload');
         Route::delete('/listings/{listing}/images/{image}', [AdminListingController::class, 'deleteImage'])->name('admin.listings.images.delete');
+        Route::post('/listings/{listing}/images/{image}/set-main', [AdminListingController::class, 'setMainImage'])->name('admin.listings.images.set-main');
         
         // Bid Management
         Route::post('/bids/{bid}/cancel', [\App\Http\Controllers\Admin\BidController::class, 'cancel'])->name('admin.bids.cancel');

@@ -23,8 +23,12 @@ class SettingsController extends Controller
         $sellerSettings = [
             'require_approval' => SiteSetting::get('require_seller_approval', true)
         ];
+        $auctionDurationSettings = [
+            'force_duration' => SiteSetting::get('force_auction_duration', false),
+            'duration_days' => SiteSetting::get('auction_duration_days', 7)
+        ];
 
-        return view('admin.settings.index', compact('depositSettings', 'commissionSettings', 'sellerSettings'));
+        return view('admin.settings.index', compact('depositSettings', 'commissionSettings', 'sellerSettings', 'auctionDurationSettings'));
     }
 
     /**
@@ -80,5 +84,24 @@ class SettingsController extends Controller
 
         return redirect()->route('admin.settings.index')
             ->with('success', 'تنظیمات فروشندگان با موفقیت به‌روزرسانی شد.');
+    }
+
+    /**
+     * به‌روزرسانی تنظیمات مدت زمان حراجی
+     */
+    public function updateAuctionDuration(Request $request)
+    {
+        $validated = $request->validate([
+            'force_auction_duration' => 'nullable|boolean',
+            'auction_duration_days' => 'required|integer|min:1|max:365',
+        ]);
+
+        $forceDuration = $request->has('force_auction_duration');
+        
+        SiteSetting::set('force_auction_duration', $forceDuration, 'boolean');
+        SiteSetting::set('auction_duration_days', $validated['auction_duration_days'], 'integer');
+
+        return redirect()->route('admin.settings.index')
+            ->with('success', 'تنظیمات مدت زمان حراجی با موفقیت به‌روزرسانی شد.');
     }
 }

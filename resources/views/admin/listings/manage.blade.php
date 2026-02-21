@@ -94,8 +94,11 @@
                     <!-- Images Section -->
                     <div class="space-y-4">
                         <div class="aspect-square rounded-xl bg-gray-100 overflow-hidden border border-gray-200 relative group image-preview-hover">
-                            @if($listing->images->isNotEmpty())
-                                <img src="{{ url('storage/' . $listing->images->first()->file_path) }}" 
+                            @php
+                                $mainImage = $listing->images->sortBy('display_order')->first();
+                            @endphp
+                            @if($mainImage)
+                                <img src="{{ url('storage/' . $mainImage->file_path) }}" 
                                      alt="{{ $listing->title }}" 
                                      class="w-full h-full object-cover"
                                      id="mainImage">
@@ -116,13 +119,28 @@
                         </div>
                         
                         <div class="grid grid-cols-4 gap-2 max-h-[400px] overflow-y-auto">
-                            @foreach($listing->images as $index => $image)
-                            <div class="aspect-square rounded-lg bg-gray-100 overflow-hidden border {{ $index === 0 ? 'border-primary ring-2 ring-primary ring-offset-2' : 'border-gray-200' }} cursor-pointer hover:border-primary transition-colors relative group"
+                            @foreach($listing->images->sortBy('display_order') as $image)
+                            <div class="aspect-square rounded-lg bg-gray-100 overflow-hidden border {{ $image->display_order === 1 ? 'border-primary ring-2 ring-primary ring-offset-2' : 'border-gray-200' }} cursor-pointer hover:border-primary transition-colors relative group"
+                                 data-image-id="{{ $image->id }}"
                                  onclick="changeMainImage('{{ url('storage/' . $image->file_path) }}', {{ $image->id }}, this)">
                                 <img src="{{ url('storage/' . $image->file_path) }}" 
-                                     class="w-full h-full object-cover {{ $index === 0 ? '' : 'grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all' }}">
+                                     class="w-full h-full object-cover {{ $image->display_order === 1 ? '' : 'grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all' }}">
+                                
+                                @if($image->display_order === 1)
+                                <div class="absolute top-1 right-1 bg-primary text-white px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                    عکس اصلی
+                                </div>
+                                @else
+                                <button onclick="event.stopPropagation(); setAsMainImage({{ $image->id }})" 
+                                        class="absolute top-1 right-1 p-1.5 bg-blue-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-600"
+                                        title="تنظیم به عنوان عکس اصلی">
+                                    <span class="material-symbols-outlined text-sm">star</span>
+                                </button>
+                                @endif
+                                
                                 <button onclick="event.stopPropagation(); deleteThumbnailImage({{ $image->id }})" 
-                                        class="absolute top-1 left-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600">
+                                        class="absolute top-1 left-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                        title="حذف تصویر">
                                     <span class="material-symbols-outlined text-sm">close</span>
                                 </button>
                             </div>
@@ -214,6 +232,24 @@
                 <form id="auctionSettingsForm">
                     @csrf
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- زمان شروع - فقط برای حراجی‌های pending یا آینده -->
+                        @if($listing->isPending())
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-gray-700">زمان شروع</label>
+                            <input type="text" 
+                                   name="starts_at" 
+                                   id="manage_starts_at"
+                                   value="{{ \App\Services\JalaliDateService::toDatepickerFormat($listing->starts_at) }}"
+                                   class="persian-datepicker-input w-full bg-gray-50 border-gray-200 rounded-xl text-sm focus:ring-primary focus:border-primary"
+                                   placeholder="انتخاب تاریخ و زمان"
+                                   autocomplete="off">
+                            <p class="text-[10px] text-blue-600 mt-1">
+                                <span class="material-symbols-outlined text-[12px] align-middle">info</span>
+                                قابل تغییر تا زمان شروع حراجی
+                            </p>
+                        </div>
+                        @endif
+                        
                         <div class="space-y-2">
                             <label class="text-xs font-bold text-gray-700">قیمت پایه (تومان)</label>
                             <div class="relative">
@@ -438,17 +474,17 @@
                 
                 <div class="flex items-center gap-4 mb-4">
                     <div class="w-14 h-14 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 text-xl font-bold border-2 border-white shadow-sm">
-                        {{ mb_substr($listing->store->name, 0, 2) }}
+                        {{ mb_substr($listing->seller->name, 0, 2) }}
                     </div>
                     <div>
-                        <h4 class="text-sm font-bold text-gray-900">{{ $listing->store->name }}</h4>
+                        <h4 class="text-sm font-bold text-gray-900">{{ $listing->seller->name }}</h4>
                         <div class="flex items-center gap-1 mt-1">
                             <span class="material-symbols-outlined text-yellow-400 text-[16px] fill-current">star</span>
                             <span class="text-xs font-bold text-gray-700">
-                                {{ \App\Services\PersianNumberService::convertToPersian(number_format($listing->store->rating ?? 0, 1)) }}
+                                {{ \App\Services\PersianNumberService::convertToPersian(number_format($listing->seller->seller_rating ?? 0, 1)) }}
                             </span>
                             <span class="text-xs text-gray-400">
-                                ({{ \App\Services\PersianNumberService::convertToPersian($listing->store->total_sales ?? 0) }} فروش موفق)
+                                ({{ \App\Services\PersianNumberService::convertToPersian($listing->seller->seller_rating_count ?? 0) }} نظر)
                             </span>
                         </div>
                     </div>
@@ -457,26 +493,34 @@
                 <div class="space-y-3">
                     <div class="flex justify-between items-center text-sm py-2 border-b border-gray-50">
                         <span class="text-gray-500">وضعیت حساب</span>
-                        <span class="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded text-xs">
-                            {{ $listing->store->is_verified ? 'تایید شده' : 'در انتظار تایید' }}
+                        <span class="{{ $listing->seller->seller_status === 'active' ? 'text-green-600 bg-green-50' : 'text-yellow-600 bg-yellow-50' }} font-bold px-2 py-0.5 rounded text-xs">
+                            @if($listing->seller->seller_status === 'active')
+                                تایید شده
+                            @elseif($listing->seller->seller_status === 'pending')
+                                در انتظار تایید
+                            @elseif($listing->seller->seller_status === 'suspended')
+                                تعلیق شده
+                            @else
+                                غیرفعال
+                            @endif
                         </span>
                     </div>
                     
                     <div class="flex justify-between items-center text-sm py-2 border-b border-gray-50">
                         <span class="text-gray-500">شماره تماس</span>
-                        <span class="text-gray-900 font-mono">{{ $listing->store->user->phone ?? 'ثبت نشده' }}</span>
+                        <span class="text-gray-900 font-mono">{{ $listing->seller->phone ?? 'ثبت نشده' }}</span>
                     </div>
                     
                     <div class="flex justify-between items-center text-sm py-2">
                         <span class="text-gray-500">عضویت</span>
                         <span class="text-gray-900" dir="ltr">
-                            {{ \App\Services\JalaliDateService::toJalali($listing->store->created_at, 'Y/m/d') }}
+                            {{ \App\Services\JalaliDateService::toJalali($listing->seller->created_at, 'Y/m/d') }}
                         </span>
                     </div>
                 </div>
                 
                 <div class="grid grid-cols-2 gap-3 mt-5">
-                    <a href="{{ route('admin.users.show', $listing->store->user) }}" 
+                    <a href="{{ route('admin.users.show', $listing->seller) }}" 
                        class="flex items-center justify-center gap-2 py-2 px-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-sm font-medium transition-colors">
                         <span class="material-symbols-outlined text-[18px]">person</span>
                         پروفایل کاربر
@@ -672,8 +716,17 @@
 @push('scripts')
 <script src="{{ url('js/persian-datepicker-package.js') }}?v={{ now()->timestamp }}"></script>
 <script>
-// Initialize datepicker for ends_at field
+// Initialize datepickers
 document.addEventListener('DOMContentLoaded', function() {
+    // Starts at - only for pending auctions, can't be in the past
+    const startsAtInput = document.getElementById('manage_starts_at');
+    if (startsAtInput && !startsAtInput.dataset.pickerInitialized) {
+        new PersianDatePicker(startsAtInput, {
+            minDate: 'today'
+        });
+    }
+    
+    // Ends at
     const endsAtInput = document.getElementById('manage_ends_at');
     if (endsAtInput && !endsAtInput.dataset.pickerInitialized) {
         new PersianDatePicker(endsAtInput);
@@ -684,7 +737,7 @@ document.addEventListener('DOMContentLoaded', function() {
 const baseUrl = '{{ url("/") }}';
 
 // Image Management
-let currentImageId = {{ $listing->images->first()->id ?? 0 }};
+let currentImageId = {{ $listing->images->sortBy('display_order')->first()->id ?? 0 }};
 
 function changeMainImage(src, imageId, element) {
     document.getElementById('mainImage').src = src;
@@ -779,6 +832,28 @@ function deleteThumbnailImage(imageId) {
             .catch(error => handleFetchError(error, 'خطا در حذف تصویر'));
         }
     );
+}
+
+function setAsMainImage(imageId) {
+    const setMainUrl = `{{ url('/admin/listings') }}/{{ $listing->slug }}/images/${imageId}/set-main`;
+    fetch(setMainUrl, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('عکس اصلی با موفقیت تغییر کرد', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showNotification('خطا در تنظیم عکس اصلی', 'error');
+        }
+    })
+    .catch(error => handleFetchError(error, 'خطا در تنظیم عکس اصلی'));
 }
 
 function uploadNewImage(input) {

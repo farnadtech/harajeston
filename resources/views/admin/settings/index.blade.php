@@ -71,6 +71,56 @@
             </form>
         </div>
 
+        <!-- تنظیمات مدت زمان حراجی -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات مدت زمان حراجی</h2>
+            
+            <form action="{{ route('admin.settings.auction-duration.update') }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="mb-6">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" 
+                               name="force_auction_duration" 
+                               value="1"
+                               id="force_auction_duration"
+                               {{ $auctionDurationSettings['force_duration'] ?? false ? 'checked' : '' }}
+                               class="ml-2 w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                               onchange="toggleDurationFields()">
+                        <div>
+                            <span class="font-bold text-gray-700">اجبار مدت زمان ثابت برای حراجی‌ها</span>
+                            <p class="text-sm text-gray-600 mt-1">
+                                اگر فعال باشد، فروشندگان نمی‌توانند زمان پایان حراجی را خودشان انتخاب کنند و مدت زمان به صورت خودکار محاسبه می‌شود.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="duration-fields" class="{{ ($auctionDurationSettings['force_duration'] ?? false) ? '' : 'opacity-50 pointer-events-none' }}">
+                    <div class="mb-6">
+                        <label for="auction_duration_days" class="block text-gray-700 font-bold mb-2">
+                            مدت زمان حراجی (روز)
+                        </label>
+                        <input type="number" 
+                               id="auction_duration_days" 
+                               name="auction_duration_days" 
+                               value="{{ $auctionDurationSettings['duration_days'] ?? 7 }}"
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                               min="1"
+                               max="365">
+                        <p class="text-sm text-gray-600 mt-2">
+                            حراجی‌ها به صورت خودکار X روز بعد از زمان شروع به پایان می‌رسند.
+                        </p>
+                    </div>
+                </div>
+
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    ذخیره تنظیمات مدت زمان
+                </button>
+            </form>
+        </div>
+
         <!-- تنظیمات فروشندگان -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات فروشندگان</h2>
@@ -201,4 +251,17 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleDurationFields() {
+    const checkbox = document.getElementById('force_auction_duration');
+    const fields = document.getElementById('duration-fields');
+    
+    if (checkbox.checked) {
+        fields.classList.remove('opacity-50', 'pointer-events-none');
+    } else {
+        fields.classList.add('opacity-50', 'pointer-events-none');
+    }
+}
+</script>
 @endsection

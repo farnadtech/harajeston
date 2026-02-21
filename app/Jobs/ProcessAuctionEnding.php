@@ -30,10 +30,9 @@ class ProcessAuctionEnding implements ShouldQueue
      */
     public function handle(AuctionService $auctionService): void
     {
-        // Query auctions with status='active' and end_time <= now
-        $auctions = Listing::where('type', 'auction')
-            ->where('status', 'active')
-            ->where('end_time', '<=', now())
+        // Query auctions with status='active' and ends_at <= now
+        $auctions = Listing::where('status', 'active')
+            ->where('ends_at', '<=', now())
             ->get();
 
         Log::info('ProcessAuctionEnding: Found ' . $auctions->count() . ' auctions to end');

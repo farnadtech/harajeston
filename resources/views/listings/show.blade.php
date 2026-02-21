@@ -25,6 +25,40 @@
         </div>
     @endif
 
+    <!-- بنر حراجی هنوز شروع نشده -->
+    @if($listing->isPending())
+        <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-blue-600 text-2xl">schedule</span>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-bold text-blue-900 mb-1">این حراجی هنوز شروع نشده است</h3>
+                    <p class="text-blue-700 text-sm">
+                        زمان شروع: <span class="font-bold">{{ \App\Services\JalaliDateService::toJalali($listing->starts_at, 'Y/m/d H:i') }}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- بنر حراجی به پایان رسیده -->
+    @if($listing->hasEnded() && $listing->status !== 'suspended')
+        <div class="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-gray-600 text-2xl">event_busy</span>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-bold text-gray-900 mb-1">این حراجی به پایان رسیده است</h3>
+                    <p class="text-gray-700 text-sm">
+                        زمان پایان: <span class="font-bold">{{ \App\Services\JalaliDateService::toJalali($listing->ends_at, 'Y/m/d H:i') }}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Breadcrumb -->
     <nav aria-label="Breadcrumb" class="flex text-sm text-gray-500 mb-4">
         <ol class="inline-flex items-center space-x-1 md:space-x-3 space-x-reverse">
@@ -197,11 +231,27 @@
 
                 <!-- Auction Timer & Price -->
                 <div class="bg-background-light rounded-xl p-5 mb-6 border border-gray-200">
-                    @if($listing->status === 'active' && $listing->ends_at)
+                    @if($listing->isActive() && $listing->ends_at)
                         <div class="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 border-dashed">
                             <span class="text-gray-600 font-medium">زمان باقیمانده:</span>
                             <div class="flex items-center gap-2 text-secondary font-bold text-xl tabular-nums dir-ltr">
                                 @livewire('auction-countdown', ['listing' => $listing])
+                            </div>
+                        </div>
+                    @elseif($listing->isPending())
+                        <div class="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 border-dashed">
+                            <span class="text-gray-600 font-medium">زمان شروع:</span>
+                            <div class="flex items-center gap-2 text-blue-600 font-bold text-lg">
+                                <span class="material-symbols-outlined">schedule</span>
+                                <span>{{ \App\Services\JalaliDateService::toJalali($listing->starts_at, 'Y/m/d H:i') }}</span>
+                            </div>
+                        </div>
+                    @elseif($listing->hasEnded())
+                        <div class="flex justify-between items-center mb-4 pb-4 border-b border-gray-200 border-dashed">
+                            <span class="text-gray-600 font-medium">وضعیت:</span>
+                            <div class="flex items-center gap-2 text-gray-600 font-bold text-lg">
+                                <span class="material-symbols-outlined">event_busy</span>
+                                <span>به پایان رسیده</span>
                             </div>
                         </div>
                     @endif
@@ -243,16 +293,42 @@
                             </a>
                         </div>
                     @endif
-                    @livewire('auction-bidding', ['listing' => $listing])
-                @else
-                    <div class="space-y-4 mb-6">
-                        <div class="p-4 bg-yellow-50 rounded-xl border border-yellow-200 text-center">
-                            <p class="text-sm text-yellow-800 mb-3">برای شرکت در مزایده باید وارد شوید</p>
-                            <a href="{{ route('login') }}" class="inline-block px-6 py-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-700 transition-colors">
-                                ورود / ثبت نام
-                            </a>
+                    
+                    @if($listing->isActive())
+                        @livewire('auction-bidding', ['listing' => $listing])
+                    @elseif($listing->isPending())
+                        <div class="p-4 bg-blue-50 rounded-xl border border-blue-200 text-center">
+                            <span class="material-symbols-outlined text-blue-600 text-4xl mb-2">schedule</span>
+                            <p class="text-sm text-blue-800 font-medium">این حراجی هنوز شروع نشده است</p>
+                            <p class="text-xs text-blue-600 mt-1">لطفاً در زمان مقرر مراجعه کنید</p>
                         </div>
-                    </div>
+                    @elseif($listing->hasEnded())
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                            <span class="material-symbols-outlined text-gray-400 text-4xl mb-2">event_busy</span>
+                            <p class="text-sm text-gray-700 font-medium">این حراجی به پایان رسیده است</p>
+                        </div>
+                    @endif
+                @else
+                    @if($listing->isActive())
+                        <div class="space-y-4 mb-6">
+                            <div class="p-4 bg-yellow-50 rounded-xl border border-yellow-200 text-center">
+                                <p class="text-sm text-yellow-800 mb-3">برای شرکت در مزایده باید وارد شوید</p>
+                                <a href="{{ route('login') }}" class="inline-block px-6 py-2 bg-primary text-white font-bold rounded-lg hover:bg-blue-700 transition-colors">
+                                    ورود / ثبت نام
+                                </a>
+                            </div>
+                        </div>
+                    @elseif($listing->isPending())
+                        <div class="p-4 bg-blue-50 rounded-xl border border-blue-200 text-center">
+                            <span class="material-symbols-outlined text-blue-600 text-4xl mb-2">schedule</span>
+                            <p class="text-sm text-blue-800 font-medium">این حراجی هنوز شروع نشده است</p>
+                        </div>
+                    @elseif($listing->hasEnded())
+                        <div class="p-4 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                            <span class="material-symbols-outlined text-gray-400 text-4xl mb-2">event_busy</span>
+                            <p class="text-sm text-gray-700 font-medium">این حراجی به پایان رسیده است</p>
+                        </div>
+                    @endif
                 @endauth
 
                 <!-- Seller Info -->

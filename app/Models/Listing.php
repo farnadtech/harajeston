@@ -167,9 +167,19 @@ class Listing extends Model
             && now()->between($this->starts_at, $this->ends_at);
     }
 
+    public function hasStarted(): bool
+    {
+        return $this->starts_at && now()->greaterThanOrEqualTo($this->starts_at);
+    }
+
     public function hasEnded(): bool
     {
         return $this->ends_at && now()->greaterThanOrEqualTo($this->ends_at);
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending' || ($this->status === 'active' && !$this->hasStarted());
     }
 
     public function hasBuyNowPrice(): bool

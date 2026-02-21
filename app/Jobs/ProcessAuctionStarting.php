@@ -20,17 +20,17 @@ class ProcessAuctionStarting implements ShouldQueue
      */
     public function handle(AuctionService $auctionService): void
     {
-        // Query auctions with status='pending' and start_time <= now
-        $auctions = Listing::where('type', 'auction')
-            ->where('status', 'pending')
-            ->where('start_time', '<=', now())
+        // Query auctions with status='pending' and starts_at <= now
+        $auctions = Listing::where('status', 'pending')
+            ->where('starts_at', '<=', now())
             ->get();
 
         Log::info('ProcessAuctionStarting: Found ' . $auctions->count() . ' auctions to start');
 
         foreach ($auctions as $auction) {
             try {
-                $auctionService->startAuction($auction);
+                // تغییر وضعیت به active
+                $auction->update(['status' => 'active']);
                 Log::info('ProcessAuctionStarting: Started auction ' . $auction->id);
             } catch (\Exception $e) {
                 Log::error('ProcessAuctionStarting: Failed to start auction ' . $auction->id . ': ' . $e->getMessage());
