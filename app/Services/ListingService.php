@@ -64,6 +64,7 @@ class ListingService
             'seller_id' => $seller->id,
             'type' => $type,
             'title' => $data['title'],
+            'slug' => $this->generateUniqueSlug($data['title']),
             'description' => $data['description'],
             'category_id' => $data['category_id'] ?? null,
             // Auction fields
@@ -87,6 +88,16 @@ class ListingService
                         'value' => $value,
                     ]);
                 }
+            }
+        }
+
+        // ذخیره روش‌های ارسال
+        if (isset($data['shipping_methods']) && is_array($data['shipping_methods'])) {
+            foreach ($data['shipping_methods'] as $methodId) {
+                $customCost = $data['shipping_costs'][$methodId] ?? 0;
+                $listing->shippingMethods()->attach($methodId, [
+                    'custom_cost_adjustment' => $customCost
+                ]);
             }
         }
 
@@ -218,5 +229,25 @@ class ListingService
             
             $listing->save();
         });
+    }
+
+    /**
+     * Generate unique slug from title
+     * 
+     * @param string $title
+     * @return string
+     */
+    protected function generateUniqueSlug(string $title): string
+    {
+        $slug = \Str::slug($title);
+        $originalSlug = $slug;
+        $counter = 1;
+        
+        while (Listing::where('slug', $slug)->exists()) {
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+        
+        return $slug;
     }
 }

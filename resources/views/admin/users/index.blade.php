@@ -151,6 +151,8 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             @if($user->role === 'admin')
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">ادمین</span>
+                            @elseif($user->seller_status === 'active')
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">خریدار-فروشنده</span>
                             @elseif($user->role === 'seller')
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">فروشنده</span>
                             @else

@@ -71,6 +71,36 @@
             </form>
         </div>
 
+        <!-- تنظیمات فروشندگان -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات فروشندگان</h2>
+            
+            <form action="{{ route('admin.settings.seller.update') }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="mb-6">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" 
+                               name="require_seller_approval" 
+                               value="1"
+                               {{ $sellerSettings['require_approval'] ? 'checked' : '' }}
+                               class="ml-2 w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                        <div>
+                            <span class="font-bold text-gray-700">نیاز به تایید دستی فروشندگان</span>
+                            <p class="text-sm text-gray-600 mt-1">
+                                اگر فعال باشد، درخواست‌های فروشندگی باید توسط ادمین تایید شوند. در غیر این صورت، کاربران بلافاصله پس از درخواست فعال می‌شوند.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    ذخیره تنظیمات فروشندگان
+                </button>
+            </form>
+        </div>
+
         <!-- تنظیمات کمیسیون -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات کمیسیون سایت</h2>

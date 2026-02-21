@@ -25,21 +25,30 @@ class NotificationController extends Controller
 
     public function getRecent()
     {
-        $notifications = auth()->user()
-            ->notifications()
-            ->latest()
-            ->take(5)
-            ->get();
+        try {
+            $notifications = auth()->user()
+                ->notifications()
+                ->latest()
+                ->take(5)
+                ->get();
 
-        $unreadCount = auth()->user()
-            ->notifications()
-            ->where('is_read', false)
-            ->count();
+            $unreadCount = auth()->user()
+                ->notifications()
+                ->where('is_read', false)
+                ->count();
 
-        return response()->json([
-            'notifications' => $notifications,
-            'unread_count' => $unreadCount,
-        ]);
+            return response()->json([
+                'notifications' => $notifications,
+                'unread_count' => $unreadCount,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching notifications: ' . $e->getMessage());
+            
+            return response()->json([
+                'notifications' => [],
+                'unread_count' => 0,
+            ]);
+        }
     }
 
     public function markAsRead($id)

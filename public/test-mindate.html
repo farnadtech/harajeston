@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست MinDate</title>
+    <link rel="stylesheet" href="css/persian-datepicker-package.css">
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔒 تست MinDate</h1>
+        
+        <div class="form-group">
+            <label>فیلد با minDate: 'today' (نباید بتوان تاریخ گذشته انتخاب کرد)</label>
+            <input type="text" id="date1" class="persian-datepicker-input" placeholder="انتخاب تاریخ">
+        </div>
+        
+        <div class="form-group">
+            <label>فیلد با تاریخ پیش‌فرض (باید در باز شدن، تاریخ انتخاب شده نمایش داده شود)</label>
+            <input type="text" id="date2" class="persian-datepicker-input" value="1404/12/05 14:30" placeholder="انتخاب تاریخ">
+        </div>
+        
+        <div class="form-group">
+            <label>فیلد عادی (بدون محدودیت)</label>
+            <input type="text" id="date3" class="persian-datepicker-input" placeholder="انتخاب تاریخ">
+        </div>
+        
+        <div class="info">
+            <strong>نکات تست:</strong>
+            <ul style="margin: 10px 0 0 20px;">
+                <li>فیلد اول: سعی کنید تاریخ دیروز را انتخاب کنید - نباید بتوانید</li>
+                <li>فیلد دوم: روی آن کلیک کنید - باید تاریخ 1404/12/05 به صورت انتخاب شده نمایش داده شود</li>
+                <li>کنسول مرورگر را باز کنید (F12) و لاگ‌ها را ببینید</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script src="js/persian-datepicker-package.js"></script>
+    <script>
+        console.log('=== شروع تست ===');
+        
+        // Test 1: با minDate
+        console.log('ایجاد datepicker با minDate: today');
+        const picker1 = new PersianDatePicker('#date1', {
+            minDate: 'today'
+        });
+        
+        // Test 2: با value پیش‌فرض
+        console.log('ایجاد datepicker با value پیش‌فرض');
+        const picker2 = new PersianDatePicker('#date2');
+        
+        // Test 3: عادی
+        console.log('ایجاد datepicker عادی');
+        const picker3 = new PersianDatePicker('#date3');
+        
+        console.log('=== همه datepicker ها ایجاد شدند ===');
+    </script>
+</body>
+</html>

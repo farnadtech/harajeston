@@ -155,6 +155,68 @@
                 </div>
             </div>
 
+            <!-- Shipping Methods Selection -->
+            <div class="mb-6">
+                <label class="block text-gray-700 font-bold mb-3">روش‌های ارسال</label>
+                <p class="text-sm text-gray-500 mb-3">حداقل یک روش ارسال را انتخاب کنید</p>
+                
+                @php
+                    $shippingMethods = \App\Models\ShippingMethod::where('is_active', true)->get();
+                @endphp
+                
+                <div class="space-y-3">
+                    @foreach($shippingMethods as $method)
+                    <label class="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                        <input type="checkbox" name="shipping_methods[]" value="{{ $method->id }}" 
+                               class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                               onchange="toggleShippingCost({{ $method->id }})">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-blue-600">local_shipping</span>
+                                <span class="font-bold text-gray-900">{{ $method->name }}</span>
+                            </div>
+                            @if($method->description)
+                                <p class="text-sm text-gray-500 mt-1">{{ $method->description }}</p>
+                            @endif
+                            @if($method->estimated_days)
+                                <p class="text-xs text-gray-400 mt-1">
+                                    زمان تحویل: {{ \App\Services\PersianNumberService::convertToPersian($method->estimated_days) }} روز کاری
+                                </p>
+                            @endif
+                        </div>
+                        <div class="text-left">
+                            <span class="text-sm text-gray-500">هزینه پایه:</span>
+                            <div class="font-bold text-gray-900">
+                                {{ \App\Services\PersianNumberService::convertToPersian(number_format($method->base_cost)) }} تومان
+                            </div>
+                        </div>
+                    </label>
+                    
+                    <!-- Custom Cost Adjustment -->
+                    <div id="shipping_cost_{{ $method->id }}" class="hidden mr-8 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            تنظیم قیمت سفارشی (اختیاری)
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <input type="number" 
+                                   name="shipping_costs[{{ $method->id }}]" 
+                                   placeholder="0" 
+                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                   step="1000">
+                            <span class="text-sm text-gray-500">تومان (+ یا - از قیمت پایه)</span>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">
+                            مثال: +۱۰۰۰۰ برای افزایش یا -۵۰۰۰ برای کاهش قیمت
+                        </p>
+                    </div>
+                    @endforeach
+                </div>
+                
+                @error('shipping_methods')
+                    <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span>
+                @enderror
+            </div>
+
             <!-- Image Upload -->
             <div class="mb-6">
                 <label class="block text-gray-700 font-bold mb-2">تصاویر محصول</label>
@@ -178,4 +240,22 @@
         </form>
     </div>
 </div>
+
+@push('scripts')
+<script>
+function toggleShippingCost(methodId) {
+    const checkbox = document.querySelector(`input[name="shipping_methods[]"][value="${methodId}"]`);
+    const costDiv = document.getElementById(`shipping_cost_${methodId}`);
+    
+    if (checkbox.checked) {
+        costDiv.classList.remove('hidden');
+    } else {
+        costDiv.classList.add('hidden');
+        // پاک کردن مقدار ورودی
+        const input = costDiv.querySelector('input[type="number"]');
+        if (input) input.value = '';
+    }
+}
+</script>
+@endpush
 @endsection

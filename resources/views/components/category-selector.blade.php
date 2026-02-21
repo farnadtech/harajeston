@@ -5,6 +5,7 @@
     <div class="mb-3">
         <label class="text-xs text-gray-600 mb-1 block">دسته اصلی</label>
         <select @change="selectParent($event.target.value)" 
+                name="parent_category"
                 class="form-select" 
                 x-model="selectedParent">
             <option value="">انتخاب دسته اصلی</option>
@@ -18,6 +19,7 @@
     <div class="mb-3" x-show="showChildren" x-transition>
         <label class="text-xs text-gray-600 mb-1 block">زیردسته</label>
         <select @change="selectChild($event.target.value)" 
+                name="child_category"
                 class="form-select" 
                 x-model="selectedChild">
             <option value="">انتخاب زیردسته</option>
@@ -31,9 +33,9 @@
     <div x-show="showGrandchildren" x-transition>
         <label class="text-xs text-gray-600 mb-1 block">دسته نهایی *</label>
         <select @change="selectFinal($event.target.value)" 
+                name="final_category"
                 class="form-select" 
-                x-model="selectedFinal"
-                required>
+                x-model="selectedFinal">
             <option value="">انتخاب دسته نهایی (الزامی)</option>
             <template x-for="grand in grandchildren" :key="grand.id">
                 <option :value="grand.id" x-text="grand.name"></option>
@@ -46,8 +48,7 @@
     <input type="hidden" 
            name="{{ $name ?? 'category_id' }}" 
            id="categorySelect"
-           :value="finalCategoryId" 
-           required>
+           :value="finalCategoryId">
     
     <p class="text-xs text-gray-500 mt-2" x-show="selectedPath" x-text="selectedPath"></p>
     

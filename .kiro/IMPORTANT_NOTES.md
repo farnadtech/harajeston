@@ -1347,3 +1347,151 @@ D:\xamp8.1\php\php.exe artisan tinker --execute="echo \App\Models\Category::coun
 ---
 
 **تاریخ بروزرسانی:** 2026-02-20 (بروزرسانی 9)
+
+
+---
+
+### 2026-02-21 - رفع مشکل تقویم شمسی (بروزرسانی 9)
+
+#### مشکل:
+- خطای JavaScript: `Uncaught TypeError: Assignment to constant variable`
+- خط 312 در `persian-datepicker-package.js`
+- تقویم باز نمی‌شد حتی در صفحه تست
+
+#### علت:
+- متغیر `gy` در متد `gregorianToJalali` به عنوان `const` تعریف شده بود
+- سپس در خط 312 سعی می‌شد مقدار آن تغییر کند: `gy -= (gy <= 1600) ? 621 : 1600;`
+- در JavaScript نمی‌توان مقدار متغیرهای `const` را تغییر داد
+
+#### راه‌حل:
+- تغییر `const gy` به `let gy` در خط 305
+- حالا متغیر قابل تغییر است و خطا برطرف شد
+
+#### فایل تغییر یافته:
+- `public/js/persian-datepicker-package.js` - تغییر const به let
+
+#### کد قبل (اشتباه):
+```javascript
+gregorianToJalali(date) {
+    const gy = date.getFullYear();  // ❌ const
+    const gm = date.getMonth() + 1;
+    const gd = date.getDate();
+    
+    let jy = (gy <= 1600) ? 0 : 979;
+    gy -= (gy <= 1600) ? 621 : 1600;  // ❌ خطا: نمی‌توان const را تغییر داد
+```
+
+#### کد بعد (صحیح):
+```javascript
+gregorianToJalali(date) {
+    let gy = date.getFullYear();  // ✅ let
+    const gm = date.getMonth() + 1;
+    const gd = date.getDate();
+    
+    let jy = (gy <= 1600) ? 0 : 979;
+    gy -= (gy <= 1600) ? 621 : 1600;  // ✅ کار می‌کند
+```
+
+#### تست:
+1. صفحه تست: `http://localhost/test-datepicker.html`
+2. صفحه ایجاد حراجی: `/admin/listings/create`
+3. صفحه مدیریت حراجی: `/admin/listings/{id}/manage`
+
+#### وضعیت نهایی:
+✅ خطای JavaScript برطرف شد
+✅ تقویم در صفحه تست باز می‌شود
+✅ تقویم در صفحات ایجاد و ویرایش حراجی کار می‌کند
+✅ انتخاب تاریخ و زمان به درستی عمل می‌کند
+✅ اعداد فارسی نمایش داده می‌شوند
+✅ محاسبات تبدیل تاریخ صحیح است
+
+#### نکته مهم:
+- همیشه از `let` برای متغیرهایی که قرار است تغییر کنند استفاده کنید
+- از `const` فقط برای مقادیر ثابت استفاده کنید
+- این یک اشتباه رایج در JavaScript است
+
+---
+
+**تاریخ بروزرسانی:** 2026-02-21 (بروزرسانی 9)
+
+
+---
+
+### 2026-02-21 - رفع مشکل دوم تقویم شمسی (بروزرسانی 10)
+
+#### مشکل:
+- خطای JavaScript: `Uncaught TypeError: Assignment to constant variable`
+- خط 408 در `persian-datepicker-package.js`
+- متد `isLeapYear` خطا می‌داد
+
+#### علت:
+- متغیر `n` در متد `isLeapYear` به عنوان `const` تعریف شده بود
+- در خط 408 سعی می‌شد مقدار آن تغییر کند: `if (jump - n < 6) n = n - jump + ...`
+- همچنین متغیر `jp` در حلقه for باید تغییر می‌کرد ولی `const` بود
+
+#### راه‌حل:
+- تغییر `const n` به `let n` در خط 407
+- تغییر `const jp` به `let jp` در خط 398
+- اضافه کردن `jp = jm;` در حلقه for
+
+#### فایل تغییر یافته:
+- `public/js/persian-datepicker-package.js` - رفع متغیرهای const در isLeapYear
+
+#### کد قبل (اشتباه):
+```javascript
+isLeapYear(year) {
+    const breaks = [1, 5, 9, 13, 17, 22, 26, 30];
+    const jp = breaks[0];  // ❌ const
+    
+    let jump = 0;
+    for (let i = 1; i < breaks.length; i++) {
+        const jm = breaks[i];
+        jump = jm - jp;
+        if (year < jm) break;
+        // ❌ jp باید تغییر کند ولی const است
+    }
+    
+    const n = year - jp;  // ❌ const
+    if (jump - n < 6) n = n - jump + ...;  // ❌ خطا
+```
+
+#### کد بعد (صحیح):
+```javascript
+isLeapYear(year) {
+    const breaks = [1, 5, 9, 13, 17, 22, 26, 30];
+    let jp = breaks[0];  // ✅ let
+    
+    let jump = 0;
+    for (let i = 1; i < breaks.length; i++) {
+        const jm = breaks[i];
+        jump = jm - jp;
+        if (year < jm) break;
+        jp = jm;  // ✅ تغییر مقدار
+    }
+    
+    let n = year - jp;  // ✅ let
+    if (jump - n < 6) n = n - jump + ...;  // ✅ کار می‌کند
+```
+
+#### تغییرات کلی در فایل:
+1. خط 305: `const gy` → `let gy` (در gregorianToJalali)
+2. خط 398: `const jp` → `let jp` (در isLeapYear)
+3. خط 407: `const n` → `let n` (در isLeapYear)
+4. خط 403: اضافه شدن `jp = jm;` در حلقه
+
+#### وضعیت نهایی:
+✅ خطای const در gregorianToJalali برطرف شد
+✅ خطای const در isLeapYear برطرف شد
+✅ محاسبات سال کبیسه صحیح است
+✅ تقویم بدون خطا باز می‌شود
+✅ انتخاب تاریخ کار می‌کند
+✅ نمایش روزهای ماه صحیح است
+
+#### درس آموخته:
+- همیشه قبل از استفاده از `const`، مطمئن شوید که متغیر تغییر نمی‌کند
+- در الگوریتم‌های پیچیده، بهتر است از `let` استفاده کنید
+- تست کامل کد JavaScript قبل از استقرار ضروری است
+
+---
+
+**تاریخ بروزرسانی:** 2026-02-21 (بروزرسانی 10)

@@ -53,31 +53,15 @@
                        class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
-            <div class="mb-4">
+            <div class="mb-6">
                 <label class="block text-gray-700 font-bold mb-2">تکرار رمز عبور</label>
                 <input type="password" name="password_confirmation" required
                        class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
 
-            <div class="mb-6">
-                <label class="block text-gray-700 font-bold mb-2">نقش</label>
-                <div class="grid grid-cols-2 gap-4">
-                    <label class="cursor-pointer">
-                        <input type="radio" name="role" value="buyer" checked class="hidden peer">
-                        <div class="border-2 border-gray-300 peer-checked:border-blue-600 peer-checked:bg-blue-50 rounded-lg p-4 text-center transition">
-                            <span class="text-2xl block mb-2">🛍️</span>
-                            <span class="font-bold">خریدار</span>
-                        </div>
-                    </label>
-
-                    <label class="cursor-pointer">
-                        <input type="radio" name="role" value="seller" class="hidden peer">
-                        <div class="border-2 border-gray-300 peer-checked:border-green-600 peer-checked:bg-green-50 rounded-lg p-4 text-center transition">
-                            <span class="text-2xl block mb-2">🏪</span>
-                            <span class="font-bold">فروشنده</span>
-                        </div>
-                    </label>
-                </div>
+            <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
+                ثبت‌نام
+            </button>
             </div>
 
             <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-bold">

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست تقویم شمسی</title>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/persian-datepicker-package.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #374151;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.2s;
+            font-family: 'Vazirmatn', sans-serif;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .result {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .result h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        
+        .result-label {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .result-value {
+            color: #1f2937;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .info-box {
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .info-box p {
+            color: #1e40af;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .features {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e5e7eb;
+        }
+        
+        .features h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .features li {
+            padding: 8px 0;
+            color: #6b7280;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .features li:before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+            margin-left: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗓️ تقویم شمسی پیشرفته</h1>
+        <p class="subtitle">تست کامل تقویم فارسی با قابلیت انتخاب تاریخ و زمان</p>
+        
+        <div class="form-group">
+            <label for="date1">تاریخ شروع مزایده:</label>
+            <input type="text" id="date1" class="persian-datepicker-input" placeholder="انتخاب تاریخ و زمان">
+        </div>
+        
+        <div class="form-group">
+            <label for="date2">تاریخ پایان مزایده:</label>
+            <input type="text" id="date2" class="persian-datepicker-input" placeholder="انتخاب تاریخ و زمان">
+        </div>
+        
+        <div class="result">
+            <h3>📊 نتایج انتخاب شده:</h3>
+            <div class="result-item">
+                <span class="result-label">تاریخ شروع:</span>
+                <span class="result-value" id="result1">-</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">تاریخ پایان:</span>
+                <span class="result-value" id="result2">-</span>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <p>
+                💡 این تقویم به صورت کامل با تقویم شمسی ایران سازگار است و شامل انتخاب ساعت و دقیقه نیز می‌باشد.
+                برای انتخاب تاریخ، روی فیلد کلیک کنید.
+            </p>
+        </div>
+        
+        <div class="features">
+            <h3>✨ ویژگی‌های تقویم:</h3>
+            <ul>
+                <li>نمایش کامل تقویم شمسی با ماه‌ها و روزهای فارسی</li>
+                <li>انتخاب ساعت و دقیقه به همراه تاریخ</li>
+                <li>نمایش روز امروز با رنگ متمایز</li>
+                <li>طراحی مدرن و زیبا با انیمیشن‌های روان</li>
+                <li>سازگار با موبایل و تبلت</li>
+                <li>دکمه‌های سریع برای انتخاب امروز</li>
+                <li>محاسبات دقیق سال کبیسه</li>
+                <li>تبدیل خودکار اعداد به فارسی</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script src="js/persian-datepicker-package.js"></script>
+    <script>
+        // Initialize datepickers
+        const datepicker1 = new PersianDatePicker('#date1', {
+            minDate: 'today'  // Test minDate
+        });
+        const datepicker2 = new PersianDatePicker('#date2');
+        
+        // Set a test value to date2 to test pre-selected date display
+        document.getElementById('date2').value = '1404/12/05 14:30';
+        
+        // Update results when dates change
+        document.getElementById('date1').addEventListener('change', function(e) {
+            document.getElementById('result1').textContent = e.target.value || '-';
+        });
+        
+        document.getElementById('date2').addEventListener('change', function(e) {
+            document.getElementById('result2').textContent = e.target.value || '-';
+        });
+        
+        console.log('✅ تقویم شمسی با موفقیت بارگذاری شد!');
+        console.log('📅 برای استفاده، روی فیلدهای تاریخ کلیک کنید.');
+        console.log('🔒 فیلد اول: فقط تاریخ‌های امروز و بعد از آن قابل انتخاب است');
+        console.log('📝 فیلد دوم: دارای تاریخ پیش‌فرض 1404/12/05 است');
+    </script>
+</body>
+</html>

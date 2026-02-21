@@ -3,6 +3,7 @@
 @section('title', 'مدیریت مزایده - ' . $listing->title)
 
 @push('styles')
+<link rel="stylesheet" href="{{ url('css/persian-datepicker-package.css') }}?v={{ now()->timestamp }}">
 <style>
     ::-webkit-scrollbar {
         width: 6px;
@@ -251,11 +252,13 @@
                         
                         <div class="space-y-2">
                             <label class="text-xs font-bold text-gray-700">زمان پایان</label>
-                            <input type="datetime-local" 
+                            <input type="text" 
                                    name="ends_at" 
-                                   id="ends_at"
-                                   value="{{ $listing->ends_at ? $listing->ends_at->format('Y-m-d\TH:i') : '' }}"
-                                   class="w-full bg-gray-50 border-gray-200 rounded-xl text-sm focus:ring-primary focus:border-primary">
+                                   id="manage_ends_at"
+                                   value="{{ \App\Services\JalaliDateService::toDatepickerFormat($listing->ends_at) }}"
+                                   class="persian-datepicker-input w-full bg-gray-50 border-gray-200 rounded-xl text-sm focus:ring-primary focus:border-primary"
+                                   placeholder="انتخاب تاریخ و زمان"
+                                   autocomplete="off">
                         </div>
                         
                         @if($listing->buy_now_price)
@@ -583,6 +586,61 @@
                 </div>
             </div>
             
+            <!-- Shipping Methods -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-3">روش‌های ارسال * <span class="text-xs text-gray-500">(حداقل یک روش را انتخاب کنید)</span></label>
+                @php
+                    $allShippingMethods = \App\Models\ShippingMethod::where('is_active', true)->get();
+                    $selectedMethods = $listing->shippingMethods->keyBy('id');
+                @endphp
+                
+                <div class="space-y-3" id="editShippingMethodsContainer">
+                    @foreach($allShippingMethods as $method)
+                    @php
+                        $isSelected = $selectedMethods->has($method->id);
+                        $currentCost = $isSelected ? ($method->base_cost + $selectedMethods[$method->id]->pivot->custom_cost_adjustment) : $method->base_cost;
+                    @endphp
+                    <div class="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                        <label class="flex items-start gap-3 cursor-pointer">
+                            <input type="checkbox" 
+                                   name="shipping_methods[]" 
+                                   value="{{ $method->id }}"
+                                   {{ $isSelected ? 'checked' : '' }}
+                                   class="w-4 h-4 text-primary rounded focus:ring-primary mt-1 edit-shipping-method-checkbox"
+                                   onchange="toggleEditPriceInput(this, {{ $method->id }})">
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div>
+                                        <span class="font-medium text-gray-900">{{ $method->name }}</span>
+                                        @if($method->estimated_days)
+                                            <span class="text-xs text-gray-500 mr-2">({{ \App\Services\PersianNumberService::convertToPersian($method->estimated_days) }} روز)</span>
+                                        @endif
+                                    </div>
+                                    <span class="text-sm text-gray-600">
+                                        قیمت پایه: {{ \App\Services\PersianNumberService::convertToPersian(number_format($method->base_cost)) }} تومان
+                                    </span>
+                                </div>
+                                
+                                <div class="price-adjustment-container {{ $isSelected ? '' : 'hidden' }}" id="edit-price-container-{{ $method->id }}">
+                                    <label class="block text-xs text-gray-600 mb-1">قیمت سفارشی برای این محصول (تومان)</label>
+                                    <input type="number" 
+                                           name="shipping_costs[{{ $method->id }}]" 
+                                           id="edit-price-input-{{ $method->id }}"
+                                           value="{{ $currentCost }}"
+                                           min="0"
+                                           step="1000"
+                                           {{ $isSelected ? '' : 'disabled' }}
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           placeholder="قیمت ارسال برای این محصول">
+                                    <p class="text-xs text-gray-500 mt-1">می‌توانید قیمت ارسال را برای این محصول تغییر دهید</p>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">برچسب‌ها (حداکثر 5 تگ، با کاما جدا کنید)</label>
                 <input type="text" 
@@ -612,7 +670,16 @@
 @endsection
 
 @push('scripts')
+<script src="{{ url('js/persian-datepicker-package.js') }}?v={{ now()->timestamp }}"></script>
 <script>
+// Initialize datepicker for ends_at field
+document.addEventListener('DOMContentLoaded', function() {
+    const endsAtInput = document.getElementById('manage_ends_at');
+    if (endsAtInput && !endsAtInput.dataset.pickerInitialized) {
+        new PersianDatePicker(endsAtInput);
+    }
+});
+
 // Base URL for API calls
 const baseUrl = '{{ url("/") }}';
 
@@ -663,7 +730,8 @@ function deleteMainImage() {
         'انصراف',
         () => {
             // Send delete request
-            fetch(`{{ url('/admin') }}/listings/{{ $listing->id }}/images/${currentImageId}`, {
+            const deleteUrl = `{{ url('/admin/listings') }}/{{ $listing->slug }}/images/${currentImageId}`;
+            fetch(deleteUrl, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -691,7 +759,8 @@ function deleteThumbnailImage(imageId) {
         'حذف',
         'انصراف',
         () => {
-            fetch(`{{ url('/admin') }}/listings/{{ $listing->id }}/images/${imageId}`, {
+            const deleteUrl = `{{ url('/admin/listings') }}/{{ $listing->slug }}/images/${imageId}`;
+            fetch(deleteUrl, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -718,7 +787,7 @@ function uploadNewImage(input) {
         formData.append('image', input.files[0]);
         formData.append('_token', '{{ csrf_token() }}');
         
-        fetch(`{{ url('/admin') }}/listings/{{ $listing->id }}/images`, {
+        fetch(`{{ route('admin.listings.images.upload', $listing) }}`, {
             method: 'POST',
             body: formData,
             headers: {
@@ -773,7 +842,7 @@ function saveAuctionSettings() {
         }
     });
     
-    fetch(`{{ url('/admin') }}/listings/{{ $listing->id }}/settings`, {
+    fetch(`{{ route('admin.listings.settings', $listing) }}`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -812,7 +881,7 @@ function cancelBid(bidId) {
         'ابطال',
         'انصراف',
         () => {
-            fetch(`{{ url('/admin') }}/bids/${bidId}/cancel`, {
+            fetch(`{{ url('/admin/bids') }}/${bidId}/cancel`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -846,7 +915,7 @@ function confirmEndEarly() {
         'پایان مزایده',
         'انصراف',
         () => {
-            fetch(`{{ url('/admin') }}/listings/{{ $listing->id }}/end-early`, {
+            fetch(`{{ route('admin.listings.end-early', $listing) }}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -870,7 +939,7 @@ function confirmEndEarly() {
 function confirmSuspend() {
     const reason = prompt('لطفاً دلیل توقیف مزایده را وارد کنید:');
     if (reason && reason.trim()) {
-        fetch(`{{ url('/admin') }}/listings/{{ $listing->id }}/suspend`, {
+        fetch(`{{ route('admin.listings.suspend', $listing) }}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -899,7 +968,7 @@ function confirmActivate() {
         'فعال‌سازی',
         'انصراف',
         () => {
-            fetch(`{{ url('/admin') }}/listings/{{ $listing->id }}/activate`, {
+            fetch(`{{ route('admin.listings.activate', $listing) }}`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -935,9 +1004,25 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
     const formData = new FormData(this);
+    
+    // Check if category is selected
+    const categoryId = document.getElementById('categorySelect').value;
+    if (!categoryId) {
+        showNotification('لطفاً دسته‌بندی را انتخاب کنید', 'error');
+        return;
+    }
+    
+    // Check if at least one shipping method is selected
+    const checkedMethods = document.querySelectorAll('.edit-shipping-method-checkbox:checked');
+    if (checkedMethods.length === 0) {
+        showNotification('لطفاً حداقل یک روش ارسال را انتخاب کنید', 'error');
+        document.getElementById('editShippingMethodsContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+    
     formData.append('_method', 'PUT');
     
-    fetch(`{{ url('/admin') }}/listings/{{ $listing->id }}`, {
+    fetch(`{{ route('admin.listings.update', $listing) }}`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -956,6 +1041,20 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
     .catch(error => handleFetchError(error, 'خطا در ذخیره تغییرات'));
 });
 
+// Toggle price input for edit form
+function toggleEditPriceInput(checkbox, methodId) {
+    const container = document.getElementById('edit-price-container-' + methodId);
+    const input = document.getElementById('edit-price-input-' + methodId);
+    
+    if (checkbox.checked) {
+        container.classList.remove('hidden');
+        input.disabled = false;
+    } else {
+        container.classList.add('hidden');
+        input.disabled = true;
+    }
+}
+
 // Seller Contact
 function contactSeller() {
     window.location.href = `/admin/stores/{{ $listing->store->id }}/message`;
@@ -970,7 +1069,7 @@ document.getElementById('editModal').addEventListener('click', function(e) {
 
 // Auto-refresh bids every 30 seconds
 setInterval(() => {
-    fetch(`{{ url('/admin') }}/listings/{{ $listing->id }}/bids`, {
+    fetch(`{{ route('admin.listings.bids', $listing) }}`, {
         headers: {
             'Accept': 'application/json'
         }

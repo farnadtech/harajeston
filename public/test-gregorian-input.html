@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست تبدیل تاریخ میلادی</title>
+    <link rel="stylesheet" href="css/persian-datepicker-package.css">
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .info {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .success {
+            background: #d4edda;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔄 تست تبدیل تاریخ میلادی به شمسی</h1>
+        
+        <div class="form-group">
+            <label>فیلد با تاریخ میلادی (2026-02-20 12:00)</label>
+            <input type="text" id="date1" class="persian-datepicker-input" value="2026-02-20 12:00" placeholder="انتخاب تاریخ">
+        </div>
+        
+        <div class="form-group">
+            <label>فیلد با تاریخ میلادی با T (2026-02-21T14:30)</label>
+            <input type="text" id="date2" class="persian-datepicker-input" value="2026-02-21T14:30" placeholder="انتخاب تاریخ">
+        </div>
+        
+        <div class="form-group">
+            <label>فیلد با تاریخ شمسی (1404/12/01 12:00)</label>
+            <input type="text" id="date3" class="persian-datepicker-input" value="1404/12/01 12:00" placeholder="انتخاب تاریخ">
+        </div>
+        
+        <div class="info">
+            <strong>⚠️ تست:</strong>
+            <ul style="margin: 10px 0 0 20px;">
+                <li>روی هر فیلد کلیک کنید</li>
+                <li>باید تاریخ معادل شمسی به صورت highlighted نمایش داده شود</li>
+                <li>فیلد اول: باید 1404/12/01 را نشان دهد</li>
+                <li>فیلد دوم: باید 1404/12/02 را نشان دهد</li>
+                <li>فیلد سوم: باید 1404/12/01 را نشان دهد</li>
+            </ul>
+        </div>
+        
+        <div class="success" id="result" style="display: none;">
+            <strong>✅ نتیجه:</strong>
+            <div id="result-text"></div>
+        </div>
+    </div>
+    
+    <script src="js/persian-datepicker-package.js"></script>
+    <script>
+        console.log('=== شروع تست تبدیل تاریخ ===');
+        
+        // Test 1: Gregorian with space
+        const picker1 = new PersianDatePicker('#date1');
+        console.log('Picker 1 initialized:', {
+            input: document.getElementById('date1').value,
+            selectedDate: picker1.selectedDate
+        });
+        
+        // Test 2: Gregorian with T
+        const picker2 = new PersianDatePicker('#date2');
+        console.log('Picker 2 initialized:', {
+            input: document.getElementById('date2').value,
+            selectedDate: picker2.selectedDate
+        });
+        
+        // Test 3: Jalali
+        const picker3 = new PersianDatePicker('#date3');
+        console.log('Picker 3 initialized:', {
+            input: document.getElementById('date3').value,
+            selectedDate: picker3.selectedDate
+        });
+        
+        // Show results
+        setTimeout(() => {
+            const result = document.getElementById('result');
+            const resultText = document.getElementById('result-text');
+            
+            let html = '<ul style="margin: 10px 0 0 20px;">';
+            html += `<li>فیلد 1: ${picker1.selectedDate ? `${picker1.selectedDate.year}/${picker1.selectedDate.month}/${picker1.selectedDate.day}` : 'خطا'}</li>`;
+            html += `<li>فیلد 2: ${picker2.selectedDate ? `${picker2.selectedDate.year}/${picker2.selectedDate.month}/${picker2.selectedDate.day}` : 'خطا'}</li>`;
+            html += `<li>فیلد 3: ${picker3.selectedDate ? `${picker3.selectedDate.year}/${picker3.selectedDate.month}/${picker3.selectedDate.day}` : 'خطا'}</li>`;
+            html += '</ul>';
+            
+            resultText.innerHTML = html;
+            result.style.display = 'block';
+        }, 500);
+        
+        console.log('=== همه datepicker ها ایجاد شدند ===');
+    </script>
+</body>
+</html>

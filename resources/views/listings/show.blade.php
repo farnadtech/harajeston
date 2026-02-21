@@ -4,6 +4,27 @@
 
 @section('content')
 <main class="flex-grow w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- بنر تعلیق شده -->
+    @if($listing->status === 'suspended')
+        <div class="bg-red-50 border-2 border-red-200 rounded-xl p-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-red-600 text-2xl">block</span>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-bold text-red-900 mb-1">این آگهی تعلیق شده است</h3>
+                    <p class="text-red-700 text-sm">
+                        @if($listing->suspension_reason)
+                            دلیل: {{ $listing->suspension_reason }}
+                        @else
+                            این آگهی توسط مدیریت تعلیق شده و برای عموم قابل مشاهده نیست.
+                        @endif
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Breadcrumb -->
     <nav aria-label="Breadcrumb" class="flex text-sm text-gray-500 mb-4">
         <ol class="inline-flex items-center space-x-1 md:space-x-3 space-x-reverse">
@@ -257,6 +278,36 @@
                         </a>
                     @endif
                 </div>
+
+                <!-- Shipping Methods -->
+                @if($listing->shippingMethods && $listing->shippingMethods->count() > 0)
+                <div class="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                    <h4 class="font-bold text-gray-900 text-sm mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-blue-600">local_shipping</span>
+                        روش‌های ارسال
+                    </h4>
+                    <div class="space-y-2">
+                        @foreach($listing->shippingMethods as $method)
+                        <div class="flex items-center justify-between bg-white rounded-lg p-3 border border-blue-100">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-blue-600 text-[18px]">local_shipping</span>
+                                <div>
+                                    <span class="text-sm font-medium text-gray-900">{{ $method->name }}</span>
+                                    @if($method->estimated_days)
+                                        <span class="text-xs text-gray-500 mr-2">
+                                            ({{ \App\Services\PersianNumberService::convertToPersian($method->estimated_days) }} روز کاری)
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                            <span class="text-sm font-bold text-gray-900">
+                                {{ \App\Services\PersianNumberService::convertToPersian(number_format($method->base_cost + $method->pivot->custom_cost_adjustment)) }} تومان
+                            </span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
     </div>

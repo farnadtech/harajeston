@@ -6,6 +6,54 @@
 <div class="max-w-7xl mx-auto">
     <h1 class="text-3xl font-bold mb-6">داشبورد خریدار</h1>
 
+    <!-- Become Seller Card -->
+    @if(auth()->user()->seller_status === 'none')
+        <div class="bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex-1">
+                    <h2 class="text-2xl font-bold mb-2">فروشنده شوید!</h2>
+                    <p class="mb-4 opacity-90">با ثبت‌نام به عنوان فروشنده، محصولات خود را در پلتفرم ما به فروش برسانید.</p>
+                    <a href="{{ route('seller-request.create') }}" class="inline-block bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition">
+                        درخواست فروشندگی
+                    </a>
+                </div>
+                <div class="hidden md:block">
+                    <span class="material-symbols-outlined text-8xl opacity-20">storefront</span>
+                </div>
+            </div>
+        </div>
+    @elseif(auth()->user()->seller_status === 'pending')
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-yellow-600 text-3xl">schedule</span>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-bold text-yellow-800 mb-1">درخواست فروشندگی در انتظار تایید</h3>
+                    <p class="text-yellow-700 text-sm">درخواست شما در حال بررسی است. پس از تایید، می‌توانید محصولات خود را اضافه کنید.</p>
+                </div>
+                <a href="{{ route('seller-request.status') }}" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition">
+                    مشاهده وضعیت
+                </a>
+            </div>
+        </div>
+    @elseif(auth()->user()->seller_status === 'rejected')
+        <div class="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-red-600 text-3xl">cancel</span>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-bold text-red-800 mb-1">درخواست فروشندگی رد شد</h3>
+                    <p class="text-red-700 text-sm">متاسفانه درخواست شما تایید نشد. می‌توانید مجدداً درخواست دهید.</p>
+                </div>
+                <a href="{{ route('seller-request.create') }}" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                    درخواست مجدد
+                </a>
+            </div>
+        </div>
+    @endif
+
     <!-- Statistics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-6">

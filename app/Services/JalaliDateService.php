@@ -113,4 +113,20 @@ class JalaliDateService
             $jalalian->getYear()
         );
     }
+    
+    /**
+     * Format date for datepicker input (Y/m/d H:i)
+     */
+    public static function toDatepickerFormat($date): string
+    {
+        if (!$date) {
+            return '';
+        }
+        
+        if (is_string($date)) {
+            $date = Carbon::parse($date);
+        }
+        
+        return Jalalian::fromCarbon($date)->format('Y/m/d H:i');
+    }
 }

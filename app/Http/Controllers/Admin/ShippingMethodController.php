@@ -39,7 +39,7 @@ class ShippingMethodController extends Controller
      */
     public function store(CreateShippingMethodRequest $request)
     {
-        $this->shippingService->createShippingMethod($request->validated());
+        $this->shippingService->createShippingMethod(auth()->user(), $request->validated());
 
         return redirect()
             ->route('admin.shipping-methods.index')
@@ -83,5 +83,20 @@ class ShippingMethodController extends Controller
         return redirect()
             ->route('admin.shipping-methods.index')
             ->with('success', 'روش ارسال غیرفعال شد.');
+    }
+
+    /**
+     * Toggle shipping method active status
+     */
+    public function toggle(Request $request, ShippingMethod $shippingMethod)
+    {
+        $shippingMethod->update([
+            'is_active' => $request->input('is_active', !$shippingMethod->is_active)
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'وضعیت روش ارسال با موفقیت تغییر کرد.'
+        ]);
     }
 }

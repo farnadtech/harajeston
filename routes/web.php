@@ -47,15 +47,16 @@ Route::post('/register', function (\Illuminate\Http\Request $request) {
         'name' => 'required|string|max:255',
         'email' => 'required|string|email|max:255|unique:users',
         'password' => 'required|string|min:8|confirmed',
-        'role' => 'required|in:buyer,seller',
         'username' => 'nullable|string|max:255|unique:users',
     ]);
     
+    // All new users start as buyers with no seller status
     $user = \App\Models\User::create([
         'name' => $validated['name'],
         'email' => $validated['email'],
         'password' => bcrypt($validated['password']),
-        'role' => $validated['role'],
+        'role' => 'buyer',
+        'seller_status' => 'none',
         'username' => $validated['username'] ?? null,
     ]);
     
@@ -65,12 +66,6 @@ Route::post('/register', function (\Illuminate\Http\Request $request) {
         'balance' => 0,
         'frozen' => 0,
     ]);
-    
-    // Create store for sellers
-    if ($user->role === 'seller') {
-        $storeService = app(\App\Services\StoreService::class);
-        $storeService->createStore($user);
-    }
     
     auth()->login($user);
     
@@ -97,6 +92,11 @@ Route::middleware('auth')->group(function () {
 Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    
+    // Seller Request
+    Route::get('/become-seller', [\App\Http\Controllers\SellerRequestController::class, 'create'])->name('seller-request.create');
+    Route::post('/become-seller', [\App\Http\Controllers\SellerRequestController::class, 'store'])->name('seller-request.store');
+    Route::get('/seller-request/status', [\App\Http\Controllers\SellerRequestController::class, 'status'])->name('seller-request.status');
     
     // Listings (Authenticated)
     Route::get('/listings/create', [ListingController::class, 'create'])->name('listings.create');
@@ -151,6 +151,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [SettingsController::class, 'index'])->name('admin.settings.index');
         Route::put('/settings/deposit', [SettingsController::class, 'updateDeposit'])->name('admin.settings.deposit.update');
         Route::put('/settings/commission', [SettingsController::class, 'updateCommission'])->name('admin.settings.commission.update');
+        Route::put('/settings/seller', [SettingsController::class, 'updateSeller'])->name('admin.settings.seller.update');
         
         // Financial Reports
         Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('admin.financial-reports.index');
@@ -193,6 +194,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/{user}/activate', [\App\Http\Controllers\Admin\UserController::class, 'activate'])->name('admin.users.activate');
         Route::post('/users/{user}/verify-email', [\App\Http\Controllers\Admin\UserController::class, 'verifyEmail'])->name('admin.users.verify-email');
         
+        // Seller Management
+        Route::get('/sellers', [\App\Http\Controllers\Admin\SellerController::class, 'index'])->name('admin.sellers.index');
+        Route::get('/sellers/{seller}', [\App\Http\Controllers\Admin\SellerController::class, 'show'])->name('admin.sellers.show');
+        Route::post('/sellers/{seller}/approve', [\App\Http\Controllers\Admin\SellerController::class, 'approve'])->name('admin.sellers.approve');
+        Route::post('/sellers/{seller}/reject', [\App\Http\Controllers\Admin\SellerController::class, 'reject'])->name('admin.sellers.reject');
+        Route::post('/sellers/{seller}/suspend', [\App\Http\Controllers\Admin\SellerController::class, 'suspend'])->name('admin.sellers.suspend');
+        Route::post('/sellers/{seller}/activate', [\App\Http\Controllers\Admin\SellerController::class, 'activate'])->name('admin.sellers.activate');
+        Route::delete('/sellers/{seller}', [\App\Http\Controllers\Admin\SellerController::class, 'destroy'])->name('admin.sellers.destroy');
+        
         // Notifications
         Route::get('/notifications', [\App\Http\Controllers\Admin\NotificationController::class, 'index'])->name('admin.notifications.index');
         Route::get('/notifications/recent', [\App\Http\Controllers\Admin\NotificationController::class, 'getRecent'])->name('admin.notifications.recent');
@@ -212,6 +222,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/seller-reviews/{id}', [\App\Http\Controllers\Admin\SellerReviewController::class, 'destroy'])->name('admin.seller-reviews.destroy');
         
         Route::resource('shipping-methods', ShippingMethodController::class, ['as' => 'admin']);
+        Route::post('/shipping-methods/{shippingMethod}/toggle', [ShippingMethodController::class, 'toggle'])->name('admin.shipping-methods.toggle');
         Route::resource('orders', AdminOrderController::class, ['as' => 'admin'])->only(['index', 'show']);
     });
 });

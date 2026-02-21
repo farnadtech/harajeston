@@ -168,6 +168,15 @@ class ListingController extends Controller
      */
     public function show(Listing $listing)
     {
+        // بررسی دسترسی برای آگهی‌های تعلیق شده
+        if ($listing->status === 'suspended') {
+            // فقط ادمین و صاحب آگهی می‌تونن ببینن
+            if (!auth()->check() || 
+                (auth()->user()->role !== 'admin' && auth()->id() !== $listing->seller_id)) {
+                abort(404);
+            }
+        }
+
         // Increment view count
         $listing->increment('views');
         

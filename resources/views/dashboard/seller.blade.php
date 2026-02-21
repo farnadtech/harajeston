@@ -4,7 +4,15 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto">
-    <h1 class="text-3xl font-bold mb-6">داشبورد فروشنده</h1>
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-3xl font-bold">داشبورد فروشنده</h1>
+        @if(auth()->user()->role === 'buyer' && auth()->user()->seller_status === 'active')
+            <a href="{{ route('dashboard') }}" class="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
+                <span class="material-symbols-outlined">shopping_cart</span>
+                <span>داشبورد خریدار</span>
+            </a>
+        @endif
+    </div>
 
     <!-- Statistics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">

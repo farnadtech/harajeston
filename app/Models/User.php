@@ -19,6 +19,11 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'seller_status',
+        'seller_requested_at',
+        'seller_approved_at',
+        'seller_rejection_reason',
+        'seller_request_data',
     ];
 
     protected $hidden = [
@@ -29,6 +34,9 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'seller_requested_at' => 'datetime',
+        'seller_approved_at' => 'datetime',
+        'seller_request_data' => 'array',
     ];
 
     // Relationships
@@ -152,5 +160,51 @@ class User extends Authenticatable
     public function scopeAdmins($query)
     {
         return $query->where('role', 'admin');
+    }
+
+    // Seller status methods
+    public function canSell(): bool
+    {
+        return $this->seller_status === 'active';
+    }
+
+    public function hasRequestedSeller(): bool
+    {
+        return in_array($this->seller_status, ['pending', 'active', 'suspended']);
+    }
+
+    public function isSellerPending(): bool
+    {
+        return $this->seller_status === 'pending';
+    }
+
+    public function isSellerActive(): bool
+    {
+        return $this->seller_status === 'active';
+    }
+
+    public function isSellerSuspended(): bool
+    {
+        return $this->seller_status === 'suspended';
+    }
+
+    public function isSellerRejected(): bool
+    {
+        return $this->seller_status === 'rejected';
+    }
+
+    public function scopeSellerPending($query)
+    {
+        return $query->where('seller_status', 'pending');
+    }
+
+    public function scopeSellerActive($query)
+    {
+        return $query->where('seller_status', 'active');
+    }
+
+    public function scopeSellerSuspended($query)
+    {
+        return $query->where('seller_status', 'suspended');
     }
 }

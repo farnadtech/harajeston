@@ -136,6 +136,7 @@
         }
     </style>
     
+    @stack('styles')
     @livewireStyles
 </head>
 <body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex overflow-hidden">
@@ -191,11 +192,14 @@
                 <span>کاربران</span>
             </a>
             
-            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="#">
+            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.sellers.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.sellers.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.sellers.index') }}">
                 <span class="material-symbols-outlined group-hover:text-primary transition-colors">storefront</span>
                 <span>فروشندگان</span>
-                @if(isset($pendingSellers) && $pendingSellers->count() > 0)
-                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingSellers->count())</span>
+                @php
+                    $pendingSellersCount = \App\Models\User::where('seller_status', 'pending')->count();
+                @endphp
+                @if($pendingSellersCount > 0)
+                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingSellersCount)</span>
                 @endif
             </a>
             
@@ -287,7 +291,7 @@
                                 </div>
                             </template>
                             
-                            <template x-if="!loading && notifications.length === 0">
+                            <template x-if="!loading && (!notifications || notifications.length === 0)">
                                 <div class="px-4 py-8 text-center">
                                     <span class="material-symbols-outlined text-gray-300 text-5xl mb-2">notifications_off</span>
                                     <p class="text-sm text-gray-500">اعلانی وجود ندارد</p>
@@ -367,7 +371,7 @@
                 
                 toggleDropdown() {
                     this.open = !this.open;
-                    if (this.open && this.notifications.length === 0) {
+                    if (this.open && (!this.notifications || this.notifications.length === 0)) {
                         this.loadNotifications();
                     }
                 },
@@ -381,14 +385,21 @@
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         }
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
                     .then(data => {
-                        this.notifications = data.notifications;
-                        this.unreadCount = data.unread_count;
+                        this.notifications = data.notifications || [];
+                        this.unreadCount = data.unread_count || 0;
                         this.loading = false;
                     })
                     .catch(error => {
                         console.error('Error loading notifications:', error);
+                        this.notifications = [];
+                        this.unreadCount = 0;
                         this.loading = false;
                     });
                 }

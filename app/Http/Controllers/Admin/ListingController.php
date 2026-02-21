@@ -88,6 +88,9 @@ class ListingController extends Controller
      */
     public function store()
     {
+        // Convert Persian dates to Gregorian before validation
+        $this->convertPersianDates();
+        
         $validated = request()->validate([
             'seller_id' => 'required|exists:users,id',
             'title' => 'required|string|max:255',
@@ -104,6 +107,17 @@ class ListingController extends Controller
             ],
             'condition' => 'required|string',
             'starting_price' => 'required|numeric|min:0',
+            'reserve_price' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                function ($attribute, $value, $fail) {
+                    $startingPrice = request()->input('starting_price');
+                    if ($value && $startingPrice && $value <= $startingPrice) {
+                        $fail('قیمت رزرو باید بیشتر از قیمت پایه باشد.');
+                    }
+                },
+            ],
             'buy_now_price' => 'nullable|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',
             'bid_increment' => 'nullable|numeric|min:0',
@@ -114,6 +128,21 @@ class ListingController extends Controller
             'status' => 'required|in:pending,active,suspended',
             'attributes' => 'nullable|array',
             'attributes.*' => 'nullable|string|max:255',
+            'shipping_methods' => 'required|array|min:1',
+            'shipping_methods.*' => 'exists:shipping_methods,id',
+            'shipping_costs' => 'nullable|array',
+            'shipping_costs.*' => 'nullable|numeric|min:0',
+        ], [
+            'category_id.required' => 'لطفاً دسته‌بندی محصول را انتخاب کنید.',
+            'category_id.exists' => 'دسته‌بندی انتخاب شده معتبر نیست.',
+            'title.required' => 'عنوان محصول الزامی است.',
+            'description.required' => 'توضیحات محصول الزامی است.',
+            'starting_price.required' => 'قیمت شروع الزامی است.',
+            'starts_at.required' => 'زمان شروع مزایده الزامی است.',
+            'ends_at.required' => 'زمان پایان مزایده الزامی است.',
+            'ends_at.after' => 'زمان پایان باید بعد از زمان شروع باشد.',
+            'shipping_methods.required' => 'لطفاً حداقل یک روش ارسال را انتخاب کنید.',
+            'shipping_methods.min' => 'لطفاً حداقل یک روش ارسال را انتخاب کنید.',
         ]);
 
         // Process tags
@@ -129,6 +158,7 @@ class ListingController extends Controller
         $listing = Listing::create([
             'seller_id' => $validated['seller_id'],
             'title' => $validated['title'],
+            'slug' => \Str::slug($validated['title']) . '-' . uniqid(),
             'description' => $validated['description'],
             'category_id' => $validated['category_id'],
             'condition' => $validated['condition'],
@@ -154,6 +184,23 @@ class ListingController extends Controller
                     ]);
                 }
             }
+        }
+
+        // ذخیره روش‌های ارسال با قیمت‌های سفارشی
+        if (isset($validated['shipping_methods']) && is_array($validated['shipping_methods'])) {
+            $shippingData = [];
+            $shippingCosts = request()->input('shipping_costs', []);
+            
+            foreach ($validated['shipping_methods'] as $methodId) {
+                // محاسبه custom_cost_adjustment
+                $baseMethod = \App\Models\ShippingMethod::find($methodId);
+                $customCost = isset($shippingCosts[$methodId]) ? (float)$shippingCosts[$methodId] : $baseMethod->base_cost;
+                $adjustment = $customCost - $baseMethod->base_cost;
+                
+                $shippingData[$methodId] = ['custom_cost_adjustment' => $adjustment];
+            }
+            
+            $listing->shippingMethods()->sync($shippingData);
         }
 
         \App\Models\AdminActionLog::create([
@@ -244,9 +291,22 @@ class ListingController extends Controller
 
     public function updateSettings(Listing $listing)
     {
+        // Convert Persian dates to Gregorian before validation
+        $this->convertPersianDates();
+        
         $validated = request()->validate([
             'starting_price' => 'nullable|numeric|min:0',
-            'reserve_price' => 'nullable|numeric|min:0',
+            'reserve_price' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                function ($attribute, $value, $fail) {
+                    $startingPrice = request()->input('starting_price');
+                    if ($value && $startingPrice && $value <= $startingPrice) {
+                        $fail('قیمت رزرو باید بیشتر از قیمت پایه باشد.');
+                    }
+                },
+            ],
             'bid_increment' => 'nullable|numeric|min:0',
             'buy_now_price' => 'nullable|numeric|min:0',
             'deposit_amount' => 'nullable|numeric|min:0',
@@ -288,7 +348,11 @@ class ListingController extends Controller
             'icon' => 'block'
         ]);
 
-        return response()->json(['success' => true]);
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return back()->with('success', 'آگهی با موفقیت تعلیق شد.');
     }
 
     public function activate(Listing $listing)
@@ -303,7 +367,11 @@ class ListingController extends Controller
             'icon' => 'check_circle'
         ]);
 
-        return response()->json(['success' => true]);
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return back()->with('success', 'آگهی با موفقیت فعال شد.');
     }
 
     public function updateTags(Listing $listing)
@@ -339,6 +407,16 @@ class ListingController extends Controller
             'tags' => 'nullable|string',
             'attributes' => 'nullable|array',
             'attributes.*' => 'nullable|string|max:255',
+            'shipping_methods' => 'required|array|min:1',
+            'shipping_methods.*' => 'exists:shipping_methods,id',
+            'shipping_costs' => 'nullable|array',
+            'shipping_costs.*' => 'nullable|numeric|min:0',
+        ], [
+            'title.required' => 'عنوان محصول الزامی است.',
+            'description.required' => 'توضیحات محصول الزامی است.',
+            'category_id.exists' => 'دسته‌بندی انتخاب شده معتبر نیست.',
+            'shipping_methods.required' => 'لطفاً حداقل یک روش ارسال را انتخاب کنید.',
+            'shipping_methods.min' => 'لطفاً حداقل یک روش ارسال را انتخاب کنید.',
         ]);
 
         // Process tags: split by comma, trim, limit to 5
@@ -373,6 +451,23 @@ class ListingController extends Controller
                     ]);
                 }
             }
+        }
+
+        // به‌روزرسانی روش‌های ارسال با قیمت‌های سفارشی
+        if (isset($validated['shipping_methods']) && is_array($validated['shipping_methods'])) {
+            $shippingData = [];
+            $shippingCosts = request()->input('shipping_costs', []);
+            
+            foreach ($validated['shipping_methods'] as $methodId) {
+                // محاسبه custom_cost_adjustment
+                $baseMethod = \App\Models\ShippingMethod::find($methodId);
+                $customCost = isset($shippingCosts[$methodId]) ? (float)$shippingCosts[$methodId] : $baseMethod->base_cost;
+                $adjustment = $customCost - $baseMethod->base_cost;
+                
+                $shippingData[$methodId] = ['custom_cost_adjustment' => $adjustment];
+            }
+            
+            $listing->shippingMethods()->sync($shippingData);
         }
 
         \App\Models\AdminActionLog::create([
@@ -423,5 +518,44 @@ class ListingController extends Controller
         $image->delete();
 
         return response()->json(['success' => true]);
+    }
+    
+    /**
+     * Convert Persian dates to Gregorian format
+     */
+    protected function convertPersianDates()
+    {
+        $dateFields = ['starts_at', 'ends_at'];
+        
+        foreach ($dateFields as $field) {
+            if (request()->filled($field)) {
+                $persianDate = request()->input($field);
+                
+                // Parse Persian date: 1404/12/01 12:00
+                if (preg_match('/^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{1,2})$/', $persianDate, $matches)) {
+                    $jy = (int)$matches[1];
+                    $jm = (int)$matches[2];
+                    $jd = (int)$matches[3];
+                    $hour = (int)$matches[4];
+                    $minute = (int)$matches[5];
+                    
+                    // Convert to Gregorian using morilog/jalali
+                    $gregorian = \Morilog\Jalali\CalendarUtils::toGregorian($jy, $jm, $jd);
+                    
+                    // Format as Laravel datetime: YYYY-MM-DD HH:mm:ss
+                    $gregorianDate = sprintf(
+                        '%04d-%02d-%02d %02d:%02d:00',
+                        $gregorian[0], // year
+                        $gregorian[1], // month
+                        $gregorian[2], // day
+                        $hour,
+                        $minute
+                    );
+                    
+                    // Replace in request
+                    request()->merge([$field => $gregorianDate]);
+                }
+            }
+        }
     }
 }

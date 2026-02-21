@@ -20,8 +20,11 @@ class SettingsController extends Controller
     {
         $depositSettings = $this->commissionService->getDepositSettings();
         $commissionSettings = $this->commissionService->getCommissionSettings();
+        $sellerSettings = [
+            'require_approval' => SiteSetting::get('require_seller_approval', true)
+        ];
 
-        return view('admin.settings.index', compact('depositSettings', 'commissionSettings'));
+        return view('admin.settings.index', compact('depositSettings', 'commissionSettings', 'sellerSettings'));
     }
 
     /**
@@ -64,5 +67,18 @@ class SettingsController extends Controller
 
         return redirect()->route('admin.settings.index')
             ->with('success', 'تنظیمات کمیسیون با موفقیت به‌روزرسانی شد.');
+    }
+
+    /**
+     * به‌روزرسانی تنظیمات فروشندگان
+     */
+    public function updateSeller(Request $request)
+    {
+        $requireApproval = $request->has('require_seller_approval');
+        
+        SiteSetting::set('require_seller_approval', $requireApproval, 'boolean');
+
+        return redirect()->route('admin.settings.index')
+            ->with('success', 'تنظیمات فروشندگان با موفقیت به‌روزرسانی شد.');
     }
 }

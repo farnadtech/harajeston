@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست بدون Cache</title>
+    <link rel="stylesheet" href="css/persian-datepicker-package.css">
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        .alert {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        .alert h3 {
+            color: #856404;
+            margin: 0 0 10px 0;
+            font-size: 18px;
+        }
+        .alert p {
+            color: #856404;
+            margin: 5px 0;
+            line-height: 1.6;
+        }
+        .alert code {
+            background: #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #d63384;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+            font-size: 15px;
+        }
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 30px;
+        }
+        .success h3 {
+            color: #155724;
+            margin: 0 0 10px 0;
+        }
+        .success ul {
+            color: #155724;
+            margin: 10px 0 0 20px;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 تست بدون Cache</h1>
+        <p class="subtitle">این صفحه فایل JS را بدون cache بارگذاری می‌کند</p>
+        
+        <div class="alert">
+            <h3>⚠️ اگر هنوز کار نمی‌کند:</h3>
+            <p><strong>Windows/Linux:</strong> <code>Ctrl + Shift + Delete</code> → Cache را پاک کنید</p>
+            <p><strong>یا Hard Refresh:</strong> <code>Ctrl + F5</code> یا <code>Ctrl + Shift + R</code></p>
+            <p><strong>Mac:</strong> <code>Cmd + Shift + R</code></p>
+        </div>
+        
+        <div class="form-group">
+            <label>🔒 فیلد با minDate: 'today' (نباید بتوان تاریخ گذشته انتخاب کرد)</label>
+            <input type="text" id="date1" class="persian-datepicker-input" placeholder="انتخاب تاریخ">
+        </div>
+        
+        <div class="form-group">
+            <label>📅 فیلد عادی (بدون محدودیت)</label>
+            <input type="text" id="date2" class="persian-datepicker-input" placeholder="انتخاب تاریخ">
+        </div>
+        
+        <div class="success">
+            <h3>✅ چگونه تست کنیم:</h3>
+            <ul>
+                <li>روی فیلد اول کلیک کنید</li>
+                <li>سعی کنید تاریخ دیروز یا قبل‌تر را انتخاب کنید</li>
+                <li>روزهای گذشته باید خاکستری و غیرفعال باشند</li>
+                <li>نباید بتوانید روی آنها کلیک کنید</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // Force no cache by adding timestamp
+        const script = document.createElement('script');
+        script.src = 'js/persian-datepicker-package.js?nocache=' + Date.now();
+        script.onload = function() {
+            console.log('✅ فایل JS بدون cache بارگذاری شد');
+            
+            // Initialize datepickers
+            const picker1 = new PersianDatePicker('#date1', {
+                minDate: 'today'
+            });
+            
+            const picker2 = new PersianDatePicker('#date2');
+            
+            console.log('✅ Datepickers initialized');
+            console.log('Picker 1 minDate:', picker1.options.minDate);
+            console.log('Picker 2 minDate:', picker2.options.minDate);
+        };
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>

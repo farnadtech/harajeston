@@ -12,9 +12,18 @@ class Listing extends Model
 {
     use HasFactory;
 
+    /**
+     * Get the route key for the model.
+     */
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
+
     protected $fillable = [
         'seller_id',
         'title',
+        'slug',
         'description',
         'category_id',
         'condition',
@@ -57,6 +66,31 @@ class Listing extends Model
         'favorites' => 'integer',
         'shares' => 'integer',
     ];
+
+    /**
+     * Boot the model and add event listeners
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Auto-generate slug when creating a listing if not provided
+        static::creating(function ($listing) {
+            if (empty($listing->slug)) {
+                $slug = \Str::slug($listing->title);
+                $originalSlug = $slug;
+                $counter = 1;
+
+                // Ensure slug is unique
+                while (static::where('slug', $slug)->exists()) {
+                    $slug = $originalSlug . '-' . $counter;
+                    $counter++;
+                }
+
+                $listing->slug = $slug;
+            }
+        });
+    }
 
     // Relationships
     public function seller(): BelongsTo

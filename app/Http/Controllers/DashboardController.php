@@ -17,9 +17,11 @@ class DashboardController extends Controller
         
         if ($user->role === 'admin') {
             return redirect()->route('admin.dashboard');
-        } elseif ($user->role === 'seller') {
+        } elseif ($user->canSell()) {
+            // If user is an active seller, show seller dashboard
             return $this->sellerDashboard();
         } else {
+            // Otherwise show buyer dashboard (includes pending/rejected sellers)
             return $this->buyerDashboard();
         }
     }
@@ -32,19 +34,20 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         $stats = [
-            'total_listings' => Listing::where('seller_id', $user->id)->count(),
             'active_auctions' => Listing::where('seller_id', $user->id)
                 ->where('type', 'auction')
                 ->where('status', 'active')
                 ->count(),
-            'active_sales' => Listing::where('seller_id', $user->id)
+            'direct_sales' => Listing::where('seller_id', $user->id)
                 ->whereIn('type', ['direct_sale', 'hybrid'])
                 ->where('status', 'active')
                 ->count(),
-            'total_orders' => Order::where('seller_id', $user->id)->count(),
             'pending_orders' => Order::where('seller_id', $user->id)
                 ->where('status', 'pending')
                 ->count(),
+            'total_sales' => Order::where('seller_id', $user->id)
+                ->where('status', 'completed')
+                ->sum('total_amount'),
         ];
 
         $recentOrders = Order::where('seller_id', $user->id)
@@ -53,12 +56,13 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        $lowStockListings = Listing::forSeller($user->id)
-            ->lowStock()
-            ->withRelations()
+        $lowStockItems = Listing::where('seller_id', $user->id)
+            ->whereIn('type', ['direct_sale', 'hybrid'])
+            ->where('stock', '>', 0)
+            ->where('stock', '<=', 5)
             ->get();
 
-        return view('dashboard.seller', compact('stats', 'recentOrders', 'lowStockListings'));
+        return view('dashboard.seller', compact('stats', 'recentOrders', 'lowStockItems'));
     }
 
     /**
@@ -74,10 +78,10 @@ class DashboardController extends Controller
                     $q->where('status', 'active');
                 })
                 ->count(),
-            'total_orders' => Order::where('buyer_id', $user->id)->count(),
-            'pending_orders' => Order::where('buyer_id', $user->id)
-                ->where('status', 'pending')
+            'recent_purchases' => Order::where('buyer_id', $user->id)
+                ->where('created_at', '>=', now()->subDays(30))
                 ->count(),
+            'frozen_deposits' => $user->wallet->frozen ?? 0,
         ];
 
         $activeBids = Bid::where('user_id', $user->id)
