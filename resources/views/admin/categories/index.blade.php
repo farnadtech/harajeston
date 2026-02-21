@@ -88,43 +88,104 @@
                 @if($category->children->count() > 0)
                 <div id="children-{{ $category->id }}" class="hidden bg-gray-50 border-t border-gray-200">
                     @foreach($category->children as $child)
-                    <div class="flex items-center gap-3 p-4 pr-16 hover:bg-gray-100 transition-colors border-b border-gray-200 last:border-b-0">
-                        <span class="text-gray-400">└─</span>
-                        
-                        @if($child->icon)
-                            <span class="material-symbols-outlined text-gray-500 text-[20px]">{{ $child->icon }}</span>
-                        @endif
-                        
-                        <div class="flex-1">
-                            <h4 class="font-medium text-gray-800">{{ $child->name }}</h4>
-                            <p class="text-xs text-gray-500">@persian($child->listings()->count()) حراجی</p>
+                    <div class="border-b border-gray-200 last:border-b-0">
+                        <div class="flex items-center gap-3 p-4 pr-16 hover:bg-gray-100 transition-colors">
+                            @if($child->children->count() > 0)
+                            <button onclick="toggleGrandchildren({{ $child->id }})" class="p-1 hover:bg-gray-200 rounded transition-colors">
+                                <span class="material-symbols-outlined text-gray-600 text-sm expand-icon" id="icon-grand-{{ $child->id }}">
+                                    chevron_left
+                                </span>
+                            </button>
+                            @else
+                            <span class="text-gray-400">└─</span>
+                            @endif
+                            
+                            @if($child->icon)
+                                <span class="material-symbols-outlined text-gray-500 text-[20px]">{{ $child->icon }}</span>
+                            @endif
+                            
+                            <div class="flex-1">
+                                <h4 class="font-medium text-gray-800">{{ $child->name }}</h4>
+                                <p class="text-xs text-gray-500">
+                                    @persian($child->listings()->count()) حراجی
+                                    @if($child->children->count() > 0)
+                                        • @persian($child->children->count()) زیردسته
+                                    @endif
+                                </p>
+                            </div>
+                            
+                            @if($child->is_active)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    فعال
+                                </span>
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    غیرفعال
+                                </span>
+                            @endif
+                            
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('admin.category-attributes.index', $child) }}" class="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="مدیریت ویژگی‌ها">
+                                    <span class="material-symbols-outlined text-[18px]">tune</span>
+                                </a>
+                                <a href="{{ route('admin.categories.edit', $child) }}" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                                </a>
+                                <form action="{{ route('admin.categories.destroy', $child) }}" method="POST" class="inline" onsubmit="return confirm('آیا از حذف این زیردسته مطمئن هستید؟')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                         
-                        @if($child->is_active)
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                فعال
-                            </span>
-                        @else
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                غیرفعال
-                            </span>
-                        @endif
-                        
-                        <div class="flex items-center gap-2">
-                            <a href="{{ route('admin.category-attributes.index', $child) }}" class="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="مدیریت ویژگی‌ها">
-                                <span class="material-symbols-outlined text-[18px]">tune</span>
-                            </a>
-                            <a href="{{ route('admin.categories.edit', $child) }}" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                                <span class="material-symbols-outlined text-[18px]">edit</span>
-                            </a>
-                            <form action="{{ route('admin.categories.destroy', $child) }}" method="POST" class="inline" onsubmit="return confirm('آیا از حذف این زیردسته مطمئن هستید؟')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                    <span class="material-symbols-outlined text-[18px]">delete</span>
-                                </button>
-                            </form>
+                        <!-- Grandchildren (Level 3) -->
+                        @if($child->children->count() > 0)
+                        <div id="grandchildren-{{ $child->id }}" class="hidden bg-gray-100">
+                            @foreach($child->children as $grandchild)
+                            <div class="flex items-center gap-3 p-4 pr-24 hover:bg-gray-200 transition-colors border-b border-gray-300 last:border-b-0">
+                                <span class="text-gray-400">└──</span>
+                                
+                                @if($grandchild->icon)
+                                    <span class="material-symbols-outlined text-gray-500 text-[18px]">{{ $grandchild->icon }}</span>
+                                @endif
+                                
+                                <div class="flex-1">
+                                    <h5 class="font-medium text-gray-700 text-sm">{{ $grandchild->name }}</h5>
+                                    <p class="text-xs text-gray-500">@persian($grandchild->listings()->count()) حراجی</p>
+                                </div>
+                                
+                                @if($grandchild->is_active)
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        فعال
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        غیرفعال
+                                    </span>
+                                @endif
+                                
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('admin.category-attributes.index', $grandchild) }}" class="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="مدیریت ویژگی‌ها">
+                                        <span class="material-symbols-outlined text-[18px]">tune</span>
+                                    </a>
+                                    <a href="{{ route('admin.categories.edit', $grandchild) }}" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                                    </a>
+                                    <form action="{{ route('admin.categories.destroy', $grandchild) }}" method="POST" class="inline" onsubmit="return confirm('آیا از حذف این دسته مطمئن هستید؟')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                            <span class="material-symbols-outlined text-[18px]">delete</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            @endforeach
                         </div>
+                        @endif
                     </div>
                     @endforeach
                 </div>
@@ -154,6 +215,20 @@ function toggleChildren(categoryId) {
         icon.textContent = 'expand_more';
     } else {
         childrenDiv.classList.add('hidden');
+        icon.textContent = 'chevron_left';
+    }
+}
+
+// Toggle grandchildren visibility
+function toggleGrandchildren(categoryId) {
+    const grandchildrenDiv = document.getElementById('grandchildren-' + categoryId);
+    const icon = document.getElementById('icon-grand-' + categoryId);
+    
+    if (grandchildrenDiv.classList.contains('hidden')) {
+        grandchildrenDiv.classList.remove('hidden');
+        icon.textContent = 'expand_more';
+    } else {
+        grandchildrenDiv.classList.add('hidden');
         icon.textContent = 'chevron_left';
     }
 }

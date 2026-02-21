@@ -84,6 +84,44 @@ class User extends Authenticatable
         return $this->hasOne(Cart::class);
     }
 
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    public function sellerReviews(): HasMany
+    {
+        return $this->hasMany(SellerReview::class, 'seller_id');
+    }
+
+    public function buyerReviews(): HasMany
+    {
+        return $this->hasMany(SellerReview::class, 'buyer_id');
+    }
+
+    /**
+     * Update seller rating based on approved reviews
+     */
+    public function updateSellerRating(): void
+    {
+        $ratings = $this->sellerReviews()
+            ->approved()
+            ->pluck('rating');
+        
+        if ($ratings->isEmpty()) {
+            $this->update([
+                'seller_rating' => 0,
+                'seller_rating_count' => 0,
+            ]);
+            return;
+        }
+        
+        $this->update([
+            'seller_rating' => round($ratings->avg(), 2),
+            'seller_rating_count' => $ratings->count(),
+        ]);
+    }
+
     // Role accessor methods
     public function isBuyer(): bool
     {

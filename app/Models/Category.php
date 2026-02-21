@@ -80,17 +80,44 @@ class Category extends Model
     }
 
     /**
-     * دریافت تمام دسته‌بندی‌های اصلی با زیردسته‌ها
+     * دریافت تمام دسته‌بندی‌های اصلی با زیردسته‌ها (تا سطح سوم)
      */
     public static function getMenuStructure(): array
     {
-        return self::active()
+        $parents = self::active()
             ->parents()
             ->ordered()
             ->with(['children' => function ($query) {
-                $query->active()->ordered();
+                $query->active()->ordered()->with(['children' => function ($q) {
+                    $q->active()->ordered();
+                }]);
             }])
-            ->get()
-            ->toArray();
+            ->get();
+
+        // ساخت دستی آرایه برای حفظ تمام سطوح
+        return $parents->map(function ($parent) {
+            return [
+                'id' => $parent->id,
+                'name' => $parent->name,
+                'slug' => $parent->slug,
+                'icon' => $parent->icon,
+                'children' => $parent->children->map(function ($child) {
+                    return [
+                        'id' => $child->id,
+                        'name' => $child->name,
+                        'slug' => $child->slug,
+                        'icon' => $child->icon,
+                        'children' => $child->children->map(function ($grandchild) {
+                            return [
+                                'id' => $grandchild->id,
+                                'name' => $grandchild->name,
+                                'slug' => $grandchild->slug,
+                                'icon' => $grandchild->icon,
+                            ];
+                        })->values()->toArray(),
+                    ];
+                })->values()->toArray(),
+            ];
+        })->values()->toArray();
     }
 }

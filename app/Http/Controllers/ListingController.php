@@ -171,7 +171,22 @@ class ListingController extends Controller
         // Increment view count
         $listing->increment('views');
         
-        $listing->load('seller', 'images', 'bids.user', 'shippingMethods', 'participations', 'attributeValues.attribute');
+        $listing->load([
+            'seller', 
+            'images', 
+            'bids.user', 
+            'shippingMethods', 
+            'participations', 
+            'attributeValues.attribute',
+            'comments' => function($query) {
+                $query->approved()
+                      ->parentOnly()
+                      ->with(['user', 'replies' => function($q) {
+                          $q->approved()->with('user');
+                      }])
+                      ->latest();
+            }
+        ]);
 
         return view('listings.show', compact('listing'));
     }

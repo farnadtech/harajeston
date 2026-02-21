@@ -558,26 +558,11 @@
             
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">دسته‌بندی</label>
-                    <select name="category_id" id="editCategorySelect" class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary">
-                        <option value="">انتخاب دسته‌بندی</option>
-                        @foreach(\App\Models\Category::active()->parents()->ordered()->with(['children' => function($q) { $q->active()->ordered(); }])->get() as $parent)
-                            <optgroup label="{{ $parent->name }}">
-                                @if($parent->children && count($parent->children) > 0)
-                                    @foreach($parent->children as $child)
-                                        <option value="{{ $child->id }}" {{ $listing->category_id == $child->id ? 'selected' : '' }}>
-                                            {{ $child->name }}
-                                        </option>
-                                    @endforeach
-                                @else
-                                    <option value="" disabled class="text-gray-400">
-                                        این دسته زیردسته ندارد
-                                    </option>
-                                @endif
-                            </optgroup>
-                        @endforeach
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">فقط زیردسته‌ها قابل انتخاب هستند</p>
+                    <x-category-selector 
+                        :selected="$listing->category_id" 
+                        name="category_id"
+                        label="دسته‌بندی" 
+                    />
                 </div>
                 
                 <div>
@@ -1005,8 +990,6 @@ function updateBidsContainer(bids) {
     // Update logic here
 }
 
-// Load attributes for edit form
-const editCategorySelect = document.getElementById('editCategorySelect');
 const editAttributesSection = document.getElementById('editAttributesSection');
 const editAttributesContainer = document.getElementById('editAttributesContainer');
 
@@ -1015,15 +998,40 @@ const currentAttributes = @json($listing->attributeValues->mapWithKeys(function(
     return [$av->category_attribute_id => $av->value];
 }));
 
-if (editCategorySelect) {
-    editCategorySelect.addEventListener('change', function() {
-        loadEditAttributes(this.value);
+// گوش دادن به تغییرات category_id (hidden input از component)
+const categoryInput = document.getElementById('categorySelect');
+if (categoryInput) {
+    // بارگذاری اولیه
+    if (categoryInput.value) {
+        loadEditAttributes(categoryInput.value);
+    }
+    
+    // گوش دادن به تغییرات با MutationObserver
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                const newValue = categoryInput.value;
+                if (newValue) {
+                    loadEditAttributes(newValue);
+                }
+            }
+        });
     });
     
-    // بارگذاری اولیه اگر دسته‌بندی انتخاب شده
-    if (editCategorySelect.value) {
-        loadEditAttributes(editCategorySelect.value);
-    }
+    observer.observe(categoryInput, {
+        attributes: true,
+        attributeFilter: ['value']
+    });
+    
+    // همچنین با Alpine.js
+    document.addEventListener('alpine:initialized', () => {
+        Alpine.effect(() => {
+            const val = categoryInput.value;
+            if (val) {
+                loadEditAttributes(val);
+            }
+        });
+    });
 }
 
 function loadEditAttributes(categoryId) {

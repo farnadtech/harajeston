@@ -18,13 +18,8 @@ class CategorySelector extends Component
         $this->name = $name;
         $this->label = $label;
         
-        $this->categories = Category::active()
-            ->parents()
-            ->ordered()
-            ->with(['children' => function ($query) {
-                $query->active()->ordered();
-            }])
-            ->get();
+        // استفاده از متد getMenuStructure که تا سطح 3 لود می‌کنه
+        $this->categories = Category::getMenuStructure();
     }
 
     public function render()

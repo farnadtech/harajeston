@@ -333,9 +333,98 @@
                 </div>
 
                 <div id="commentsTab" class="tab-content hidden">
-                    <div class="text-center py-12">
-                        <span class="material-symbols-outlined text-gray-300 text-6xl mb-4">chat_bubble</span>
-                        <p class="text-gray-500">هنوز نظری ثبت نشده است</p>
+                    <div class="space-y-6">
+                        <!-- Questions Section -->
+                        <div>
+                            <h4 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                <span class="material-symbols-outlined">help</span>
+                                پرسش‌ها (@persian($listing->comments->where('type', 'question')->count()))
+                            </h4>
+                            
+                            @auth
+                                <form method="POST" action="{{ route('listings.comments.store', $listing) }}" class="bg-gray-50 rounded-xl p-4 mb-6">
+                                    @csrf
+                                    <input type="hidden" name="type" value="question">
+                                    <textarea name="content" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary resize-none" placeholder="پرسش خود را بنویسید..." required minlength="10" maxlength="1000"></textarea>
+                                    <div class="flex justify-between items-center mt-3">
+                                        <span class="text-xs text-gray-500">پرسش شما پس از تایید مدیر منتشر خواهد شد</span>
+                                        <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                                            ارسال پرسش
+                                        </button>
+                                    </div>
+                                </form>
+                            @else
+                                <div class="bg-blue-50 rounded-xl p-4 mb-6 text-center">
+                                    <p class="text-gray-700">برای ثبت پرسش، لطفا <a href="{{ route('login') }}" class="text-primary font-bold hover:underline">وارد شوید</a></p>
+                                </div>
+                            @endauth
+                            
+                            <div class="space-y-4">
+                                @forelse($listing->comments->where('type', 'question') as $question)
+                                    <div class="bg-white rounded-xl border border-gray-200 p-4">
+                                        <div class="flex items-start gap-3">
+                                            <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                                                <span class="material-symbols-outlined text-gray-500">person</span>
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-2 mb-2">
+                                                    <span class="font-bold text-gray-900">{{ $question->user->name }}</span>
+                                                    <span class="text-xs text-gray-400">{{ $question->created_at->diffForHumans() }}</span>
+                                                </div>
+                                                <p class="text-gray-700 leading-relaxed">{{ $question->content }}</p>
+                                                
+                                                @if($question->replies->count() > 0)
+                                                    <div class="mt-4 mr-8 space-y-3">
+                                                        @foreach($question->replies as $reply)
+                                                            <div class="bg-green-50 rounded-lg p-3 border-r-4 border-green-500">
+                                                                <div class="flex items-center gap-2 mb-2">
+                                                                    <span class="material-symbols-outlined text-green-600 text-sm">reply</span>
+                                                                    <span class="font-medium text-gray-900 text-sm">{{ $reply->user->name }}</span>
+                                                                    @if($reply->user_id === $listing->seller_id)
+                                                                        <span class="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">فروشنده</span>
+                                                                    @endif
+                                                                    <span class="text-xs text-gray-400">{{ $reply->created_at->diffForHumans() }}</span>
+                                                                </div>
+                                                                <p class="text-gray-700 text-sm">{{ $reply->content }}</p>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
+                                                
+                                                @auth
+                                                    @if(auth()->id() === $listing->seller_id && $question->replies->count() === 0)
+                                                        <button onclick="toggleReplyForm('q{{ $question->id }}')" class="mt-3 text-sm text-primary hover:underline flex items-center gap-1">
+                                                            <span class="material-symbols-outlined text-sm">reply</span>
+                                                            پاسخ
+                                                        </button>
+                                                        
+                                                        <form id="replyFormq{{ $question->id }}" method="POST" action="{{ route('listings.comments.store', $listing) }}" class="hidden mt-3 bg-gray-50 rounded-lg p-3">
+                                                            @csrf
+                                                            <input type="hidden" name="type" value="question">
+                                                            <input type="hidden" name="parent_id" value="{{ $question->id }}">
+                                                            <textarea name="content" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary resize-none text-sm" placeholder="پاسخ خود را بنویسید..." required minlength="10" maxlength="1000"></textarea>
+                                                            <div class="flex gap-2 mt-2">
+                                                                <button type="submit" class="px-4 py-1.5 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                                                                    ارسال پاسخ
+                                                                </button>
+                                                                <button type="button" onclick="toggleReplyForm('q{{ $question->id }}')" class="px-4 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">
+                                                                    انصراف
+                                                                </button>
+                                                            </div>
+                                                        </form>
+                                                    @endif
+                                                @endauth
+                                            </div>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="text-center py-12">
+                                        <span class="material-symbols-outlined text-gray-300 text-6xl mb-4">help</span>
+                                        <p class="text-gray-500">هنوز پرسشی ثبت نشده است</p>
+                                    </div>
+                                @endforelse
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -343,7 +432,7 @@
 
         <!-- Bid History Sidebar -->
         <div class="lg:col-span-4 space-y-6">
-            <section class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm sticky top-24">
+            <section class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm lg:sticky lg:top-28">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-bold text-gray-900">تاریخچه پیشنهادات</h3>
                     <span class="text-xs bg-blue-50 text-primary px-2 py-1 rounded-md font-bold">@persian($listing->bids->count()) پیشنهاد</span>
@@ -534,6 +623,16 @@ function showTab(tabName) {
     // Add active state to clicked button
     event.currentTarget.classList.remove('border-transparent', 'text-gray-500', 'font-medium');
     event.currentTarget.classList.add('border-primary', 'text-primary', 'font-bold');
+}
+
+// Toggle reply form
+function toggleReplyForm(commentId) {
+    const form = document.getElementById('replyForm' + commentId);
+    if (form.classList.contains('hidden')) {
+        form.classList.remove('hidden');
+    } else {
+        form.classList.add('hidden');
+    }
 }
 
 // Custom scrollbar styles

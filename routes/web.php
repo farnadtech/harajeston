@@ -81,11 +81,18 @@ Route::post('/logout', function () { auth()->logout(); return redirect('/'); })-
 Route::get('/password/request', function () { return view('auth.forgot-password'); })->name('password.request');
 
 // API Routes
+Route::get('/api/categories/structure', [\App\Http\Controllers\Api\CategoryController::class, 'getStructure']);
 Route::get('/api/categories/{category}/attributes', [\App\Http\Controllers\Api\CategoryController::class, 'getAttributes']);
+Route::get('/api/categories/{category}/path', [\App\Http\Controllers\Api\CategoryController::class, 'getPath']);
 
 // Listings
 Route::get('/listings', [ListingController::class, 'index'])->name('listings.index');
 Route::get('/listings/{listing}', [ListingController::class, 'show'])->name('listings.show');
+
+// Comments (Public - requires auth)
+Route::middleware('auth')->group(function () {
+    Route::post('/listings/{listing}/comments', [\App\Http\Controllers\ListingCommentController::class, 'store'])->name('listings.comments.store');
+});
 
 Route::middleware('auth')->group(function () {
     // Dashboard
@@ -131,6 +138,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     Route::put('/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
+    
+    // Seller Reviews
+    Route::get('/orders/{order}/review', [\App\Http\Controllers\SellerReviewController::class, 'create'])->name('seller-reviews.create');
+    Route::post('/orders/{order}/review', [\App\Http\Controllers\SellerReviewController::class, 'store'])->name('seller-reviews.store');
     
     // Admin Routes
     Route::prefix('admin')->middleware('admin')->group(function () {
@@ -181,6 +192,24 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/{user}/suspend', [\App\Http\Controllers\Admin\UserController::class, 'suspend'])->name('admin.users.suspend');
         Route::post('/users/{user}/activate', [\App\Http\Controllers\Admin\UserController::class, 'activate'])->name('admin.users.activate');
         Route::post('/users/{user}/verify-email', [\App\Http\Controllers\Admin\UserController::class, 'verifyEmail'])->name('admin.users.verify-email');
+        
+        // Notifications
+        Route::get('/notifications', [\App\Http\Controllers\Admin\NotificationController::class, 'index'])->name('admin.notifications.index');
+        Route::get('/notifications/recent', [\App\Http\Controllers\Admin\NotificationController::class, 'getRecent'])->name('admin.notifications.recent');
+        Route::post('/notifications/{id}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'markAsRead'])->name('admin.notifications.read');
+        Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Admin\NotificationController::class, 'markAllAsRead'])->name('admin.notifications.mark-all-read');
+        
+        // Comments & Questions Management
+        Route::get('/comments', [\App\Http\Controllers\Admin\CommentController::class, 'index'])->name('admin.comments.index');
+        Route::post('/comments/{id}/approve', [\App\Http\Controllers\Admin\CommentController::class, 'approve'])->name('admin.comments.approve');
+        Route::post('/comments/{id}/reject', [\App\Http\Controllers\Admin\CommentController::class, 'reject'])->name('admin.comments.reject');
+        Route::delete('/comments/{id}', [\App\Http\Controllers\Admin\CommentController::class, 'destroy'])->name('admin.comments.destroy');
+        
+        // Seller Reviews Management
+        Route::get('/seller-reviews', [\App\Http\Controllers\Admin\SellerReviewController::class, 'index'])->name('admin.seller-reviews.index');
+        Route::post('/seller-reviews/{id}/approve', [\App\Http\Controllers\Admin\SellerReviewController::class, 'approve'])->name('admin.seller-reviews.approve');
+        Route::post('/seller-reviews/{id}/reject', [\App\Http\Controllers\Admin\SellerReviewController::class, 'reject'])->name('admin.seller-reviews.reject');
+        Route::delete('/seller-reviews/{id}', [\App\Http\Controllers\Admin\SellerReviewController::class, 'destroy'])->name('admin.seller-reviews.destroy');
         
         Route::resource('shipping-methods', ShippingMethodController::class, ['as' => 'admin']);
         Route::resource('orders', AdminOrderController::class, ['as' => 'admin'])->only(['index', 'show']);

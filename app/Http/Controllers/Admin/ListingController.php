@@ -79,7 +79,8 @@ class ListingController extends Controller
      */
     public function create()
     {
-        return view('admin.listings.create');
+        $categories = \App\Models\Category::getMenuStructure();
+        return view('admin.listings.create', compact('categories'));
     }
 
     /**
@@ -96,8 +97,8 @@ class ListingController extends Controller
                 'exists:categories,id',
                 function ($attribute, $value, $fail) {
                     $category = \App\Models\Category::find($value);
-                    if ($category && $category->isParent()) {
-                        $fail('فقط زیردسته‌ها قابل انتخاب هستند.');
+                    if ($category && $category->hasChildren()) {
+                        $fail('فقط دسته‌های نهایی (بدون زیردسته) قابل انتخاب هستند.');
                     }
                 },
             ],
@@ -236,7 +237,9 @@ class ListingController extends Controller
             ->limit(10)
             ->get();
 
-        return view('admin.listings.manage', compact('listing', 'activityLogs'));
+        $categories = \App\Models\Category::getMenuStructure();
+
+        return view('admin.listings.manage', compact('listing', 'activityLogs', 'categories'));
     }
 
     public function updateSettings(Listing $listing)
@@ -326,8 +329,8 @@ class ListingController extends Controller
                 function ($attribute, $value, $fail) {
                     if ($value) {
                         $category = \App\Models\Category::find($value);
-                        if ($category && $category->isParent()) {
-                            $fail('فقط زیردسته‌ها قابل انتخاب هستند.');
+                        if ($category && $category->hasChildren()) {
+                            $fail('فقط دسته‌های نهایی (بدون زیردسته) قابل انتخاب هستند.');
                         }
                     }
                 },

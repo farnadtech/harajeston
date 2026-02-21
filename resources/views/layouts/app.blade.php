@@ -58,6 +58,22 @@
                 transform: rotate(360deg);
             }
         }
+        
+        /* Custom select dropdown arrow */
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: left 0.5rem center;
+            background-size: 1.5em 1.5em;
+            padding-left: 2.5rem !important;
+        }
+        
+        /* For RTL, adjust arrow position */
+        [dir="rtl"] select {
+            background-position: left 0.5rem center;
+            padding-left: 2.5rem !important;
+            padding-right: 1rem !important;
+        }
     </style>
     
     @livewireStyles
@@ -109,6 +125,7 @@
                             <button @click="open = !open" class="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors">
                                 <span class="material-symbols-outlined text-[20px]">person</span>
                                 <span>{{ auth()->user()->name }}</span>
+                                <span class="material-symbols-outlined text-[18px]" :class="open ? 'rotate-180' : ''">expand_more</span>
                             </button>
                             <div x-show="open" @click.away="open = false" x-transition class="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-50 border border-gray-100">
                                 <a href="{{ route('dashboard') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-t-lg">داشبورد</a>

@@ -11,10 +11,12 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        // فقط دسته‌های اصلی را با زیردسته‌هایشان بگیر
+        // فقط دسته‌های اصلی را با زیردسته‌هایشان (تا سطح سوم) بگیر
         $categories = Category::whereNull('parent_id')
             ->with(['children' => function($query) {
-                $query->orderBy('order');
+                $query->orderBy('order')->with(['children' => function($q) {
+                    $q->orderBy('order');
+                }]);
             }])
             ->orderBy('order')
             ->get();
@@ -27,6 +29,9 @@ class CategoryController extends Controller
         $parentCategories = Category::whereNull('parent_id')
             ->active()
             ->ordered()
+            ->with(['children' => function($query) {
+                $query->active()->ordered();
+            }])
             ->get();
         
         return view('admin.categories.create', compact('parentCategories'));
@@ -60,6 +65,9 @@ class CategoryController extends Controller
             ->where('id', '!=', $category->id)
             ->active()
             ->ordered()
+            ->with(['children' => function($query) use ($category) {
+                $query->where('id', '!=', $category->id)->active()->ordered();
+            }])
             ->get();
         
         return view('admin.categories.edit', compact('category', 'parentCategories'));

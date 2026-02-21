@@ -19,6 +19,17 @@
         </div>
     </div>
 
+    {{-- پیام ارث‌بری ویژگی‌ها --}}
+    @if($category->children && $category->children->count() > 0)
+    <div class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-6 flex items-start gap-3">
+        <span class="material-symbols-outlined text-blue-600 mt-0.5">info</span>
+        <div>
+            <p class="font-medium">ارث‌بری ویژگی‌ها</p>
+            <p class="text-sm mt-1">ویژگی‌های این دسته به تمام زیردسته‌هایی که ویژگی خاص ندارند، به صورت خودکار اعمال می‌شود.</p>
+        </div>
+    </div>
+    @endif
+
     @if(session('success'))
     <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-6">
         {{ session('success') }}

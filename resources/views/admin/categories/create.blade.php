@@ -46,15 +46,24 @@
                 <!-- دسته والد -->
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">دسته والد</label>
-                    <select name="parent_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary @error('parent_id') border-red-500 @enderror">
+                    <select name="parent_id" id="parentSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary @error('parent_id') border-red-500 @enderror">
                         <option value="">دسته اصلی</option>
                         @foreach($parentCategories as $parent)
-                            <option value="{{ $parent->id }}" {{ old('parent_id') == $parent->id ? 'selected' : '' }}>
-                                {{ $parent->name }}
-                            </option>
+                            <optgroup label="{{ $parent->name }}">
+                                <option value="{{ $parent->id }}" {{ old('parent_id') == $parent->id ? 'selected' : '' }}>
+                                    {{ $parent->name }} (سطح ۱)
+                                </option>
+                                @if($parent->children && count($parent->children) > 0)
+                                    @foreach($parent->children as $child)
+                                        <option value="{{ $child->id }}" {{ old('parent_id') == $child->id ? 'selected' : '' }}>
+                                            &nbsp;&nbsp;└─ {{ $child->name }} (سطح ۲)
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </optgroup>
                         @endforeach
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">برای ایجاد زیردسته، دسته والد را انتخاب کنید</p>
+                    <p class="text-xs text-gray-500 mt-1">برای ایجاد زیردسته، دسته والد را انتخاب کنید (حداکثر ۳ سطح)</p>
                     @error('parent_id')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror

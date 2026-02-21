@@ -25,6 +25,9 @@ class StoreController extends Controller
             abort(404, 'فروشگاه یافت نشد.');
         }
 
+        // Load seller with rating
+        $seller = $store->user;
+
         // همه محصولات حراج هستند
         $listings = $store->listings()
             ->where('status', 'active')
@@ -32,7 +35,26 @@ class StoreController extends Controller
             ->orderBy('ends_at', 'asc') // نزدیک‌ترین به پایان اول
             ->paginate(20);
 
-        return view('stores.show', compact('store', 'listings'));
+        // Load approved reviews
+        $reviews = $seller->sellerReviews()
+            ->approved()
+            ->with(['buyer', 'order'])
+            ->latest()
+            ->paginate(10, ['*'], 'reviews_page');
+
+        // Calculate rating distribution (all reviews, not just paginated)
+        $ratingCounts = $seller->sellerReviews()
+            ->approved()
+            ->selectRaw('rating, COUNT(*) as count')
+            ->groupBy('rating')
+            ->pluck('count', 'rating');
+
+        // Calculate stats
+        $completedSales = \App\Models\Order::where('seller_id', $seller->id)
+            ->where('status', 'completed')
+            ->count();
+
+        return view('stores.show', compact('store', 'listings', 'seller', 'reviews', 'completedSales', 'ratingCounts'));
     }
 
     /**

@@ -55,6 +55,22 @@
             background: #9ca3af;
         }
         
+        /* Custom select dropdown arrow */
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: left 0.5rem center;
+            background-size: 1.5em 1.5em;
+            padding-left: 2.5rem !important;
+        }
+        
+        /* For RTL, adjust arrow position */
+        [dir="rtl"] select {
+            background-position: left 0.5rem center;
+            padding-left: 2.5rem !important;
+            padding-right: 1rem !important;
+        }
+        
         /* Notification Styles */
         .notification {
             position: fixed;
@@ -148,6 +164,28 @@
                 <span>دسته‌بندی‌ها</span>
             </a>
             
+            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.comments.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.comments.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.comments.index') }}">
+                <span class="material-symbols-outlined group-hover:text-primary transition-colors">help</span>
+                <span>پرسش‌های محصولات</span>
+                @php
+                    $pendingCommentsCount = \App\Models\ListingComment::pending()->whereNull('parent_id')->count();
+                @endphp
+                @if($pendingCommentsCount > 0)
+                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingCommentsCount)</span>
+                @endif
+            </a>
+            
+            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.seller-reviews.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.seller-reviews.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.seller-reviews.index') }}">
+                <span class="material-symbols-outlined group-hover:text-primary transition-colors">rate_review</span>
+                <span>نظرات فروشندگان</span>
+                @php
+                    $pendingReviewsCount = \App\Models\SellerReview::pending()->count();
+                @endphp
+                @if($pendingReviewsCount > 0)
+                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingReviewsCount)</span>
+                @endif
+            </a>
+            
             <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="{{ route('admin.users.index') }}">
                 <span class="material-symbols-outlined group-hover:text-primary transition-colors">group</span>
                 <span>کاربران</span>
@@ -215,10 +253,71 @@
                     <span class="material-symbols-outlined absolute right-3 top-2.5 text-gray-400 text-[20px]">search</span>
                 </div>
                 
-                <button class="p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors relative">
-                    <span class="material-symbols-outlined">notifications</span>
-                    <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-                </button>
+                <!-- Notifications Dropdown -->
+                <div class="relative" x-data="notificationDropdown()">
+                    <button @click="toggleDropdown()" class="p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors relative">
+                        <span class="material-symbols-outlined">notifications</span>
+                        <span x-show="unreadCount > 0" class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                    </button>
+                    
+                    <!-- Dropdown Menu -->
+                    <div x-show="open" 
+                         @click.away="open = false"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
+                         class="absolute left-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50"
+                         style="display: none;">
+                        
+                        <!-- Header -->
+                        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                            <h3 class="font-bold text-gray-900">اعلان‌ها</h3>
+                            <span x-text="unreadCount > 0 ? unreadCount + ' اعلان جدید' : 'اعلانی جدید نیست'" class="text-xs text-gray-500"></span>
+                        </div>
+                        
+                        <!-- Notifications List -->
+                        <div class="max-h-96 overflow-y-auto">
+                            <template x-if="loading">
+                                <div class="px-4 py-8 text-center">
+                                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                    <p class="text-sm text-gray-500 mt-2">در حال بارگذاری...</p>
+                                </div>
+                            </template>
+                            
+                            <template x-if="!loading && notifications.length === 0">
+                                <div class="px-4 py-8 text-center">
+                                    <span class="material-symbols-outlined text-gray-300 text-5xl mb-2">notifications_off</span>
+                                    <p class="text-sm text-gray-500">اعلانی وجود ندارد</p>
+                                </div>
+                            </template>
+                            
+                            <template x-for="notification in notifications" :key="notification.id">
+                                <a :href="notification.link ? '{{ route('admin.notifications.read', '') }}/' + notification.id : '#'" 
+                                   class="block px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                    <div class="flex items-start gap-3">
+                                        <div :class="'w-10 h-10 rounded-full bg-' + notification.color + '-100 flex items-center justify-center flex-shrink-0'">
+                                            <span :class="'material-symbols-outlined text-' + notification.color + '-600 text-xl'" x-text="notification.icon"></span>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900 mb-1" x-text="notification.title"></p>
+                                            <p class="text-xs text-gray-600 mb-1" x-text="notification.message"></p>
+                                            <p class="text-xs text-gray-400" x-text="notification.time_ago"></p>
+                                        </div>
+                                        <span x-show="!notification.is_read" :class="'w-2 h-2 bg-' + notification.color + '-500 rounded-full flex-shrink-0 mt-2'"></span>
+                                    </div>
+                                </a>
+                            </template>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div class="px-4 py-3 border-t border-gray-200 text-center">
+                            <a href="{{ route('admin.notifications.index') }}" class="text-sm text-primary hover:text-blue-700 font-medium">مشاهده همه اعلان‌ها</a>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="flex items-center gap-3 pr-4 border-r border-gray-200 mr-2">
                     <div class="text-left hidden sm:block">
@@ -252,6 +351,50 @@
 
     @livewireScripts
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <script>
+        // Alpine.js Notification Dropdown Component
+        function notificationDropdown() {
+            return {
+                open: false,
+                loading: false,
+                notifications: [],
+                unreadCount: 0,
+                
+                init() {
+                    this.loadNotifications();
+                },
+                
+                toggleDropdown() {
+                    this.open = !this.open;
+                    if (this.open && this.notifications.length === 0) {
+                        this.loadNotifications();
+                    }
+                },
+                
+                loadNotifications() {
+                    this.loading = true;
+                    
+                    fetch('{{ route('admin.notifications.recent') }}', {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        this.notifications = data.notifications;
+                        this.unreadCount = data.unread_count;
+                        this.loading = false;
+                    })
+                    .catch(error => {
+                        console.error('Error loading notifications:', error);
+                        this.loading = false;
+                    });
+                }
+            }
+        }
+    </script>
     
     <!-- Confirm Modal -->
     <div id="confirmModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">

@@ -23,8 +23,8 @@ class CreateListingRequest extends FormRequest
                 'exists:categories,id',
                 function ($attribute, $value, $fail) {
                     $category = \App\Models\Category::find($value);
-                    if ($category && $category->isParent()) {
-                        $fail('فقط زیردسته‌ها قابل انتخاب هستند. لطفاً یک زیردسته انتخاب کنید.');
+                    if ($category && $category->hasChildren()) {
+                        $fail('فقط دسته‌های نهایی (بدون زیردسته) قابل انتخاب هستند.');
                     }
                 },
             ],

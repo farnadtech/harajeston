@@ -47,9 +47,22 @@
                     <select name="parent_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary @error('parent_id') border-red-500 @enderror">
                         <option value="">دسته اصلی</option>
                         @foreach($parentCategories as $parent)
-                            <option value="{{ $parent->id }}" {{ old('parent_id', $category->parent_id) == $parent->id ? 'selected' : '' }}>
-                                {{ $parent->name }}
-                            </option>
+                            @if($parent->id != $category->id)
+                            <optgroup label="{{ $parent->name }}">
+                                <option value="{{ $parent->id }}" {{ old('parent_id', $category->parent_id) == $parent->id ? 'selected' : '' }}>
+                                    {{ $parent->name }} (سطح ۱)
+                                </option>
+                                @if($parent->children && count($parent->children) > 0)
+                                    @foreach($parent->children as $child)
+                                        @if($child->id != $category->id)
+                                        <option value="{{ $child->id }}" {{ old('parent_id', $category->parent_id) == $child->id ? 'selected' : '' }}>
+                                            &nbsp;&nbsp;└─ {{ $child->name }} (سطح ۲)
+                                        </option>
+                                        @endif
+                                    @endforeach
+                                @endif
+                            </optgroup>
+                            @endif
                         @endforeach
                     </select>
                     @error('parent_id')

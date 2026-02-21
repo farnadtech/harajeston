@@ -121,6 +121,11 @@ class Listing extends Model
         return $this->hasMany(ListingAttributeValue::class);
     }
 
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ListingComment::class);
+    }
+
     // Helper methods
     public function isActive(): bool
     {
@@ -143,6 +148,32 @@ class Listing extends Model
         return $this->hasBuyNowPrice() 
             && $this->isActive() 
             && $this->status === 'active';
+    }
+    
+    /**
+     * Update listing rating based on approved comments with ratings
+     */
+    public function updateRating(): void
+    {
+        $ratings = $this->comments()
+            ->approved()
+            ->comments()
+            ->whereNotNull('rating')
+            ->whereNull('parent_id')
+            ->pluck('rating');
+        
+        if ($ratings->isEmpty()) {
+            $this->update([
+                'average_rating' => 0,
+                'rating_count' => 0,
+            ]);
+            return;
+        }
+        
+        $this->update([
+            'average_rating' => round($ratings->avg(), 2),
+            'rating_count' => $ratings->count(),
+        ]);
     }
 
     // Status scopes

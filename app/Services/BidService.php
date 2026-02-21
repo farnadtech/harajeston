@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Services;
+
 use App\Models\User;
 use App\Models\Listing;
 use App\Models\Bid;
@@ -14,6 +16,13 @@ use Illuminate\Support\Collection;
 
 class BidService
 {
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
     /**
      * Place a bid on an auction
      * 
@@ -69,6 +78,9 @@ class BidService
             $listing->current_highest_bid = $amount;
             $listing->highest_bidder_id = $user->id;
             $listing->save();
+            
+            // Send notification
+            $this->notificationService->notifyNewBid($bid);
             
             // TODO: Broadcast BidPlaced event for real-time updates
             // TODO: Send notification to previous highest bidder (outbid)
