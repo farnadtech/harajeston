@@ -2,52 +2,70 @@
 
 @section('title', 'گزارشات مالی')
 
+@push('styles')
+<link rel="stylesheet" href="{{ url('css/persian-datepicker-package.css') }}?v={{ now()->timestamp }}">
+@endpush
+
 @section('content')
 <div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-8">
-        <h1 class="text-3xl font-bold">گزارشات مالی</h1>
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
+        <h1 class="text-2xl lg:text-3xl font-bold">گزارشات مالی</h1>
         
         <!-- فیلتر بازه زمانی -->
-        <form method="GET" action="{{ route('admin.financial-reports.index') }}" class="flex gap-4">
-            <input type="date" 
-                   name="start_date" 
-                   value="{{ $startDate->format('Y-m-d') }}"
-                   class="px-4 py-2 border rounded-lg">
-            <input type="date" 
-                   name="end_date" 
-                   value="{{ $endDate->format('Y-m-d') }}"
-                   class="px-4 py-2 border rounded-lg">
-            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-                اعمال فیلتر
-            </button>
-            <a href="{{ route('admin.financial-reports.export', ['start_date' => $startDate->format('Y-m-d'), 'end_date' => $endDate->format('Y-m-d')]) }}" 
-               class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
-                دانلود CSV
-            </a>
+        <form method="GET" action="{{ route('admin.financial-reports.index') }}" id="filterForm" class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+            <div class="flex-1 sm:flex-none">
+                <label class="block text-sm text-gray-600 mb-1">از تاریخ</label>
+                <input type="text" 
+                       name="start_date"
+                       id="start_date"
+                       value="{{ old('start_date', \Morilog\Jalali\Jalalian::fromCarbon($startDate)->format('Y/m/d H:i')) }}"
+                       class="persian-datepicker-input px-4 py-2 border rounded-lg w-full sm:w-48"
+                       placeholder="انتخاب تاریخ شروع"
+                       autocomplete="off">
+            </div>
+            <div class="flex-1 sm:flex-none">
+                <label class="block text-sm text-gray-600 mb-1">تا تاریخ</label>
+                <input type="text" 
+                       name="end_date"
+                       id="end_date"
+                       value="{{ old('end_date', \Morilog\Jalali\Jalalian::fromCarbon($endDate)->format('Y/m/d H:i')) }}"
+                       class="persian-datepicker-input px-4 py-2 border rounded-lg w-full sm:w-48"
+                       placeholder="انتخاب تاریخ پایان"
+                       autocomplete="off">
+            </div>
+            <div class="flex items-end gap-2">
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 w-full sm:w-auto">
+                    اعمال فیلتر
+                </button>
+                <a href="{{ route('admin.financial-reports.export', ['start_date' => $startDate->format('Y-m-d'), 'end_date' => $endDate->format('Y-m-d')]) }}" 
+                   class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 text-center w-full sm:w-auto">
+                    دانلود CSV
+                </a>
+            </div>
         </form>
     </div>
 
     <!-- موجودی کیف پول سایت -->
-    <div class="bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg shadow-lg p-8 mb-8 text-white">
-        <h2 class="text-2xl font-bold mb-4">موجودی کیف پول سایت</h2>
-        <div class="grid grid-cols-3 gap-6">
+    <div class="bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg shadow-lg p-6 lg:p-8 mb-8 text-white">
+        <h2 class="text-xl lg:text-2xl font-bold mb-4">موجودی کیف پول سایت</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
             <div>
                 <p class="text-purple-200 text-sm mb-2">موجودی کل</p>
-                <p class="text-3xl font-bold">@persian(number_format($siteWallet['balance'])) تومان</p>
+                <p class="text-2xl lg:text-3xl font-bold">@persian(number_format($siteWallet['balance'])) تومان</p>
             </div>
             <div>
                 <p class="text-purple-200 text-sm mb-2">مبلغ فریز شده</p>
-                <p class="text-3xl font-bold">@persian(number_format($siteWallet['frozen'])) تومان</p>
+                <p class="text-2xl lg:text-3xl font-bold">@persian(number_format($siteWallet['frozen'])) تومان</p>
             </div>
             <div>
                 <p class="text-purple-200 text-sm mb-2">قابل برداشت</p>
-                <p class="text-3xl font-bold">@persian(number_format($siteWallet['available'])) تومان</p>
+                <p class="text-2xl lg:text-3xl font-bold">@persian(number_format($siteWallet['available'])) تومان</p>
             </div>
         </div>
     </div>
 
     <!-- خلاصه درآمد -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-gray-600 text-sm font-medium">کل درآمد</h3>
@@ -93,15 +111,17 @@
     </div>
 
     <!-- نمودار درآمد روزانه -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-2xl font-bold mb-6">نمودار درآمد روزانه</h2>
-        <canvas id="dailyRevenueChart" height="80"></canvas>
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8 overflow-hidden">
+        <h2 class="text-xl lg:text-2xl font-bold mb-6">نمودار درآمد روزانه</h2>
+        <div class="relative" style="height: 300px;">
+            <canvas id="dailyRevenueChart"></canvas>
+        </div>
     </div>
 
     <!-- آمار پلتفرم -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-2xl font-bold mb-6">آمار کلی پلتفرم</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <h2 class="text-xl lg:text-2xl font-bold mb-6">آمار کلی پلتفرم</h2>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             <div class="text-center">
                 <p class="text-gray-600 text-sm mb-2">کل کاربران</p>
                 <p class="text-3xl font-bold text-blue-600">@persian(number_format($platformStats['total_users']))</p>
@@ -121,10 +141,10 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-8">
         <!-- فروشندگان برتر -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-2xl font-bold mb-6">فروشندگان برتر</h2>
+        <div class="bg-white rounded-lg shadow-md p-6 overflow-hidden">
+            <h2 class="text-xl lg:text-2xl font-bold mb-6">فروشندگان برتر</h2>
             <div class="space-y-4">
                 @forelse($topSellers as $index => $seller)
                     <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -147,8 +167,8 @@
         </div>
 
         <!-- خریداران برتر -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-2xl font-bold mb-6">خریداران برتر</h2>
+        <div class="bg-white rounded-lg shadow-md p-6 overflow-hidden">
+            <h2 class="text-xl lg:text-2xl font-bold mb-6">خریداران برتر</h2>
             <div class="space-y-4">
                 @forelse($topBuyers as $index => $buyer)
                     <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -172,25 +192,25 @@
     </div>
 
     <!-- آمار دسته‌بندی‌ها -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-        <h2 class="text-2xl font-bold mb-6">آمار دسته‌بندی‌ها</h2>
-        <div class="overflow-x-auto">
-            <table class="w-full">
+    <div class="bg-white rounded-lg shadow-md p-6 overflow-hidden">
+        <h2 class="text-xl lg:text-2xl font-bold mb-6">آمار دسته‌بندی‌ها</h2>
+        <div class="overflow-x-auto -mx-6 px-6">
+            <table class="w-full min-w-full">
                 <thead>
                     <tr class="border-b">
-                        <th class="text-right py-3 px-4">دسته‌بندی</th>
-                        <th class="text-right py-3 px-4">تعداد حراج</th>
-                        <th class="text-right py-3 px-4">ارزش کل</th>
-                        <th class="text-right py-3 px-4">میانگین قیمت</th>
+                        <th class="text-right py-3 px-4 whitespace-nowrap">دسته‌بندی</th>
+                        <th class="text-right py-3 px-4 whitespace-nowrap">تعداد حراج</th>
+                        <th class="text-right py-3 px-4 whitespace-nowrap">ارزش کل</th>
+                        <th class="text-right py-3 px-4 whitespace-nowrap">میانگین قیمت</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($categoryStats as $stat)
                         <tr class="border-b hover:bg-gray-50">
-                            <td class="py-3 px-4 font-medium">{{ $stat['category_name'] ?? 'نامشخص' }}</td>
-                            <td class="py-3 px-4">@persian(number_format($stat['total_listings']))</td>
-                            <td class="py-3 px-4">@persian(number_format($stat['total_value'])) تومان</td>
-                            <td class="py-3 px-4">@persian(number_format($stat['average_price'])) تومان</td>
+                            <td class="py-3 px-4 font-medium whitespace-nowrap">{{ $stat['category_name'] ?? 'نامشخص' }}</td>
+                            <td class="py-3 px-4 whitespace-nowrap">@persian(number_format($stat['total_listings']))</td>
+                            <td class="py-3 px-4 whitespace-nowrap">@persian(number_format($stat['total_value'])) تومان</td>
+                            <td class="py-3 px-4 whitespace-nowrap">@persian(number_format($stat['average_price'])) تومان</td>
                         </tr>
                     @empty
                         <tr>
@@ -203,8 +223,23 @@
     </div>
 </div>
 
+@push('scripts')
+<script src="{{ url('js/persian-datepicker-package.js') }}?v={{ now()->timestamp }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Initialize datepickers
+document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.getElementById('start_date');
+    if (startDateInput && !startDateInput.dataset.pickerInitialized) {
+        new PersianDatePicker(startDateInput);
+    }
+    
+    const endDateInput = document.getElementById('end_date');
+    if (endDateInput && !endDateInput.dataset.pickerInitialized) {
+        new PersianDatePicker(endDateInput);
+    }
+});
+
     // نمودار درآمد روزانه
     const dailyData = @json($dailyRevenue);
     
@@ -239,7 +274,7 @@
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: {
                     position: 'top',
@@ -265,4 +300,5 @@
         }
     });
 </script>
+@endpush
 @endsection

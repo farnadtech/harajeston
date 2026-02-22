@@ -76,7 +76,8 @@ class ListingService
             'price' => $data['price'] ?? null,
             'stock' => $data['stock'] ?? null,
             'low_stock_threshold' => $data['low_stock_threshold'] ?? 5,
-            'status' => $type === 'auction' ? 'pending' : 'active',
+            // بررسی تنظیمات ادمین برای تایید خودکار
+            'status' => $this->determineInitialStatus($type),
         ]);
 
         // ذخیره ویژگی‌ها
@@ -123,6 +124,25 @@ class ListingService
         if ($start->lt(Carbon::now())) {
             throw new \InvalidArgumentException('زمان شروع نمی‌تواند در گذشته باشد.');
         }
+    }
+
+    /**
+     * تعیین وضعیت اولیه آگهی بر اساس تنظیمات ادمین
+     * 
+     * @param string $type
+     * @return string
+     */
+    protected function determineInitialStatus(string $type): string
+    {
+        $requireApproval = \App\Models\SiteSetting::get('require_listing_approval', true);
+        
+        // اگر نیاز به تایید باشد، وضعیت draft می‌شود
+        if ($requireApproval) {
+            return 'draft';
+        }
+        
+        // اگر نیاز به تایید نباشد، بر اساس نوع آگهی تعیین می‌شود
+        return $type === 'auction' ? 'pending' : 'active';
     }
 
     /**

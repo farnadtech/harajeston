@@ -35,7 +35,7 @@
                 <div class="flex-1">
                     <h3 class="text-lg font-bold text-blue-900 mb-1">این حراجی هنوز شروع نشده است</h3>
                     <p class="text-blue-700 text-sm">
-                        زمان شروع: <span class="font-bold">{{ \App\Services\JalaliDateService::toJalali($listing->starts_at, 'Y/m/d H:i') }}</span>
+                        زمان شروع: <span class="font-bold">{{ \App\Services\PersianNumberService::convertToPersian(\App\Services\JalaliDateService::toJalali($listing->starts_at, 'Y/m/d H:i')) }}</span>
                     </p>
                 </div>
             </div>
@@ -52,7 +52,7 @@
                 <div class="flex-1">
                     <h3 class="text-lg font-bold text-gray-900 mb-1">این حراجی به پایان رسیده است</h3>
                     <p class="text-gray-700 text-sm">
-                        زمان پایان: <span class="font-bold">{{ \App\Services\JalaliDateService::toJalali($listing->ends_at, 'Y/m/d H:i') }}</span>
+                        زمان پایان: <span class="font-bold">{{ \App\Services\PersianNumberService::convertToPersian(\App\Services\JalaliDateService::toJalali($listing->ends_at, 'Y/m/d H:i')) }}</span>
                     </p>
                 </div>
             </div>
@@ -243,7 +243,7 @@
                             <span class="text-gray-600 font-medium">زمان شروع:</span>
                             <div class="flex items-center gap-2 text-blue-600 font-bold text-lg">
                                 <span class="material-symbols-outlined">schedule</span>
-                                <span>{{ \App\Services\JalaliDateService::toJalali($listing->starts_at, 'Y/m/d H:i') }}</span>
+                                <span>{{ \App\Services\PersianNumberService::convertToPersian(\App\Services\JalaliDateService::toJalali($listing->starts_at, 'Y/m/d H:i')) }}</span>
                             </div>
                         </div>
                     @elseif($listing->hasEnded())

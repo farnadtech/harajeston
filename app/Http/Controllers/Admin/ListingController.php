@@ -366,18 +366,23 @@ class ListingController extends Controller
             'ends_at' => [
                 'nullable',
                 'date',
+                'after:starts_at',
                 function ($attribute, $value, $fail) {
-                    $startsAt = request()->input('starts_at') ?? request()->old('starts_at');
-                    if ($value && $startsAt && \Carbon\Carbon::parse($value)->lte(\Carbon\Carbon::parse($startsAt))) {
-                        $fail('زمان پایان باید بعد از زمان شروع باشد.');
+                    // زمان پایان نباید در گذشته باشد
+                    if ($value && \Carbon\Carbon::parse($value)->isPast()) {
+                        $fail('زمان پایان نمی‌تواند در گذشته باشد.');
                     }
                 },
             ],
             'auto_extend' => 'nullable|boolean'
+        ], [
+            'ends_at.after' => 'زمان پایان باید بعد از زمان شروع باشد.',
+            'ends_at.date' => 'فرمت تاریخ پایان نامعتبر است.',
+            'starts_at.date' => 'فرمت تاریخ شروع نامعتبر است.',
         ]);
 
         $listing->update($validated);
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'message' => 'تنظیمات با موفقیت ذخیره شد.']);
     }
 
     public function endEarly(Listing $listing)
@@ -397,43 +402,151 @@ class ListingController extends Controller
 
     public function suspend(Listing $listing)
     {
-        $listing->update([
-            'status' => 'suspended',
-            'suspension_reason' => request()->input('reason')
-        ]);
+        try {
+            $listing->update([
+                'status' => 'suspended',
+                'suspension_reason' => request()->input('reason')
+            ]);
 
-        \App\Models\AdminActionLog::create([
-            'listing_id' => $listing->id,
-            'admin_id' => auth()->id(),
-            'action' => 'suspend',
-            'description' => request()->input('reason'),
-            'icon' => 'block'
-        ]);
+            \App\Models\AdminActionLog::create([
+                'listing_id' => $listing->id,
+                'admin_id' => auth()->id(),
+                'action' => 'suspend',
+                'description' => request()->input('reason'),
+                'icon' => 'block'
+            ]);
 
-        if (request()->expectsJson()) {
-            return response()->json(['success' => true]);
+            if (request()->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'آگهی با موفقیت تعلیق شد']);
+            }
+
+            return back()->with('success', 'آگهی با موفقیت تعلیق شد.');
+        } catch (\Exception $e) {
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+            return back()->with('error', $e->getMessage());
         }
-
-        return back()->with('success', 'آگهی با موفقیت تعلیق شد.');
     }
 
     public function activate(Listing $listing)
     {
-        $listing->update(['status' => 'active']);
+        try {
+            $listing->update(['status' => 'active']);
 
-        \App\Models\AdminActionLog::create([
-            'listing_id' => $listing->id,
-            'admin_id' => auth()->id(),
-            'action' => 'activate',
-            'description' => 'مزایده فعال شد',
-            'icon' => 'check_circle'
-        ]);
+            \App\Models\AdminActionLog::create([
+                'listing_id' => $listing->id,
+                'admin_id' => auth()->id(),
+                'action' => 'activate',
+                'description' => 'مزایده فعال شد',
+                'icon' => 'check_circle'
+            ]);
 
-        if (request()->expectsJson()) {
-            return response()->json(['success' => true]);
+            if (request()->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'آگهی با موفقیت فعال شد']);
+            }
+
+            return back()->with('success', 'آگهی با موفقیت فعال شد.');
+        } catch (\Exception $e) {
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+            return back()->with('error', $e->getMessage());
         }
+    }
 
-        return back()->with('success', 'آگهی با موفقیت فعال شد.');
+    /**
+     * تایید آگهی (تبدیل از draft به pending یا active)
+     */
+    public function approve(Listing $listing)
+    {
+        try {
+            if ($listing->status !== 'draft') {
+                if (request()->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => 'فقط آگهی‌های در حالت پیش‌نویس قابل تایید هستند.']);
+                }
+                return back()->with('error', 'فقط آگهی‌های در حالت پیش‌نویس قابل تایید هستند.');
+            }
+
+            // تعیین وضعیت جدید بر اساس نوع آگهی
+            $newStatus = $listing->type === 'auction' ? 'pending' : 'active';
+            
+            $listing->update(['status' => $newStatus]);
+
+            \App\Models\AdminActionLog::create([
+                'listing_id' => $listing->id,
+                'admin_id' => auth()->id(),
+                'action' => 'approve',
+                'description' => 'آگهی تایید و منتشر شد',
+                'icon' => 'check_circle'
+            ]);
+
+            // ارسال نوتیفیکیشن به فروشنده
+            try {
+                $listing->seller->notify(new \App\Notifications\ListingApprovedNotification($listing));
+            } catch (\Exception $e) {
+                // Ignore notification errors
+            }
+
+            if (request()->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'آگهی با موفقیت تایید و منتشر شد.']);
+            }
+
+            return back()->with('success', 'آگهی با موفقیت تایید و منتشر شد.');
+        } catch (\Exception $e) {
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * رد آگهی
+     */
+    public function reject(Listing $listing)
+    {
+        try {
+            if ($listing->status !== 'draft') {
+                if (request()->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => 'فقط آگهی‌های در حالت پیش‌نویس قابل رد هستند.']);
+                }
+                return back()->with('error', 'فقط آگهی‌های در حالت پیش‌نویس قابل رد هستند.');
+            }
+
+            $reason = request()->input('reason', 'آگهی شما توسط مدیریت رد شد.');
+            
+            $listing->update([
+                'status' => 'rejected',
+                'rejection_reason' => $reason,
+            ]);
+
+            \App\Models\AdminActionLog::create([
+                'listing_id' => $listing->id,
+                'admin_id' => auth()->id(),
+                'action' => 'reject',
+                'description' => 'آگهی رد شد: ' . $reason,
+                'icon' => 'cancel'
+            ]);
+
+            // ارسال نوتیفیکیشن به فروشنده
+            try {
+                $listing->seller->notify(new \App\Notifications\ListingRejectedNotification($listing, $reason));
+            } catch (\Exception $e) {
+                // Ignore notification errors
+            }
+
+            if (request()->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'آگهی رد شد.']);
+            }
+
+            return back()->with('success', 'آگهی رد شد.');
+        } catch (\Exception $e) {
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     public function updateTags(Listing $listing)

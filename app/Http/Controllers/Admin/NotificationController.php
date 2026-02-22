@@ -15,8 +15,7 @@ class NotificationController extends Controller
 
     public function index()
     {
-        $notifications = auth()->user()
-            ->notifications()
+        $notifications = Notification::where('user_id', auth()->id())
             ->latest()
             ->paginate(20);
 
@@ -26,14 +25,12 @@ class NotificationController extends Controller
     public function getRecent()
     {
         try {
-            $notifications = auth()->user()
-                ->notifications()
+            $notifications = Notification::where('user_id', auth()->id())
                 ->latest()
                 ->take(5)
                 ->get();
 
-            $unreadCount = auth()->user()
-                ->notifications()
+            $unreadCount = Notification::where('user_id', auth()->id())
                 ->where('is_read', false)
                 ->count();
 
@@ -53,8 +50,7 @@ class NotificationController extends Controller
 
     public function markAsRead($id)
     {
-        $notification = auth()->user()
-            ->notifications()
+        $notification = Notification::where('user_id', auth()->id())
             ->findOrFail($id);
 
         $notification->markAsRead();
@@ -68,8 +64,7 @@ class NotificationController extends Controller
 
     public function markAllAsRead()
     {
-        auth()->user()
-            ->notifications()
+        Notification::where('user_id', auth()->id())
             ->where('is_read', false)
             ->update(['is_read' => true]);
 

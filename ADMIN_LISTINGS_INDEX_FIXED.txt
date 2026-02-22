@@ -1,0 +1,338 @@
+این کد رو کپی کنید و جایگزین بخش @push('scripts') در فایل resources/views/admin/listings/index.blade.php کنید:
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function approveListing(listingId) {
+    Swal.fire({
+        title: 'تایید آگهی',
+        text: 'آیا از تایید و انتشار این آگهی اطمینان دارید؟',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'بله، تایید کن',
+        cancelButtonText: 'انصراف',
+        customClass: {
+            popup: 'font-sans',
+            title: 'text-lg font-bold',
+            confirmButton: 'px-4 py-2 rounded-lg',
+            cancelButton: 'px-4 py-2 rounded-lg'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('{{ url("/admin/listings") }}/' + listingId + '/approve', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'موفق!',
+                        text: data.message || 'آگهی با موفقیت تایید و منتشر شد',
+                        icon: 'success',
+                        confirmButtonColor: '#10b981',
+                        customClass: {
+                            popup: 'font-sans',
+                            title: 'text-lg font-bold',
+                            confirmButton: 'px-4 py-2 rounded-lg'
+                        }
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'خطا!',
+                        text: data.message || 'خطا در تایید آگهی',
+                        icon: 'error',
+                        confirmButtonColor: '#ef4444',
+                        customClass: {
+                            popup: 'font-sans',
+                            title: 'text-lg font-bold',
+                            confirmButton: 'px-4 py-2 rounded-lg'
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'خطا!',
+                    text: 'خطا در ارتباط با سرور',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444',
+                    customClass: {
+                        popup: 'font-sans',
+                        title: 'text-lg font-bold',
+                        confirmButton: 'px-4 py-2 rounded-lg'
+                    }
+                });
+            });
+        }
+    });
+}
+
+function rejectListing(listingId) {
+    Swal.fire({
+        title: 'رد آگهی',
+        text: 'لطفاً دلیل رد آگهی را وارد کنید:',
+        input: 'textarea',
+        inputPlaceholder: 'دلیل رد...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'رد کن',
+        cancelButtonText: 'انصراف',
+        customClass: {
+            popup: 'font-sans',
+            title: 'text-lg font-bold',
+            confirmButton: 'px-4 py-2 rounded-lg',
+            cancelButton: 'px-4 py-2 rounded-lg'
+        },
+        inputValidator: (value) => {
+            if (!value) {
+                return 'لطفاً دلیل رد را وارد کنید'
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('{{ url("/admin/listings") }}/' + listingId + '/reject', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason: result.value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'رد شد!',
+                        text: data.message || 'آگهی با موفقیت رد شد',
+                        icon: 'success',
+                        confirmButtonColor: '#10b981',
+                        customClass: {
+                            popup: 'font-sans',
+                            title: 'text-lg font-bold',
+                            confirmButton: 'px-4 py-2 rounded-lg'
+                        }
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'خطا!',
+                        text: data.message || 'خطا در رد آگهی',
+                        icon: 'error',
+                        confirmButtonColor: '#ef4444',
+                        customClass: {
+                            popup: 'font-sans',
+                            title: 'text-lg font-bold',
+                            confirmButton: 'px-4 py-2 rounded-lg'
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'خطا!',
+                    text: 'خطا در ارتباط با سرور',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444',
+                    customClass: {
+                        popup: 'font-sans',
+                        title: 'text-lg font-bold',
+                        confirmButton: 'px-4 py-2 rounded-lg'
+                    }
+                });
+            });
+        }
+    });
+}
+
+function activateListing(listingId) {
+    Swal.fire({
+        title: 'فعال‌سازی آگهی',
+        text: 'آیا از فعال‌سازی این آگهی اطمینان دارید؟',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'بله، فعال کن',
+        cancelButtonText: 'انصراف',
+        customClass: {
+            popup: 'font-sans',
+            title: 'text-lg font-bold',
+            confirmButton: 'px-4 py-2 rounded-lg',
+            cancelButton: 'px-4 py-2 rounded-lg'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('{{ url("/admin/listings") }}/' + listingId + '/activate', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'موفق!',
+                        text: 'آگهی با موفقیت فعال شد',
+                        icon: 'success',
+                        confirmButtonColor: '#10b981',
+                        customClass: {
+                            popup: 'font-sans',
+                            title: 'text-lg font-bold',
+                            confirmButton: 'px-4 py-2 rounded-lg'
+                        }
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'خطا!',
+                        text: 'خطا در فعال‌سازی آگهی',
+                        icon: 'error',
+                        confirmButtonColor: '#ef4444',
+                        customClass: {
+                            popup: 'font-sans',
+                            title: 'text-lg font-bold',
+                            confirmButton: 'px-4 py-2 rounded-lg'
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'خطا!',
+                    text: 'خطا در ارتباط با سرور',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444',
+                    customClass: {
+                        popup: 'font-sans',
+                        title: 'text-lg font-bold',
+                        confirmButton: 'px-4 py-2 rounded-lg'
+                    }
+                });
+            });
+        }
+    });
+}
+
+function suspendListing(listingId) {
+    Swal.fire({
+        title: 'تعلیق آگهی',
+        text: 'لطفاً دلیل تعلیق را وارد کنید:',
+        input: 'textarea',
+        inputPlaceholder: 'دلیل تعلیق...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#f97316',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'تعلیق کن',
+        cancelButtonText: 'انصراف',
+        customClass: {
+            popup: 'font-sans',
+            title: 'text-lg font-bold',
+            confirmButton: 'px-4 py-2 rounded-lg',
+            cancelButton: 'px-4 py-2 rounded-lg'
+        },
+        inputValidator: (value) => {
+            if (!value) {
+                return 'لطفاً دلیل تعلیق را وارد کنید'
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch('{{ url("/admin/listings") }}/' + listingId + '/suspend', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason: result.value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'تعلیق شد!',
+                        text: 'آگهی با موفقیت تعلیق شد',
+                        icon: 'success',
+                        confirmButtonColor: '#10b981',
+                        customClass: {
+                            popup: 'font-sans',
+                            title: 'text-lg font-bold',
+                            confirmButton: 'px-4 py-2 rounded-lg'
+                        }
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'خطا!',
+                        text: 'خطا در تعلیق آگهی',
+                        icon: 'error',
+                        confirmButtonColor: '#ef4444',
+                        customClass: {
+                            popup: 'font-sans',
+                            title: 'text-lg font-bold',
+                            confirmButton: 'px-4 py-2 rounded-lg'
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'خطا!',
+                    text: 'خطا در ارتباط با سرور',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444',
+                    customClass: {
+                        popup: 'font-sans',
+                        title: 'text-lg font-bold',
+                        confirmButton: 'px-4 py-2 rounded-lg'
+                    }
+                });
+            });
+        }
+    });
+}
+
+function exportListings() {
+    Swal.fire({
+        title: 'به زودی',
+        text: 'قابلیت خروجی Excel به زودی اضافه خواهد شد',
+        icon: 'info',
+        confirmButtonColor: '#3b82f6',
+        customClass: {
+            popup: 'font-sans',
+            title: 'text-lg font-bold',
+            confirmButton: 'px-4 py-2 rounded-lg'
+        }
+    });
+}
+</script>
+@endpush
+
+توجه: این کد از {{ url("/admin/listings") }} استفاده میکنه که مستقیماً توسط Laravel render میشه.
+بعد از کپی کردن، حتماً:
+1. فایل رو ذخیره کنید
+2. php artisan view:clear اجرا کنید
+3. مرورگر رو ببندید و دوباره باز کنید (نه فقط refresh)

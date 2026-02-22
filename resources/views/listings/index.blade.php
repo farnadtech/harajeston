@@ -142,7 +142,32 @@
             @foreach($hotAuctions as $auction)
             <!-- Auction Card -->
             <div class="group bg-white rounded-xl border border-gray-100 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full relative overflow-hidden">
-                @if($auction->ends_at && $auction->status === 'active')
+                @if($auction->status === 'pending' && $auction->starts_at)
+                    @php
+                        $now = \Carbon\Carbon::now();
+                        if ($now->lessThan($auction->starts_at)) {
+                            $diff = $now->diff($auction->starts_at);
+                            $days = $diff->d;
+                            $hours = $diff->h;
+                            $minutes = $diff->i;
+                            
+                            if ($days > 0) {
+                                $timeUntilStart = \App\Services\PersianNumberService::convertToPersian($days) . ' روز تا شروع';
+                            } elseif ($hours > 0) {
+                                $timeUntilStart = \App\Services\PersianNumberService::convertToPersian($hours) . ' ساعت تا شروع';
+                            } elseif ($minutes > 0) {
+                                $timeUntilStart = \App\Services\PersianNumberService::convertToPersian($minutes) . ' دقیقه تا شروع';
+                            } else {
+                                $timeUntilStart = 'در حال شروع...';
+                            }
+                        } else {
+                            $timeUntilStart = 'در حال شروع...';
+                        }
+                    @endphp
+                    <div class="absolute top-3 left-3 z-10 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">
+                        {{ $timeUntilStart }}
+                    </div>
+                @elseif($auction->ends_at && $auction->status === 'active')
                     @php
                         $hoursLeft = $auction->ends_at->diffInHours(now());
                         $now = \Carbon\Carbon::now();

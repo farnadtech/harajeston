@@ -114,7 +114,9 @@ Route::middleware('auth')->group(function () {
     // Wallet
     Route::get('/wallet', [WalletController::class, 'show'])->name('wallet.show');
     Route::post('/wallet/add-funds', [WalletController::class, 'addFunds'])->name('wallet.add-funds');
+    Route::post('/wallet/withdraw', [WalletController::class, 'withdraw'])->name('wallet.withdraw');
     Route::get('/wallet/export', [WalletController::class, 'export'])->name('wallet.export');
+
     
     // Store
     Route::get('/store/{username}', [StoreController::class, 'show'])->name('stores.show');
@@ -153,6 +155,16 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/commission', [SettingsController::class, 'updateCommission'])->name('admin.settings.commission.update');
         Route::put('/settings/seller', [SettingsController::class, 'updateSeller'])->name('admin.settings.seller.update');
         Route::put('/settings/auction-duration', [SettingsController::class, 'updateAuctionDuration'])->name('admin.settings.auction-duration.update');
+        Route::put('/settings/wallet', [SettingsController::class, 'updateWallet'])->name('admin.settings.wallet.update');
+        Route::put('/settings/loser-fee', [SettingsController::class, 'updateLoserFee'])->name('admin.settings.loser-fee.update');
+        Route::put('/settings/forfeit', [SettingsController::class, 'updateForfeit'])->name('admin.settings.forfeit.update');
+        Route::put('/settings/listing', [SettingsController::class, 'updateListing'])->name('admin.settings.listing.update');
+
+        // Category Commissions
+        Route::get('/category-commissions', [\App\Http\Controllers\Admin\CategoryCommissionController::class, 'index'])->name('admin.category-commissions.index');
+        Route::post('/category-commissions', [\App\Http\Controllers\Admin\CategoryCommissionController::class, 'store'])->name('admin.category-commissions.store');
+        Route::delete('/category-commissions/{id}', [\App\Http\Controllers\Admin\CategoryCommissionController::class, 'destroy'])->name('admin.category-commissions.destroy');
+
         
         // Financial Reports
         Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('admin.financial-reports.index');
@@ -172,7 +184,14 @@ Route::middleware('auth')->group(function () {
         Route::put('/categories/{category}/attributes/{attribute}', [\App\Http\Controllers\Admin\CategoryAttributeController::class, 'update'])->name('admin.category-attributes.update');
         Route::delete('/categories/{category}/attributes/{attribute}', [\App\Http\Controllers\Admin\CategoryAttributeController::class, 'destroy'])->name('admin.category-attributes.destroy');
         
-        Route::resource('listings', AdminListingController::class, ['as' => 'admin']);
+        // Admin Listings Resource (using slug for SEO)
+        Route::get('/listings', [AdminListingController::class, 'index'])->name('admin.listings.index');
+        Route::get('/listings/create', [AdminListingController::class, 'create'])->name('admin.listings.create');
+        Route::post('/listings', [AdminListingController::class, 'store'])->name('admin.listings.store');
+        Route::get('/listings/{listing}', [AdminListingController::class, 'show'])->name('admin.listings.show');
+        Route::get('/listings/{listing}/edit', [AdminListingController::class, 'edit'])->name('admin.listings.edit');
+        Route::put('/listings/{listing}', [AdminListingController::class, 'update'])->name('admin.listings.update');
+        Route::delete('/listings/{listing}', [AdminListingController::class, 'destroy'])->name('admin.listings.destroy');
         
         // Auction Management Routes
         Route::get('/listings/{listing}/manage', [AdminListingController::class, 'manage'])->name('admin.listings.manage');
@@ -180,6 +199,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/listings/{listing}/end-early', [AdminListingController::class, 'endEarly'])->name('admin.listings.end-early');
         Route::post('/listings/{listing}/suspend', [AdminListingController::class, 'suspend'])->name('admin.listings.suspend');
         Route::post('/listings/{listing}/activate', [AdminListingController::class, 'activate'])->name('admin.listings.activate');
+        Route::post('/listings/{listing}/approve', [AdminListingController::class, 'approve'])->name('admin.listings.approve');
+        Route::post('/listings/{listing}/reject', [AdminListingController::class, 'reject'])->name('admin.listings.reject');
         Route::put('/listings/{listing}/tags', [AdminListingController::class, 'updateTags'])->name('admin.listings.tags');
         Route::get('/listings/{listing}/bids', [AdminListingController::class, 'getBids'])->name('admin.listings.bids');
         Route::post('/listings/{listing}/images', [AdminListingController::class, 'uploadImage'])->name('admin.listings.images.upload');

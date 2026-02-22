@@ -14,13 +14,33 @@ class WalletController extends Controller
     /**
      * Display wallet and transaction history
      */
-    public function show()
+    public function show(Request $request)
     {
         $user = auth()->user();
         $wallet = $user->wallet;
-        $transactions = $wallet->transactions()
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        
+        $query = $wallet->transactions();
+
+        // Filter by date range (Jalali dates)
+        if ($request->has('from_date') && $request->from_date) {
+            try {
+                $gregorianDate = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d H:i', $request->from_date)->toCarbon();
+                $query->where('created_at', '>=', $gregorianDate);
+            } catch (\Exception $e) {
+                // Invalid date format, ignore filter
+            }
+        }
+        
+        if ($request->has('to_date') && $request->to_date) {
+            try {
+                $gregorianDate = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d H:i', $request->to_date)->toCarbon();
+                $query->where('created_at', '<=', $gregorianDate);
+            } catch (\Exception $e) {
+                // Invalid date format, ignore filter
+            }
+        }
+
+        $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
 
         return view('wallet.show', compact('wallet', 'transactions'));
     }
@@ -30,19 +50,58 @@ class WalletController extends Controller
      */
     public function addFunds(Request $request)
     {
+        $minDeposit = \App\Models\SiteSetting::get('wallet_min_deposit', 10000);
+        $maxDeposit = \App\Models\SiteSetting::get('wallet_max_deposit', 100000000);
+
         $request->validate([
-            'amount' => 'required|numeric|min:1000',
+            'amount' => "required|numeric|min:{$minDeposit}|max:{$maxDeposit}",
+        ], [
+            'amount.min' => "حداقل مبلغ افزایش موجودی " . number_format($minDeposit) . " تومان است.",
+            'amount.max' => "حداکثر مبلغ افزایش موجودی " . number_format($maxDeposit) . " تومان است.",
         ]);
 
         $this->walletService->addFunds(
             auth()->user(),
             $request->amount,
-            'افزودن موجودی'
+            'شارژ حساب'
         );
 
         return redirect()
             ->route('wallet.show')
             ->with('success', 'موجودی با موفقیت افزوده شد.');
+    }
+
+    /**
+     * Withdraw funds from wallet
+     */
+    public function withdraw(Request $request)
+    {
+        $user = auth()->user();
+        $wallet = $user->wallet;
+        $minWithdraw = \App\Models\SiteSetting::get('wallet_min_withdraw', 50000);
+
+        $request->validate([
+            'amount' => "required|numeric|min:{$minWithdraw}|max:{$wallet->balance}",
+        ], [
+            'amount.min' => "حداقل مبلغ برداشت " . number_format($minWithdraw) . " تومان است.",
+            'amount.max' => 'مبلغ برداشت نمی‌تواند بیشتر از موجودی قابل استفاده باشد.'
+        ]);
+
+        try {
+            $this->walletService->deduct(
+                $user,
+                $request->amount,
+                'برداشت از حساب'
+            );
+
+            return redirect()
+                ->route('wallet.show')
+                ->with('success', 'درخواست برداشت با موفقیت ثبت شد. مبلغ به حساب بانکی شما واریز خواهد شد.');
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('wallet.show')
+                ->with('error', 'خطا در ثبت درخواست برداشت: ' . $e->getMessage());
+        }
     }
 
     /**

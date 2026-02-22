@@ -323,13 +323,54 @@
                     </div>
                 </div>
                 
-                <div class="flex items-center gap-3 pr-4 border-r border-gray-200 mr-2">
-                    <div class="text-left hidden sm:block">
-                        <p class="text-sm font-bold text-gray-900">{{ auth()->user()->name }}</p>
-                        <p class="text-xs text-gray-500">مدیر سیستم</p>
-                    </div>
-                    <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border-2 border-white shadow-sm flex items-center justify-center">
-                        <span class="material-symbols-outlined text-gray-500">person</span>
+                <!-- User Profile Dropdown -->
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open" class="flex items-center gap-3 pr-4 border-r border-gray-200 mr-2 hover:bg-gray-50 rounded-lg py-2 px-3 transition-colors">
+                        <div class="text-left hidden sm:block">
+                            <p class="text-sm font-bold text-gray-900">{{ auth()->user()->name }}</p>
+                            <p class="text-xs text-gray-500">مدیر سیستم</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border-2 border-white shadow-sm flex items-center justify-center">
+                            <span class="material-symbols-outlined text-gray-500">person</span>
+                        </div>
+                    </button>
+                    
+                    <!-- Dropdown Menu -->
+                    <div x-show="open" 
+                         @click.away="open = false"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
+                         class="absolute left-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50 py-2"
+                         style="display: none;">
+                        
+                        <div class="px-4 py-3 border-b border-gray-100">
+                            <p class="text-sm font-bold text-gray-900">{{ auth()->user()->name }}</p>
+                            <p class="text-xs text-gray-500">{{ auth()->user()->email }}</p>
+                        </div>
+                        
+                        <a href="{{ route('dashboard') }}" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
+                            <span class="material-symbols-outlined text-gray-500 text-xl">home</span>
+                            <span class="text-sm">بازگشت به سایت</span>
+                        </a>
+                        
+                        <a href="{{ route('wallet.show') }}" class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors">
+                            <span class="material-symbols-outlined text-gray-500 text-xl">account_balance_wallet</span>
+                            <span class="text-sm">کیف پول</span>
+                        </a>
+                        
+                        <div class="border-t border-gray-100 my-2"></div>
+                        
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="flex items-center gap-3 w-full px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors">
+                                <span class="material-symbols-outlined text-xl">logout</span>
+                                <span class="text-sm">خروج از حساب</span>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

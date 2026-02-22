@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Listing Actions</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <h1>Test Listing Actions</h1>
+    <button onclick="testApprove()">Test Approve</button>
+    <button onclick="testSuspend()">Test Suspend</button>
+    
+    <div id="output"></div>
+
+    <script>
+        const BASE_URL = window.location.origin;
+        const LISTING_ID = 17; // Replace with actual listing ID
+        
+        function testApprove() {
+            const url = `${BASE_URL}/admin/listings/${LISTING_ID}/approve`;
+            console.log('Testing URL:', url);
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                document.getElementById('output').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('output').innerHTML = '<pre>Error: ' + error.message + '</pre>';
+            });
+        }
+        
+        function testSuspend() {
+            const url = `${BASE_URL}/admin/listings/${LISTING_ID}/suspend`;
+            console.log('Testing URL:', url);
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason: 'Test suspension' })
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                document.getElementById('output').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('output').innerHTML = '<pre>Error: ' + error.message + '</pre>';
+            });
+        }
+    </script>
+</body>
+</html>

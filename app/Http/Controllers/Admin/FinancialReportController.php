@@ -19,13 +19,29 @@ class FinancialReportController extends Controller
     public function index(Request $request)
     {
         // دریافت بازه زمانی از request یا استفاده از ماه جاری
-        $startDate = $request->input('start_date') 
-            ? Carbon::parse($request->input('start_date'))->startOfDay()
-            : Carbon::now()->startOfMonth();
+        if ($request->input('start_date')) {
+            // تبدیل تاریخ شمسی به میلادی
+            try {
+                $jalaliStart = $request->input('start_date');
+                $startDate = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d H:i', $jalaliStart)->toCarbon()->startOfDay();
+            } catch (\Exception $e) {
+                $startDate = Carbon::now()->startOfMonth();
+            }
+        } else {
+            $startDate = Carbon::now()->startOfMonth();
+        }
             
-        $endDate = $request->input('end_date')
-            ? Carbon::parse($request->input('end_date'))->endOfDay()
-            : Carbon::now()->endOfMonth();
+        if ($request->input('end_date')) {
+            // تبدیل تاریخ شمسی به میلادی
+            try {
+                $jalaliEnd = $request->input('end_date');
+                $endDate = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d H:i', $jalaliEnd)->toCarbon()->endOfDay();
+            } catch (\Exception $e) {
+                $endDate = Carbon::now()->endOfMonth();
+            }
+        } else {
+            $endDate = Carbon::now()->endOfMonth();
+        }
 
         // دریافت داده‌ها
         $summary = $this->financialReportService->getSiteRevenueSummary($startDate, $endDate);

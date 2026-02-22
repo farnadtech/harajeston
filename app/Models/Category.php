@@ -44,6 +44,11 @@ class Category extends Model
         return $this->hasMany(CategoryAttribute::class)->orderBy('order');
     }
 
+    public function categoryCommission()
+    {
+        return $this->hasOne(\App\Models\CategoryCommission::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {

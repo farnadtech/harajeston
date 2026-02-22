@@ -27,8 +27,24 @@ class SettingsController extends Controller
             'force_duration' => SiteSetting::get('force_auction_duration', false),
             'duration_days' => SiteSetting::get('auction_duration_days', 7)
         ];
+        $walletSettings = [
+            'min_deposit' => SiteSetting::get('wallet_min_deposit', 10000),
+            'max_deposit' => SiteSetting::get('wallet_max_deposit', 100000000),
+            'min_withdraw' => SiteSetting::get('wallet_min_withdraw', 50000),
+        ];
+        $loserFeeSettings = [
+            'enabled' => SiteSetting::get('loser_fee_enabled', false),
+            'percentage' => SiteSetting::get('loser_fee_percentage', 5),
+        ];
+        $forfeitSettings = [
+            'to_site_percentage' => SiteSetting::get('forfeit_to_site_percentage', 100),
+        ];
 
-        return view('admin.settings.index', compact('depositSettings', 'commissionSettings', 'sellerSettings', 'auctionDurationSettings'));
+        $listingSettings = [
+            'require_approval' => SiteSetting::get('require_listing_approval', true),
+        ];
+
+        return view('admin.settings.index', compact('depositSettings', 'commissionSettings', 'sellerSettings', 'auctionDurationSettings', 'walletSettings', 'loserFeeSettings', 'forfeitSettings', 'listingSettings'));
     }
 
     /**
@@ -56,7 +72,7 @@ class SettingsController extends Controller
     public function updateCommission(Request $request)
     {
         $validated = $request->validate([
-            'commission_type' => 'required|in:fixed,percentage',
+            'commission_type' => 'required|in:fixed,percentage,category',
             'commission_fixed_amount' => 'required|integer|min:0',
             'commission_percentage' => 'required|numeric|min:0|max:100',
             'commission_payer' => 'required|in:buyer,seller,both',
@@ -103,5 +119,71 @@ class SettingsController extends Controller
 
         return redirect()->route('admin.settings.index')
             ->with('success', 'تنظیمات مدت زمان حراجی با موفقیت به‌روزرسانی شد.');
+    }
+
+    /**
+     * به‌روزرسانی تنظیمات کیف پول
+     */
+    public function updateWallet(Request $request)
+    {
+        $validated = $request->validate([
+            'wallet_min_deposit' => 'required|integer|min:1000',
+            'wallet_max_deposit' => 'required|integer|min:10000',
+            'wallet_min_withdraw' => 'required|integer|min:1000',
+        ]);
+
+        SiteSetting::set('wallet_min_deposit', $validated['wallet_min_deposit'], 'integer');
+        SiteSetting::set('wallet_max_deposit', $validated['wallet_max_deposit'], 'integer');
+        SiteSetting::set('wallet_min_withdraw', $validated['wallet_min_withdraw'], 'integer');
+
+        return redirect()->route('admin.settings.index')
+            ->with('success', 'تنظیمات کیف پول با موفقیت به‌روزرسانی شد.');
+    }
+
+    /**
+     * به‌روزرسانی تنظیمات کارمزد بازندگان
+     */
+    public function updateLoserFee(Request $request)
+    {
+        $validated = $request->validate([
+            'loser_fee_enabled' => 'nullable|boolean',
+            'loser_fee_percentage' => 'required|numeric|min:0|max:100',
+        ]);
+
+        $enabled = $request->has('loser_fee_enabled');
+        
+        SiteSetting::set('loser_fee_enabled', $enabled, 'boolean');
+        SiteSetting::set('loser_fee_percentage', $validated['loser_fee_percentage'], 'decimal');
+
+        return redirect()->route('admin.settings.index')
+            ->with('success', 'تنظیمات کارمزد بازندگان با موفقیت به‌روزرسانی شد.');
+    }
+
+    /**
+     * به‌روزرسانی تنظیمات سپرده ضبط شده
+     */
+    public function updateForfeit(Request $request)
+    {
+        $validated = $request->validate([
+            'forfeit_to_site_percentage' => 'required|numeric|min:0|max:100',
+        ]);
+
+        SiteSetting::set('forfeit_to_site_percentage', $validated['forfeit_to_site_percentage'], 'decimal');
+
+        return redirect()->route('admin.settings.index')
+            ->with('success', 'تنظیمات سپرده ضبط شده با موفقیت به‌روزرسانی شد.');
+    }
+
+    /**
+     * به‌روزرسانی تنظیمات آگهی‌ها
+     */
+    public function updateListing(Request $request)
+    {
+        $requireApproval = $request->has('require_listing_approval');
+        
+        SiteSetting::set('require_listing_approval', $requireApproval, 'boolean');
+
+        return redirect()->route('admin.settings.index')
+            ->with('success', 'تنظیمات آگهی‌ها با موفقیت به‌روزرسانی شد.');
     }
 }

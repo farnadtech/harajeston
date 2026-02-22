@@ -58,7 +58,7 @@
                 <div>
                     <p class="text-sm text-gray-500">در انتظار تایید</p>
                     <p class="text-2xl font-bold text-gray-900 mt-1">
-                        {{ \App\Services\PersianNumberService::convertToPersian(\App\Models\Listing::where('status', 'pending')->count()) }}
+                        {{ \App\Services\PersianNumberService::convertToPersian(\App\Models\Listing::whereIn('status', ['draft', 'pending'])->count()) }}
                     </p>
                 </div>
                 <div class="w-12 h-12 bg-yellow-50 rounded-lg flex items-center justify-center">
@@ -108,11 +108,13 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">وضعیت</label>
                 <select name="status" class="w-full border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary">
                     <option value="">همه</option>
-                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>در انتظار</option>
+                    <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>پیش‌نویس (نیاز به تایید)</option>
+                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>در انتظار شروع</option>
                     <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>فعال</option>
                     <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>تکمیل شده</option>
                     <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>لغو شده</option>
                     <option value="suspended" {{ request('status') === 'suspended' ? 'selected' : '' }}>معلق</option>
+                    <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>رد شده</option>
                 </select>
             </div>
 
@@ -186,16 +188,20 @@
                             </a>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            @if($listing->status === 'active')
+                            @if($listing->status === 'draft')
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">نیاز به تایید</span>
+                            @elseif($listing->status === 'active')
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">فعال</span>
                             @elseif($listing->status === 'pending')
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">در انتظار</span>
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">در انتظار شروع</span>
                             @elseif($listing->status === 'completed')
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">تکمیل شده</span>
                             @elseif($listing->status === 'cancelled')
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">لغو شده</span>
                             @elseif($listing->status === 'suspended')
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800">معلق</span>
+                            @elseif($listing->status === 'rejected')
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">رد شده</span>
                             @elseif($listing->status === 'ended')
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">پایان یافته</span>
                             @elseif($listing->status === 'failed')
@@ -222,19 +228,46 @@
                                    title="مدیریت">
                                     <span class="material-symbols-outlined text-[20px]">settings</span>
                                 </a>
-                                @if($listing->status === 'pending')
-                                <button onclick="activateListing({{ $listing->id }})" 
-                                        class="text-green-600 hover:text-green-800" 
-                                        title="تایید و فعال‌سازی">
-                                    <span class="material-symbols-outlined text-[20px]">check_circle</span>
-                                </button>
+                                
+                                {{-- Draft status: Show approve and reject buttons --}}
+                                @if($listing->status === 'draft')
+                                    <button onclick="approveListing({{ $listing->id }})" 
+                                            class="text-green-600 hover:text-green-800" 
+                                            title="تایید و انتشار">
+                                        <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                                    </button>
+                                    <button onclick="rejectListing({{ $listing->id }})" 
+                                            class="text-red-600 hover:text-red-800" 
+                                            title="رد آگهی">
+                                        <span class="material-symbols-outlined text-[20px]">cancel</span>
+                                    </button>
                                 @endif
+                                
+                                {{-- Pending status: Show activate button --}}
+                                @if($listing->status === 'pending')
+                                    <button onclick="activateListing({{ $listing->id }})" 
+                                            class="text-green-600 hover:text-green-800" 
+                                            title="فعال‌سازی">
+                                        <span class="material-symbols-outlined text-[20px]">play_circle</span>
+                                    </button>
+                                @endif
+                                
+                                {{-- Active status: Show suspend button --}}
                                 @if($listing->status === 'active')
-                                <button onclick="suspendListing({{ $listing->id }})" 
-                                        class="text-orange-600 hover:text-orange-800" 
-                                        title="تعلیق">
-                                    <span class="material-symbols-outlined text-[20px]">block</span>
-                                </button>
+                                    <button onclick="suspendListing({{ $listing->id }})" 
+                                            class="text-orange-600 hover:text-orange-800" 
+                                            title="تعلیق">
+                                        <span class="material-symbols-outlined text-[20px]">block</span>
+                                    </button>
+                                @endif
+                                
+                                {{-- Suspended status: Show activate button --}}
+                                @if($listing->status === 'suspended')
+                                    <button onclick="activateListing({{ $listing->id }})" 
+                                            class="text-green-600 hover:text-green-800" 
+                                            title="فعال‌سازی مجدد">
+                                        <span class="material-symbols-outlined text-[20px]">play_circle</span>
+                                    </button>
                                 @endif
                             </div>
                         </td>
@@ -262,61 +295,233 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+const csrfToken = '{{ csrf_token() }}';
+const baseUrl = '{{ url('/') }}';
+
+function approveListing(listingId) {
+    Swal.fire({
+        title: 'تایید آگهی',
+        text: 'آیا از تایید و انتشار این آگهی اطمینان دارید؟',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'بله، تایید کن',
+        cancelButtonText: 'انصراف'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(baseUrl + '/admin/listings/' + listingId + '/approve', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'موفق!',
+                        text: 'آگهی با موفقیت تایید و منتشر شد',
+                        icon: 'success',
+                        confirmButtonColor: '#10b981'
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        title: 'خطا!',
+                        text: data.message || 'خطا در تایید آگهی',
+                        icon: 'error',
+                        confirmButtonColor: '#ef4444'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'خطا!',
+                    text: 'خطا در ارتباط با سرور',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444'
+                });
+            });
+        }
+    });
+}
+
+function rejectListing(listingId) {
+    Swal.fire({
+        title: 'رد آگهی',
+        text: 'لطفاً دلیل رد آگهی را وارد کنید:',
+        input: 'textarea',
+        inputPlaceholder: 'دلیل رد...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'رد کن',
+        cancelButtonText: 'انصراف',
+        inputValidator: (value) => {
+            if (!value) return 'لطفاً دلیل رد را وارد کنید'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(baseUrl + '/admin/listings/' + listingId + '/reject', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason: result.value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'رد شد!',
+                        text: 'آگهی با موفقیت رد شد',
+                        icon: 'success',
+                        confirmButtonColor: '#10b981'
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        title: 'خطا!',
+                        text: data.message || 'خطا در رد آگهی',
+                        icon: 'error',
+                        confirmButtonColor: '#ef4444'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'خطا!',
+                    text: 'خطا در ارتباط با سرور',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444'
+                });
+            });
+        }
+    });
+}
+
 function activateListing(listingId) {
-    if (confirm('آیا از فعال‌سازی این آگهی اطمینان دارید؟')) {
-        fetch(`/admin/listings/${listingId}/activate`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('خطا در فعال‌سازی آگهی');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('خطا در ارتباط با سرور');
-        });
-    }
+    Swal.fire({
+        title: 'فعال‌سازی آگهی',
+        text: 'آیا از فعال‌سازی این آگهی اطمینان دارید؟',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'بله، فعال کن',
+        cancelButtonText: 'انصراف'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(baseUrl + '/admin/listings/' + listingId + '/activate', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'موفق!',
+                        text: 'آگهی با موفقیت فعال شد',
+                        icon: 'success',
+                        confirmButtonColor: '#10b981'
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        title: 'خطا!',
+                        text: data.message || 'خطا در فعال‌سازی آگهی',
+                        icon: 'error',
+                        confirmButtonColor: '#ef4444'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'خطا!',
+                    text: 'خطا در ارتباط با سرور',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444'
+                });
+            });
+        }
+    });
 }
 
 function suspendListing(listingId) {
-    const reason = prompt('لطفاً دلیل تعلیق را وارد کنید:');
-    if (reason) {
-        fetch(`/admin/listings/${listingId}/suspend`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ reason: reason })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('خطا در تعلیق آگهی');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('خطا در ارتباط با سرور');
-        });
-    }
+    Swal.fire({
+        title: 'تعلیق آگهی',
+        text: 'لطفاً دلیل تعلیق را وارد کنید:',
+        input: 'textarea',
+        inputPlaceholder: 'دلیل تعلیق...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#f97316',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'تعلیق کن',
+        cancelButtonText: 'انصراف',
+        inputValidator: (value) => {
+            if (!value) return 'لطفاً دلیل تعلیق را وارد کنید'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(baseUrl + '/admin/listings/' + listingId + '/suspend', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason: result.value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'تعلیق شد!',
+                        text: 'آگهی با موفقیت تعلیق شد',
+                        icon: 'success',
+                        confirmButtonColor: '#10b981'
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        title: 'خطا!',
+                        text: data.message || 'خطا در تعلیق آگهی',
+                        icon: 'error',
+                        confirmButtonColor: '#ef4444'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    title: 'خطا!',
+                    text: 'خطا در ارتباط با سرور',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444'
+                });
+            });
+        }
+    });
 }
 
 function exportListings() {
-    alert('قابلیت خروجی Excel به زودی اضافه خواهد شد');
+    Swal.fire({
+        title: 'به زودی',
+        text: 'قابلیت خروجی Excel به زودی اضافه خواهد شد',
+        icon: 'info',
+        confirmButtonColor: '#3b82f6'
+    });
 }
 </script>
 @endpush

@@ -77,6 +77,7 @@
     </style>
     
     @livewireStyles
+    @stack('styles')
 </head>
 <body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex flex-col">
     <!-- Sticky Header -->
@@ -240,5 +241,6 @@
 
     @livewireScripts
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    @stack('scripts')
 </body>
 </html>

@@ -30,11 +30,16 @@ class CommissionService
     }
 
     /**
-     * محاسبه مبلغ کمیسیون بر اساس تنظیمات سایت
+     * محاسبه مبلغ کمیسیون بر اساس تنظیمات سایت یا دسته‌بندی
      */
-    public function calculateCommission(int $finalPrice): int
+    public function calculateCommission(int $finalPrice, ?int $categoryId = null): int
     {
         $commissionType = SiteSetting::get('commission_type', 'percentage');
+        
+        // اگر نوع محاسبه بر اساس دسته‌بندی باشد
+        if ($commissionType === 'category' && $categoryId) {
+            return $this->calculateCategoryCommission($finalPrice, $categoryId);
+        }
         
         if ($commissionType === 'fixed') {
             return (int) SiteSetting::get('commission_fixed_amount', 50000);
@@ -46,11 +51,46 @@ class CommissionService
     }
 
     /**
+     * محاسبه کمیسیون بر اساس دسته‌بندی
+     */
+    protected function calculateCategoryCommission(int $finalPrice, int $categoryId): int
+    {
+        $category = \App\Models\Category::find($categoryId);
+        
+        if (!$category) {
+            // اگر دسته‌بندی پیدا نشد، از تنظیمات پیش‌فرض استفاده کن
+            $percentage = (float) SiteSetting::get('commission_percentage', 5);
+            return (int) ($finalPrice * ($percentage / 100));
+        }
+        
+        // جستجوی کمیسیون برای این دسته‌بندی
+        $commission = \App\Models\CategoryCommission::where('category_id', $categoryId)->first();
+        
+        // اگر کمیسیون برای این دسته تعریف نشده، از دسته والد استفاده کن
+        if (!$commission && $category->parent_id) {
+            return $this->calculateCategoryCommission($finalPrice, $category->parent_id);
+        }
+        
+        // اگر هیچ کمیسیونی پیدا نشد، از تنظیمات پیش‌فرض استفاده کن
+        if (!$commission) {
+            $percentage = (float) SiteSetting::get('commission_percentage', 5);
+            return (int) ($finalPrice * ($percentage / 100));
+        }
+        
+        // محاسبه بر اساس نوع کمیسیون
+        if ($commission->type === 'fixed') {
+            return (int) $commission->fixed_amount;
+        }
+        
+        return (int) ($finalPrice * ($commission->percentage / 100));
+    }
+
+    /**
      * کسر کمیسیون از طرفین و واریز به کیف پول سایت
      */
     public function deductCommission(Listing $listing, User $buyer, int $finalPrice): array
     {
-        $commission = $this->calculateCommission($finalPrice);
+        $commission = $this->calculateCommission($finalPrice, $listing->category_id);
         $payer = SiteSetting::get('commission_payer', 'buyer');
         
         $buyerCommission = 0;

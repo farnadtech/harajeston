@@ -111,11 +111,61 @@ class AuctionService
             
             // Release deposits for non-top-3 bidders
             foreach ($others as $bid) {
-                $this->walletService->releaseDeposit(
-                    $bid->user,
-                    $listing->required_deposit,
-                    $listing
-                );
+                // بررسی تنظیمات کارمزد بازندگان
+                $loserFeeEnabled = \App\Models\SiteSetting::get('loser_fee_enabled', false);
+                $loserFeePercentage = (float) \App\Models\SiteSetting::get('loser_fee_percentage', 0);
+                
+                if ($loserFeeEnabled && $loserFeePercentage > 0) {
+                    // محاسبه کارمزد
+                    $fee = (int) ($listing->required_deposit * ($loserFeePercentage / 100));
+                    $refundAmount = $listing->required_deposit - $fee;
+                    
+                    // کسر کارمزد از موجودی مسدود
+                    $this->walletService->deductFrozenAmount(
+                        $bid->user,
+                        $fee,
+                        sprintf('کارمزد شرکت در مزایده: %s', $listing->title),
+                        $listing
+                    );
+                    
+                    // واریز کارمزد به کیف پول سایت
+                    $siteUser = User::find(1);
+                    if ($siteUser) {
+                        $this->walletService->addFunds(
+                            $siteUser,
+                            $fee,
+                            sprintf('کارمزد بازنده مزایده: %s', $listing->title)
+                        );
+                    }
+                    
+                    // آزادسازی مابقی سپرده
+                    if ($refundAmount > 0) {
+                        $wallet = $bid->user->wallet;
+                        $wallet->frozen -= $refundAmount;
+                        $wallet->balance += $refundAmount;
+                        $wallet->save();
+                        
+                        \App\Models\WalletTransaction::create([
+                            'wallet_id' => $wallet->id,
+                            'type' => 'release_deposit',
+                            'amount' => $refundAmount,
+                            'balance_before' => $wallet->balance - $refundAmount,
+                            'balance_after' => $wallet->balance,
+                            'frozen_before' => $wallet->frozen + $refundAmount,
+                            'frozen_after' => $wallet->frozen,
+                            'reference_type' => \App\Models\Listing::class,
+                            'reference_id' => $listing->id,
+                            'description' => sprintf('بازگشت سپرده (پس از کسر کارمزد): %s', $listing->title),
+                        ]);
+                    }
+                } else {
+                    // آزادسازی کامل سپرده بدون کارمزد
+                    $this->walletService->releaseDeposit(
+                        $bid->user,
+                        $listing->required_deposit,
+                        $listing
+                    );
+                }
             }
             
             // Update auction status to 'ended'
@@ -235,6 +285,13 @@ class AuctionService
             
             $currentWinner = User::find($listing->current_winner_id);
             
+            // تنظیمات تقسیم سپرده ضبط شده
+            $forfeitToSite = (float) \App\Models\SiteSetting::get('forfeit_to_site_percentage', 100);
+            $forfeitToSeller = 100 - $forfeitToSite;
+            
+            $siteAmount = (int) ($listing->required_deposit * ($forfeitToSite / 100));
+            $sellerAmount = $listing->required_deposit - $siteAmount;
+            
             // Forfeit current winner's deposit
             $this->walletService->deductFrozenAmount(
                 $currentWinner,
@@ -243,12 +300,26 @@ class AuctionService
                 $listing
             );
             
-            // Transfer forfeited deposit to seller as compensation
-            $this->walletService->addFunds(
-                $listing->seller,
-                $listing->required_deposit,
-                sprintf('دریافت سپرده ضبط شده: %s', $listing->title)
-            );
+            // واریز سهم سایت
+            if ($siteAmount > 0) {
+                $siteUser = User::find(1);
+                if ($siteUser) {
+                    $this->walletService->addFunds(
+                        $siteUser,
+                        $siteAmount,
+                        sprintf('سهم سایت از سپرده ضبط شده: %s', $listing->title)
+                    );
+                }
+            }
+            
+            // واریز سهم فروشنده
+            if ($sellerAmount > 0) {
+                $this->walletService->addFunds(
+                    $listing->seller,
+                    $sellerAmount,
+                    sprintf('سهم فروشنده از سپرده ضبط شده: %s', $listing->title)
+                );
+            }
             
             // Find next ranked bidder (top 3)
             $top3Bids = Bid::where('listing_id', $listing->id)
