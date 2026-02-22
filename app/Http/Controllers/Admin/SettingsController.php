@@ -42,6 +42,7 @@ class SettingsController extends Controller
 
         $listingSettings = [
             'require_approval' => SiteSetting::get('require_listing_approval', true),
+            'default_show_before_start' => SiteSetting::get('default_show_before_start', false),
         ];
 
         return view('admin.settings.index', compact('depositSettings', 'commissionSettings', 'sellerSettings', 'auctionDurationSettings', 'walletSettings', 'loserFeeSettings', 'forfeitSettings', 'listingSettings'));
@@ -180,8 +181,10 @@ class SettingsController extends Controller
     public function updateListing(Request $request)
     {
         $requireApproval = $request->has('require_listing_approval');
+        $defaultShowBeforeStart = $request->has('default_show_before_start');
         
         SiteSetting::set('require_listing_approval', $requireApproval, 'boolean');
+        SiteSetting::set('default_show_before_start', $defaultShowBeforeStart, 'boolean');
 
         return redirect()->route('admin.settings.index')
             ->with('success', 'تنظیمات آگهی‌ها با موفقیت به‌روزرسانی شد.');

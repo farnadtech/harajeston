@@ -175,12 +175,28 @@
                     </label>
                 </div>
 
+                <div class="mb-6">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" 
+                               name="default_show_before_start" 
+                               value="1"
+                               {{ ($listingSettings['default_show_before_start'] ?? false) ? 'checked' : '' }}
+                               class="ml-2 w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                        <div>
+                            <span class="font-bold text-gray-700">نمایش پیش‌فرض حراجی‌ها قبل از شروع</span>
+                            <p class="text-sm text-gray-600 mt-1">
+                                اگر فعال باشد، حراجی‌های جدید به صورت پیش‌فرض در لیست‌های سایت قبل از زمان شروع نمایش داده می‌شوند (با برچسب "هنوز شروع نشده"). فروشندگان می‌توانند این تنظیم را برای هر حراجی تغییر دهند.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+
                 <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                     <div class="flex items-start gap-3">
                         <span class="material-symbols-outlined text-yellow-600 text-xl">info</span>
                         <div class="text-sm text-yellow-800">
                             <p class="font-bold mb-1">توجه:</p>
-                            <p>اگر این گزینه را غیرفعال کنید، آگهی‌های جدید بدون بررسی منتشر می‌شوند. توصیه می‌شود این گزینه را فعال نگه دارید تا کیفیت آگهی‌ها کنترل شود.</p>
+                            <p>اگر گزینه "نیاز به تایید دستی" را غیرفعال کنید، آگهی‌های جدید بدون بررسی منتشر می‌شوند. توصیه می‌شود این گزینه را فعال نگه دارید تا کیفیت آگهی‌ها کنترل شود.</p>
                         </div>
                     </div>
                 </div>

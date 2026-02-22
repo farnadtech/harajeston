@@ -22,6 +22,9 @@ class ListingController extends Controller
      */
     public function index(Request $request)
     {
+        // بررسی تنظیمات ادمین برای نمایش حراجی‌های pending
+        $showPendingListings = \App\Models\SiteSetting::get('default_show_before_start', false);
+        
         // Check if any filter is applied
         $hasFilters = $request->has('category') || $request->has('tag') || 
                      $request->has('search') || $request->has('seller_id') || 
@@ -29,29 +32,62 @@ class ListingController extends Controller
 
         // If no filters, show home page
         if (!$hasFilters) {
-            $listings = Listing::query()
-                ->where('status', 'active')
-                ->with('seller', 'images')
+            $query = Listing::query();
+            
+            if ($showPendingListings) {
+                // نمایش حراجی‌های active و pending
+                $query->where(function($q) {
+                    $q->where('status', 'active')
+                      ->orWhere('status', 'pending');
+                });
+            } else {
+                // فقط نمایش حراجی‌های active
+                $query->where('status', 'active');
+            }
+            
+            $listings = $query->with('seller', 'images')
                 ->orderBy('ends_at', 'asc')
                 ->paginate(20);
             
             return view('listings.index', compact('listings'));
         }
 
-        // Apply filters for search results - include both active and completed
-        $query = Listing::query()->whereIn('status', ['active', 'completed']);
+        // Apply filters for search results
+        $query = Listing::query();
+        
+        if ($showPendingListings) {
+            // نمایش active, completed, و pending
+            $query->whereIn('status', ['active', 'completed', 'pending']);
+        } else {
+            // فقط نمایش active و completed
+            $query->whereIn('status', ['active', 'completed']);
+        }
 
         // Filter by category
         if ($request->has('category') && $request->category) {
             $category = \App\Models\Category::where('slug', $request->category)->first();
             if ($category) {
-                // اگر دسته اصلی است، همه زیردسته‌ها را هم نمایش بده
-                if ($category->isParent()) {
-                    $categoryIds = $category->children()->pluck('id')->push($category->id);
-                    $query->whereIn('category_id', $categoryIds);
-                } else {
-                    $query->where('category_id', $category->id);
+                // جمع‌آوری تمام ID های دسته و زیردسته‌ها (تا سطح 3)
+                $categoryIds = collect([$category->id]);
+                
+                // اگر دسته سطح 1 است، همه فرزندان سطح 2 و 3 را اضافه کن
+                if ($category->parent_id === null) {
+                    $level2Children = $category->children()->pluck('id');
+                    $categoryIds = $categoryIds->merge($level2Children);
+                    
+                    // برای هر فرزند سطح 2، فرزندان سطح 3 را هم اضافه کن
+                    foreach ($level2Children as $level2Id) {
+                        $level3Children = \App\Models\Category::where('parent_id', $level2Id)->pluck('id');
+                        $categoryIds = $categoryIds->merge($level3Children);
+                    }
                 }
+                // اگر دسته سطح 2 است، فرزندان سطح 3 را اضافه کن
+                elseif ($category->parent_id !== null && $category->children()->count() > 0) {
+                    $level3Children = $category->children()->pluck('id');
+                    $categoryIds = $categoryIds->merge($level3Children);
+                }
+                
+                $query->whereIn('category_id', $categoryIds);
             }
         }
 
@@ -107,9 +143,19 @@ class ListingController extends Controller
             }
         }
 
-        // Sorting - active first, then completed by end date
+        // Sorting - pending first (starting soon), then active (ending soon), then completed
         $sort = $request->get('sort', 'ending_soon');
         switch ($sort) {
+            case 'starting_soon':
+                // حراجی‌های pending که زودتر شروع می‌شوند اول، بعد active که زودتر تمام می‌شوند
+                $query->orderByRaw("CASE 
+                    WHEN status = 'pending' THEN 0 
+                    WHEN status = 'active' THEN 1 
+                    ELSE 2 
+                END")
+                      ->orderBy('starts_at', 'asc')
+                      ->orderBy('ends_at', 'asc');
+                break;
             case 'ending_soon':
                 $query->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
                       ->orderBy('ends_at', 'asc');
@@ -175,6 +221,21 @@ class ListingController extends Controller
                 (auth()->user()->role !== 'admin' && auth()->id() !== $listing->seller_id)) {
                 abort(404);
             }
+        }
+
+        // بررسی دسترسی برای آگهی‌های pending (هنوز شروع نشده)
+        if ($listing->status === 'pending') {
+            // بررسی تنظیمات ادمین - فقط تنظیمات ادمین مهم است نه فیلد show_before_start
+            $showPendingListings = \App\Models\SiteSetting::get('default_show_before_start', false);
+            
+            if (!$showPendingListings) {
+                // اگر تنظیمات ادمین غیرفعال است، فقط ادمین و صاحب آگهی می‌تونن ببینن
+                if (!auth()->check() || 
+                    (auth()->user()->role !== 'admin' && auth()->id() !== $listing->seller_id)) {
+                    abort(404);
+                }
+            }
+            // اگر تنظیمات ادمین فعال است، همه می‌تونن ببینن
         }
 
         // Increment view count

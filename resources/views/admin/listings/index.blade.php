@@ -231,12 +231,12 @@
                                 
                                 {{-- Draft status: Show approve and reject buttons --}}
                                 @if($listing->status === 'draft')
-                                    <button onclick="approveListing({{ $listing->id }})" 
+                                    <button onclick="approveListing('{{ $listing->slug }}')" 
                                             class="text-green-600 hover:text-green-800" 
                                             title="تایید و انتشار">
                                         <span class="material-symbols-outlined text-[20px]">check_circle</span>
                                     </button>
-                                    <button onclick="rejectListing({{ $listing->id }})" 
+                                    <button onclick="rejectListing('{{ $listing->slug }}')" 
                                             class="text-red-600 hover:text-red-800" 
                                             title="رد آگهی">
                                         <span class="material-symbols-outlined text-[20px]">cancel</span>
@@ -245,7 +245,7 @@
                                 
                                 {{-- Pending status: Show activate button --}}
                                 @if($listing->status === 'pending')
-                                    <button onclick="activateListing({{ $listing->id }})" 
+                                    <button onclick="activateListing('{{ $listing->slug }}')" 
                                             class="text-green-600 hover:text-green-800" 
                                             title="فعال‌سازی">
                                         <span class="material-symbols-outlined text-[20px]">play_circle</span>
@@ -254,7 +254,7 @@
                                 
                                 {{-- Active status: Show suspend button --}}
                                 @if($listing->status === 'active')
-                                    <button onclick="suspendListing({{ $listing->id }})" 
+                                    <button onclick="suspendListing('{{ $listing->slug }}')" 
                                             class="text-orange-600 hover:text-orange-800" 
                                             title="تعلیق">
                                         <span class="material-symbols-outlined text-[20px]">block</span>
@@ -263,7 +263,7 @@
                                 
                                 {{-- Suspended status: Show activate button --}}
                                 @if($listing->status === 'suspended')
-                                    <button onclick="activateListing({{ $listing->id }})" 
+                                    <button onclick="activateListing('{{ $listing->slug }}')" 
                                             class="text-green-600 hover:text-green-800" 
                                             title="فعال‌سازی مجدد">
                                         <span class="material-symbols-outlined text-[20px]">play_circle</span>

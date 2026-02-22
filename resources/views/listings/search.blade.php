@@ -121,6 +121,9 @@
                     <div class="flex items-center gap-3">
                         <span class="text-sm text-gray-600 font-medium">مرتب‌سازی:</span>
                         <select onchange="window.location.href=this.value" class="border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary">
+                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'starting_soon']) }}" {{ request('sort') == 'starting_soon' ? 'selected' : '' }}>
+                                زودتر شروع می‌شود
+                            </option>
                             <option value="{{ request()->fullUrlWithQuery(['sort' => 'ending_soon']) }}" {{ request('sort') == 'ending_soon' || !request('sort') ? 'selected' : '' }}>
                                 زودتر به پایان می‌رسد
                             </option>
@@ -188,117 +191,10 @@
             <!-- Results Grid -->
             @if($listings->isNotEmpty())
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        @foreach($listings as $listing)
-        <!-- Auction Card -->
-        <div class="group bg-white rounded-xl border border-gray-100 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full relative overflow-hidden {{ $listing->status === 'completed' ? 'opacity-75' : '' }}">
-            @if($listing->status === 'completed')
-                <div class="absolute top-3 left-3 z-10 bg-gray-600 text-white text-xs font-bold px-3 py-1.5 rounded-md shadow-sm">
-                    تمام شده
-                </div>
-            @elseif($listing->ends_at && $listing->status === 'active')
-                @php
-                    $hoursLeft = $listing->ends_at->diffInHours(now());
-                    $now = \Carbon\Carbon::now();
-                    if ($now->greaterThanOrEqualTo($listing->ends_at)) {
-                        $timeLeft = 'پایان یافته';
-                    } else {
-                        $diff = $now->diff($listing->ends_at);
-                        $days = $diff->d;
-                        $hours = $diff->h;
-                        $minutes = $diff->i;
-                        
-                        if ($days > 0) {
-                            $timeLeft = \App\Services\PersianNumberService::convertToPersian($days) . ' روز';
-                        } elseif ($hours > 0) {
-                            $timeLeft = \App\Services\PersianNumberService::convertToPersian($hours) . ' ساعت';
-                        } elseif ($minutes > 0) {
-                            $timeLeft = \App\Services\PersianNumberService::convertToPersian($minutes) . ' دقیقه';
-                        } else {
-                            $timeLeft = 'کمتر از یک دقیقه';
-                        }
-                    }
-                @endphp
-                <div class="absolute top-3 left-3 z-10 {{ $hoursLeft < 3 ? 'bg-red-500 animate-pulse' : 'bg-orange-500' }} text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm">
-                    {{ $timeLeft }} مانده
-                </div>
-            @endif
-            
-            @if($listing->buy_now_price)
-                <div class="absolute top-3 right-3 z-10 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-md shadow-sm flex items-center gap-1">
-                    <span class="material-symbols-outlined text-xs">bolt</span>
-                    خرید فوری
-                </div>
-            @endif
-            
-            <a href="{{ route('listings.show', $listing) }}" class="h-56 w-full bg-gray-50 relative overflow-hidden block">
-                @if($listing->images->isNotEmpty())
-                    <img alt="{{ $listing->title }}" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" src="{{ url('storage/' . $listing->images->first()->file_path) }}"/>
-                @else
-                    <div class="w-full h-full flex items-center justify-center text-gray-300">
-                        <span class="material-symbols-outlined text-6xl">image</span>
-                    </div>
-                @endif
-            </a>
-            
-            <div class="p-4 flex flex-col flex-1">
-                <div class="flex items-center gap-1 mb-2">
-                    <span class="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{{ $listing->category ? $listing->category->name : 'مزایده' }}</span>
-                </div>
-                
-                <a href="{{ route('listings.show', $listing) }}">
-                    <h3 class="text-lg font-bold text-gray-900 mb-1 group-hover:text-primary transition-colors line-clamp-1">{{ $listing->title }}</h3>
-                </a>
-                
-                <p class="text-sm text-gray-500 mb-4 line-clamp-2">{{ Str::limit($listing->description, 60) }}</p>
-                
-                <!-- Tags -->
-                @if($listing->tags && count($listing->tags) > 0)
-                <div class="flex flex-wrap gap-1 mb-3">
-                    @foreach(array_slice($listing->tags, 0, 3) as $tag)
-                    <a href="{{ route('listings.index', ['tag' => $tag]) }}" class="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors">
-                        #{{ $tag }}
-                    </a>
-                    @endforeach
-                </div>
-                @endif
-                
-                <div class="mt-auto space-y-3">
-                    <div class="flex justify-between items-end border-t border-dashed border-gray-200 pt-3">
-                        <span class="text-xs text-gray-500 mb-1">
-                            @if($listing->bids->count() > 0)
-                                پیشنهاد فعلی:
-                            @else
-                                قیمت پایه:
-                            @endif
-                        </span>
-                        <div class="text-right">
-                            <span class="text-lg font-black text-primary">
-                                {{ \App\Services\PersianNumberService::convertToPersian(number_format($listing->current_price ?? $listing->starting_price)) }}
-                            </span>
-                            <span class="text-xs text-gray-400">تومان</span>
-                        </div>
-                    </div>
-                    
-                    @if($listing->buy_now_price)
-                        <div class="flex justify-between items-end pb-2 border-b border-gray-100">
-                            <span class="text-xs text-gray-500">خرید فوری:</span>
-                            <div class="text-right">
-                                <span class="text-sm font-bold text-green-600">
-                                    {{ \App\Services\PersianNumberService::convertToPersian(number_format($listing->buy_now_price)) }}
-                                </span>
-                                <span class="text-xs text-gray-400">تومان</span>
-                            </div>
-                        </div>
-                    @endif
-                    
-                    <a href="{{ route('listings.show', $listing) }}" class="block w-full py-2.5 {{ $listing->status === 'completed' ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-blue-600' }} text-white text-sm font-bold rounded-lg transition-colors shadow-lg {{ $listing->status === 'completed' ? 'shadow-gray-400/20' : 'shadow-blue-500/20' }} text-center">
-                        {{ $listing->status === 'completed' ? 'مزایده پایان یافته' : 'ثبت پیشنهاد' }}
-                    </a>
-                </div>
+                @foreach($listings as $listing)
+                    <x-listing-card :listing="$listing" />
+                @endforeach
             </div>
-        </div>
-        @endforeach
-    </div>
     
     <!-- Pagination -->
     <div class="flex justify-center">
