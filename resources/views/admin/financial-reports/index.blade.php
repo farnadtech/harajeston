@@ -187,7 +187,7 @@
                 <tbody>
                     @forelse($categoryStats as $stat)
                         <tr class="border-b hover:bg-gray-50">
-                            <td class="py-3 px-4 font-medium">{{ $stat['category'] ?? 'نامشخص' }}</td>
+                            <td class="py-3 px-4 font-medium">{{ $stat['category_name'] ?? 'نامشخص' }}</td>
                             <td class="py-3 px-4">@persian(number_format($stat['total_listings']))</td>
                             <td class="py-3 px-4">@persian(number_format($stat['total_value'])) تومان</td>
                             <td class="py-3 px-4">@persian(number_format($stat['average_price'])) تومان</td>

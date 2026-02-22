@@ -211,13 +211,15 @@ class FinancialReportService
 
         $categoryStats = Listing::whereBetween('created_at', [$startDate, $endDate])
             ->whereIn('status', ['delivered', 'ended'])
+            ->join('categories', 'listings.category_id', '=', 'categories.id')
             ->select(
-                'category',
+                'categories.name as category_name',
+                'categories.id as category_id',
                 DB::raw('COUNT(*) as total_listings'),
-                DB::raw('SUM(current_price) as total_value'),
-                DB::raw('AVG(current_price) as average_price')
+                DB::raw('SUM(listings.current_price) as total_value'),
+                DB::raw('AVG(listings.current_price) as average_price')
             )
-            ->groupBy('category')
+            ->groupBy('categories.id', 'categories.name')
             ->orderBy('total_value', 'desc')
             ->get();
 
