@@ -209,8 +209,8 @@ class FinancialReportService
         $startDate = $startDate ?? Carbon::now()->startOfMonth();
         $endDate = $endDate ?? Carbon::now()->endOfMonth();
 
-        $categoryStats = Listing::whereBetween('created_at', [$startDate, $endDate])
-            ->whereIn('status', ['delivered', 'ended'])
+        $categoryStats = Listing::whereBetween('listings.created_at', [$startDate, $endDate])
+            ->whereIn('listings.status', ['delivered', 'ended'])
             ->join('categories', 'listings.category_id', '=', 'categories.id')
             ->select(
                 'categories.name as category_name',
