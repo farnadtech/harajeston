@@ -35,14 +35,11 @@ class ListingController extends Controller
             $query = Listing::query();
             
             if ($showPendingListings) {
-                // نمایش حراجی‌های active و pending
-                $query->where(function($q) {
-                    $q->where('status', 'active')
-                      ->orWhere('status', 'pending');
-                });
+                // نمایش حراجی‌های active, pending, و suspended
+                $query->whereIn('status', ['active', 'pending', 'suspended']);
             } else {
-                // فقط نمایش حراجی‌های active
-                $query->where('status', 'active');
+                // نمایش active و suspended
+                $query->whereIn('status', ['active', 'suspended']);
             }
             
             $listings = $query->with('seller', 'images')
@@ -56,11 +53,11 @@ class ListingController extends Controller
         $query = Listing::query();
         
         if ($showPendingListings) {
-            // نمایش active, completed, و pending
-            $query->whereIn('status', ['active', 'completed', 'pending']);
+            // نمایش active, completed, pending, و suspended
+            $query->whereIn('status', ['active', 'completed', 'pending', 'suspended']);
         } else {
-            // فقط نمایش active و completed
-            $query->whereIn('status', ['active', 'completed']);
+            // نمایش active, completed, و suspended
+            $query->whereIn('status', ['active', 'completed', 'suspended']);
         }
 
         // Filter by category
@@ -182,8 +179,17 @@ class ListingController extends Controller
             ->paginate(20)
             ->appends($request->except('page'));
 
+        // Get available attributes for filtering (if category is selected)
+        $availableAttributes = [];
+        if ($request->has('category') && $request->category && isset($category)) {
+            $availableAttributes = \App\Models\CategoryAttribute::where('category_id', $category->id)
+                ->where('is_filterable', true)
+                ->orderBy('order')
+                ->get();
+        }
+
         // Return search results view
-        return view('listings.search', compact('listings', 'request'));
+        return view('listings.search', compact('listings', 'request', 'availableAttributes'));
     }
     /**
      * Show seller's own listings
@@ -241,7 +247,7 @@ class ListingController extends Controller
                 ->with('error', 'حساب فروشندگی شما هنوز تایید نشده است.');
         }
 
-        return view('listings.create-new');
+        return view('listings.create');
     }
 
     /**
@@ -264,15 +270,6 @@ class ListingController extends Controller
      */
     public function show(Listing $listing)
     {
-        // بررسی دسترسی برای آگهی‌های تعلیق شده
-        if ($listing->status === 'suspended') {
-            // فقط ادمین و صاحب آگهی می‌تونن ببینن
-            if (!auth()->check() || 
-                (auth()->user()->role !== 'admin' && auth()->id() !== $listing->seller_id)) {
-                abort(404);
-            }
-        }
-
         // بررسی دسترسی برای آگهی‌های pending (هنوز شروع نشده)
         if ($listing->status === 'pending') {
             // بررسی تنظیمات ادمین - فقط تنظیمات ادمین مهم است نه فیلد show_before_start
@@ -288,11 +285,18 @@ class ListingController extends Controller
             // اگر تنظیمات ادمین فعال است، همه می‌تونن ببینن
         }
 
-        // Increment view count
-        $listing->increment('views');
+        // Increment view count (فقط برای آگهی‌های فعال)
+        if ($listing->status === 'active') {
+            $listing->increment('views');
+        }
         
         $listing->load([
-            'seller', 
+            'seller' => function($query) {
+                $query->withCount(['sellerOrders as successful_sales' => function($q) {
+                    $q->where('status', 'delivered');
+                }]);
+            },
+            'seller.store',
             'images', 
             'bids.user', 
             'shippingMethods', 
@@ -328,7 +332,7 @@ class ListingController extends Controller
     {
         $this->authorize('update', $listing);
 
-        $listing->update($request->validated());
+        $this->listingService->updateListing($listing, $request->validated());
 
         return redirect()
             ->route('listings.show', $listing)

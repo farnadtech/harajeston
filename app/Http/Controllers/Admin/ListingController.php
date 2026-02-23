@@ -656,6 +656,31 @@ class ListingController extends Controller
         return response()->json(['success' => true]);
     }
 
+    /**
+     * حذف آگهی
+     */
+    public function destroy(Listing $listing)
+    {
+        try {
+            // حذف تصاویر
+            foreach ($listing->images as $image) {
+                \Storage::disk('public')->delete($image->file_path);
+                $image->delete();
+            }
+
+            // حذف آگهی
+            $listing->delete();
+
+            return redirect()
+                ->route('admin.listings.index')
+                ->with('success', 'آگهی با موفقیت حذف شد.');
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->with('error', 'خطا در حذف آگهی: ' . $e->getMessage());
+        }
+    }
+
     public function uploadImage(Listing $listing)
     {
         // Check if listing already has 8 images

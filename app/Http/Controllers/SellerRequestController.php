@@ -21,13 +21,34 @@ class SellerRequestController extends Controller
     {
         $user = auth()->user();
 
-        // اگر قبلا درخواست داده یا فروشنده است
-        if ($user->hasRequestedSeller()) {
+        // اگر فروشنده فعال است
+        if ($user->seller_status === 'active') {
             return redirect()->route('dashboard')
-                ->with('info', 'شما قبلاً درخواست فروشندگی داده‌اید.');
+                ->with('info', 'شما هم‌اکنون فروشنده فعال هستید.');
         }
 
-        return view('seller-request.create');
+        // اگر درخواست در حال بررسی است
+        if ($user->seller_status === 'pending') {
+            return redirect()->route('seller-request.status')
+                ->with('info', 'درخواست شما در حال بررسی است.');
+        }
+
+        // اگر تعلیق شده - اجازه دسترسی به فرم با پیام هشدار
+        if ($user->seller_status === 'suspended') {
+            // ادامه دادن به نمایش فرم با پیام هشدار
+            $existingData = $user->seller_request_data ?? null;
+            $showSuspensionWarning = true;
+            return view('seller-request.create', compact('existingData', 'showSuspensionWarning'));
+        }
+
+        // اگر رد شده یا none، اجازه درخواست مجدد
+        // بررسی داده‌های قبلی برای پر کردن فرم
+        $existingData = null;
+        if ($user->seller_status === 'rejected' && $user->seller_request_data) {
+            $existingData = $user->seller_request_data;
+        }
+
+        return view('seller-request.create', compact('existingData'));
     }
 
     /**
@@ -37,10 +58,16 @@ class SellerRequestController extends Controller
     {
         $user = auth()->user();
 
-        // بررسی اینکه قبلا درخواست نداده باشد
-        if ($user->hasRequestedSeller()) {
+        // بررسی اینکه فروشنده فعال نباشد
+        if ($user->seller_status === 'active') {
             return redirect()->route('dashboard')
-                ->with('error', 'شما قبلاً درخواست فروشندگی داده‌اید.');
+                ->with('error', 'شما هم‌اکنون فروشنده فعال هستید.');
+        }
+
+        // بررسی اینکه درخواست در حال بررسی نباشد
+        if ($user->seller_status === 'pending') {
+            return redirect()->route('seller-request.status')
+                ->with('error', 'درخواست شما در حال بررسی است.');
         }
 
         $validated = $request->validate([
@@ -53,9 +80,10 @@ class SellerRequestController extends Controller
                 'string',
                 'max:10',
                 'min:10',
-                function ($attribute, $value, $fail) {
-                    // Check if national_id already exists in seller_request_data
+                function ($attribute, $value, $fail) use ($user) {
+                    // Check if national_id already exists in seller_request_data (excluding current user)
                     $exists = \App\Models\User::whereNotNull('seller_request_data')
+                        ->where('id', '!=', $user->id)
                         ->where('seller_request_data->national_id', $value)
                         ->exists();
                     
@@ -84,6 +112,7 @@ class SellerRequestController extends Controller
                 'seller_status' => 'pending',
                 'seller_requested_at' => now(),
                 'seller_request_data' => $validated,
+                'seller_rejection_reason' => null, // پاک کردن دلیل رد قبلی
             ]);
 
             // بررسی تنظیمات: آیا نیاز به تایید دستی است؟

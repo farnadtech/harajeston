@@ -13,26 +13,7 @@
                     فیلترها
                 </h2>
 
-                @php
-                    $currentCategory = request('category') ? \App\Models\Category::where('slug', request('category'))->first() : null;
-                    $availableAttributes = [];
-                    
-                    if ($currentCategory) {
-                        // اگر دسته اصلی است، ویژگی‌های تمام زیردسته‌ها را جمع‌آوری کن
-                        if ($currentCategory->isParent()) {
-                            foreach ($currentCategory->children as $child) {
-                                foreach ($child->attributes()->filterable()->get() as $attr) {
-                                    $availableAttributes[$attr->id] = $attr;
-                                }
-                            }
-                        } else {
-                            // اگر زیردسته است، فقط ویژگی‌های خودش
-                            $availableAttributes = $currentCategory->attributes()->filterable()->get()->keyBy('id')->toArray();
-                        }
-                    }
-                @endphp
-
-                @if(!empty($availableAttributes))
+                @if(!empty($availableAttributes) && $availableAttributes->count() > 0)
                 <form method="GET" action="{{ route('listings.index') }}" class="space-y-4">
                     <!-- حفظ پارامترهای موجود -->
                     @if(request('category'))

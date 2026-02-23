@@ -21,6 +21,37 @@
             </div>
         @endif
 
+        @if(isset($showSuspensionWarning) && $showSuspensionWarning)
+            <div class="bg-red-50 border-2 border-red-200 rounded-xl p-6 mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-red-600 text-2xl">warning</span>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-bold text-red-900 mb-1">حساب شما تعلیق شده است</h3>
+                        <p class="text-red-700 text-sm">
+                            <span class="font-bold">دلیل تعلیق:</span> {{ auth()->user()->seller_rejection_reason ?? 'نقض قوانین پلتفرم' }}
+                        </p>
+                        <p class="text-red-700 text-sm mt-2">
+                            با ارسال مجدد درخواست، مدیریت مجدداً اطلاعات شما را بررسی خواهد کرد.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @if(isset($existingData))
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-yellow-600">edit</span>
+                    <div class="text-sm text-yellow-800">
+                        <p class="font-bold mb-1">اطلاعات قبلی شما بارگذاری شد</p>
+                        <p>اطلاعات درخواست قبلی شما بارگذاری شده است. می‌توانید آنها را ویرایش کرده و مجدداً ارسال کنید.</p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <form action="{{ route('seller-request.store') }}" method="POST" class="space-y-6">
             @csrf
 
@@ -40,7 +71,7 @@
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">نام فروشگاه <span class="text-red-500">*</span></label>
-                <input type="text" name="store_name" value="{{ old('store_name') }}" 
+                <input type="text" name="store_name" value="{{ old('store_name', $existingData['store_name'] ?? '') }}" 
                        class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                        required>
                 @error('store_name')
@@ -52,7 +83,7 @@
                 <label class="block text-sm font-bold text-gray-700 mb-2">توضیحات فروشگاه <span class="text-red-500">*</span></label>
                 <textarea name="store_description" rows="4" 
                           class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                          required>{{ old('store_description') }}</textarea>
+                          required>{{ old('store_description', $existingData['store_description'] ?? '') }}</textarea>
                 <p class="text-xs text-gray-500 mt-1">توضیحات کوتاهی درباره فروشگاه و محصولات خود بنویسید</p>
                 @error('store_description')
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -62,7 +93,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">شماره تماس <span class="text-red-500">*</span></label>
-                    <input type="text" name="phone" value="{{ old('phone') }}" 
+                    <input type="text" name="phone" value="{{ old('phone', $existingData['phone'] ?? '') }}" 
                            class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                            placeholder="09123456789"
                            required>
@@ -73,7 +104,7 @@
 
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">کد ملی <span class="text-red-500">*</span></label>
-                    <input type="text" name="national_id" value="{{ old('national_id') }}" 
+                    <input type="text" name="national_id" value="{{ old('national_id', $existingData['national_id'] ?? '') }}" 
                            class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                            maxlength="10"
                            required>
@@ -86,7 +117,7 @@
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">آدرس (اختیاری)</label>
                 <textarea name="address" rows="2" 
-                          class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary">{{ old('address') }}</textarea>
+                          class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary">{{ old('address', $existingData['address'] ?? '') }}</textarea>
                 @error('address')
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                 @enderror
@@ -98,7 +129,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2">نام بانک <span class="text-red-500">*</span></label>
-                        <input type="text" name="bank_name" value="{{ old('bank_name') }}" 
+                        <input type="text" name="bank_name" value="{{ old('bank_name', $existingData['bank_name'] ?? '') }}" 
                                class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                                placeholder="مثال: ملی، ملت، پاسارگاد"
                                required>
@@ -109,7 +140,7 @@
 
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2">شماره حساب / شبا <span class="text-red-500">*</span></label>
-                        <input type="text" name="bank_account" value="{{ old('bank_account') }}" 
+                        <input type="text" name="bank_account" value="{{ old('bank_account', $existingData['bank_account'] ?? '') }}" 
                                class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                                placeholder="IR..."
                                required>

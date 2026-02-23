@@ -90,6 +90,12 @@ class AuctionService
                 throw new AuctionNotActiveException($listing->id, $listing->status);
             }
             
+            // Skip if required_deposit is not set
+            if (!$listing->required_deposit) {
+                \Illuminate\Support\Facades\Log::warning('ProcessAuctionEnding: Skipping auction ' . $listing->id . ' - no required_deposit set');
+                return;
+            }
+            
             // Get all bids ordered by amount DESC, grouped by user (highest bid per user)
             $bids = Bid::where('listing_id', $listing->id)
                 ->orderBy('amount', 'desc')

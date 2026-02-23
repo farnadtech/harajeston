@@ -27,14 +27,21 @@ class ListingService
         
         $this->validateAuctionTimes($data['starts_at'], $data['ends_at']);
         
+        // Check if listing requires admin approval
+        $requiresApproval = \App\Models\SiteSetting::get('require_listing_approval', false);
+        
         // Determine initial status
         $startsAt = Carbon::parse($data['starts_at']);
-        $status = $startsAt->isFuture() ? 'pending' : 'active';
         
-        // If admin requires approval, set to pending regardless
         if (isset($data['seller_id'])) {
             // Admin is creating, use provided status or default to pending
             $status = $data['status'] ?? 'pending';
+        } elseif ($requiresApproval) {
+            // Seller is creating and approval is required
+            $status = 'pending';
+        } else {
+            // No approval required, set based on start time
+            $status = $startsAt->isFuture() ? 'pending' : 'active';
         }
         
         $listing = Listing::create([
@@ -82,16 +89,81 @@ class ListingService
         if (isset($data['images']) && is_array($data['images'])) {
             $imageService = app(ImageService::class);
             foreach ($data['images'] as $index => $image) {
-                $path = $imageService->store($image, 'listings');
-                $listing->images()->create([
-                    'image_path' => $path,
-                    'is_primary' => $index === 0,
-                    'order' => $index,
-                ]);
+                // Use upload method instead of store
+                $imageService->upload($listing, $image, $index);
             }
         }
 
         return $listing;
+    }
+
+    /**
+     * Update existing listing
+     */
+    public function updateListing(Listing $listing, array $data): Listing
+    {
+        // Validate auction times
+        if (isset($data['starts_at']) && isset($data['ends_at'])) {
+            $this->validateAuctionTimes($data['starts_at'], $data['ends_at']);
+        }
+
+        // Update basic fields
+        $listing->update([
+            'title' => $data['title'] ?? $listing->title,
+            'description' => $data['description'] ?? $listing->description,
+            'category_id' => $data['category_id'] ?? $listing->category_id,
+            'condition' => $data['condition'] ?? $listing->condition,
+            'starting_price' => $data['starting_price'] ?? $listing->starting_price,
+            'buy_now_price' => $data['buy_now_price'] ?? $listing->buy_now_price,
+            'deposit_amount' => $data['deposit_amount'] ?? $listing->deposit_amount,
+            'bid_increment' => $data['bid_increment'] ?? $listing->bid_increment,
+            'starts_at' => isset($data['starts_at']) ? Carbon::parse($data['starts_at']) : $listing->starts_at,
+            'ends_at' => isset($data['ends_at']) ? Carbon::parse($data['ends_at']) : $listing->ends_at,
+            'auto_extend' => $data['auto_extend'] ?? $listing->auto_extend,
+            'tags' => isset($data['tags']) ? $this->processTags($data['tags']) : $listing->tags,
+        ]);
+
+        // Update attributes
+        if (isset($data['attributes']) && is_array($data['attributes'])) {
+            // Delete old attributes
+            $listing->attributeValues()->delete();
+            
+            // Add new attributes
+            foreach ($data['attributes'] as $attributeId => $value) {
+                if (!empty($value)) {
+                    $listing->attributeValues()->create([
+                        'category_attribute_id' => $attributeId,
+                        'value' => $value,
+                    ]);
+                }
+            }
+        }
+
+        // Update shipping methods
+        if (isset($data['shipping_methods']) && is_array($data['shipping_methods'])) {
+            // Detach all old shipping methods
+            $listing->shippingMethods()->detach();
+            
+            // Attach new shipping methods
+            foreach ($data['shipping_methods'] as $methodId) {
+                $customCost = $data['shipping_costs'][$methodId] ?? null;
+                $listing->shippingMethods()->attach($methodId, [
+                    'custom_cost_adjustment' => $customCost
+                ]);
+            }
+        }
+
+        // Handle new images (existing images are kept unless deleted separately)
+        if (isset($data['images']) && is_array($data['images'])) {
+            $imageService = app(ImageService::class);
+            $currentImageCount = $listing->images()->count();
+            
+            foreach ($data['images'] as $index => $image) {
+                $imageService->upload($listing, $image, $currentImageCount + $index);
+            }
+        }
+
+        return $listing->fresh();
     }
 
     /**

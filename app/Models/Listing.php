@@ -43,6 +43,7 @@ class Listing extends Model
         'finalization_deadline',
         'status',
         'suspension_reason',
+        'rejection_reason',
         'auto_extend',
         'show_before_start',
         'views',

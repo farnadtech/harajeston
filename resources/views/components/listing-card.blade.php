@@ -2,7 +2,14 @@
 
 <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 group relative">
     {{-- Status Badge --}}
-    @if($listing->status === 'pending' && $listing->starts_at && $listing->starts_at->isFuture())
+    @if($listing->status === 'suspended')
+        <div class="absolute top-3 right-3 z-10">
+            <span class="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">block</span>
+                تعلیق شده
+            </span>
+        </div>
+    @elseif($listing->status === 'pending' && $listing->starts_at && $listing->starts_at->isFuture())
         @php
             $now = \Carbon\Carbon::now();
             $diff = $now->diff($listing->starts_at);
@@ -119,7 +126,11 @@
         </div>
 
         {{-- Action Button --}}
-        @if($listing->status === 'pending')
+        @if($listing->status === 'suspended')
+            <button disabled class="block w-full py-2.5 bg-red-100 text-red-700 text-sm font-bold rounded-lg cursor-not-allowed text-center border border-red-300">
+                این آگهی تعلیق شده است
+            </button>
+        @elseif($listing->status === 'pending')
             <button disabled class="block w-full py-2.5 bg-gray-300 text-gray-600 text-sm font-bold rounded-lg cursor-not-allowed text-center">
                 هنوز شروع نشده
             </button>

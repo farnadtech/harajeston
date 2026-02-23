@@ -1,144 +1,11 @@
-<!DOCTYPE html>
-<html dir="rtl" lang="fa">
-<head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>مزایده‌های من - <?php echo e(config('app.name')); ?></title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#135bec",
-                        "secondary": "#f97316",
-                        "background-light": "#f8f9fc",
-                        "background-dark": "#101622",
-                    },
-                    fontFamily: {
-                        "display": ["Vazirmatn", "sans-serif"],
-                        "body": ["Vazirmatn", "sans-serif"],
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.5rem",
-                        "lg": "0.75rem",
-                        "xl": "1rem",
-                        "2xl": "1.5rem",
-                    },
-                },
-            },
-        }
-    </script>
-    <style>
-        body {
-            font-family: 'Vazirmatn', sans-serif;
-        }
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
-        }
-    </style>
-</head>
-<body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex overflow-hidden">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-white border-l border-gray-200 hidden lg:flex flex-col h-screen fixed right-0 top-0 z-30">
-        <div class="h-20 flex items-center gap-3 px-6 border-b border-gray-100">
-            <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-2xl">storefront</span>
-            </div>
-            <h1 class="text-xl font-black tracking-tight text-[#0d121b]">
-                حراج<span class="text-primary">آنلاین</span>
-            </h1>
-        </div>
-        
-        <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1">
-            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="<?php echo e(route('dashboard')); ?>">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">dashboard</span>
-                <span>داشبورد</span>
-            </a>
-            <a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/5 rounded-xl font-bold transition-colors" href="<?php echo e(route('my-listings')); ?>">
-                <span class="material-symbols-outlined">inventory_2</span>
-                <span>مزایده‌های من</span>
-            </a>
-            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="<?php echo e(url('/listings/create')); ?>">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">add_circle</span>
-                <span>افزودن مزایده جدید</span>
-            </a>
-            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="<?php echo e(route('wallet.show')); ?>">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">account_balance_wallet</span>
-                <span>کیف پول مالی</span>
-            </a>
-            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="<?php echo e(route('orders.index')); ?>">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">shopping_bag</span>
-                <span>سفارشات</span>
-            </a>
-            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="<?php echo e(route('stores.edit')); ?>">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">store</span>
-                <span>تنظیمات فروشگاه</span>
-            </a>
-        </nav>
-        
-        <div class="p-4 border-t border-gray-100">
-            <form action="<?php echo e(route('logout')); ?>" method="POST">
-                <?php echo csrf_field(); ?>
-                <button type="submit" class="flex items-center gap-3 w-full px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-medium transition-colors">
-                    <span class="material-symbols-outlined">logout</span>
-                    <span>خروج از حساب</span>
-                </button>
-            </form>
-        </div>
-    </aside>
 
-    <!-- Main Content -->
-    <main class="flex-1 lg:mr-64 flex flex-col h-screen overflow-hidden relative w-full">
-        <!-- Header -->
-        <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0">
-            <div class="hidden lg:block">
-                <h2 class="text-xl font-bold text-gray-800">مزایده‌های من</h2>
-                <p class="text-sm text-gray-500">مدیریت و مشاهده تمام مزایده‌های شما</p>
-            </div>
-            
-            <div class="flex items-center gap-4">
-                <!-- Search Field -->
-                <div class="relative hidden md:block">
-                    <input type="text" placeholder="جستجو در مزایده‌ها..." class="w-64 px-4 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl">search</span>
-                </div>
-                
-                <!-- Notification Button -->
-                <button class="relative p-2 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-lg transition-colors">
-                    <span class="material-symbols-outlined">notifications</span>
-                    <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </button>
-                
-                <div class="flex items-center gap-3 pr-4 border-r border-gray-200 mr-2">
-                    <div class="text-left hidden sm:block">
-                        <p class="text-sm font-bold text-gray-900"><?php echo e(auth()->user()->name); ?></p>
-                        <p class="text-xs text-gray-500">مدیر فروشگاه</p>
-                    </div>
-                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                        <?php echo e(mb_substr(auth()->user()->name, 0, 1)); ?>
 
-                    </div>
-                </div>
-            </div>
-        </header>
+<?php $__env->startSection('title', 'مزایده‌های من'); ?>
 
-        <!-- Dashboard Content -->
-        <div class="flex-1 overflow-y-auto p-4 sm:px-8 space-y-6">
+<?php $__env->startSection('page-title', 'مزایده‌های من'); ?>
+<?php $__env->startSection('page-subtitle', 'مدیریت و مشاهده تمام مزایده‌های شما'); ?>
+
+<?php $__env->startSection('content'); ?>
             <!-- Filter Tabs -->
             <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
                 <div class="flex flex-wrap gap-2">
@@ -195,7 +62,7 @@
                                         <div class="flex items-center gap-3">
                                             <?php if($listing->images->count() > 0): ?>
                                                 <div class="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0">
-                                                    <img alt="<?php echo e($listing->title); ?>" class="w-full h-full object-cover" src="<?php echo e(Storage::url($listing->images->first()->image_path)); ?>"/>
+                                                    <img alt="<?php echo e($listing->title); ?>" class="w-full h-full object-cover" src="<?php echo e(url('storage/' . $listing->images->first()->file_path)); ?>"/>
                                                 </div>
                                             <?php else: ?>
                                                 <div class="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
@@ -312,8 +179,6 @@
                     </div>
                 <?php endif; ?>
             </div>
-        </div>
-    </main>
-</body>
-</html>
-<?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/listings/my-listings.blade.php ENDPATH**/ ?>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.seller', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/listings/my-listings.blade.php ENDPATH**/ ?>

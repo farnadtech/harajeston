@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Listing;
 use App\Models\Bid;
 use App\Models\Order;
+use App\Models\Store;
 
 class NotificationService
 {
@@ -105,6 +106,22 @@ class NotificationService
             'is_read' => false,
         ]);
         
+        // Notify buyer
+        Notification::create([
+            'user_id' => $order->buyer_id,
+            'type' => 'order',
+            'title' => 'سفارش شما ثبت شد',
+            'message' => sprintf(
+                'سفارش #%d به مبلغ %s تومان با موفقیت ثبت شد',
+                $order->id,
+                number_format($order->total_amount)
+            ),
+            'icon' => 'shopping_bag',
+            'color' => 'green',
+            'link' => route('orders.show', $order->id),
+            'is_read' => false,
+        ]);
+        
         // Notify admin
         $this->notifyAdmins('order', 'سفارش جدید', sprintf(
             'سفارش #%d به مبلغ %s تومان ثبت شد',
@@ -162,6 +179,215 @@ class NotificationService
             'کاربر جدیدی با نام "%s" ثبت‌نام کرد',
             $user->name
         ), 'person_add', 'blue', route('admin.users.show', $user->id));
+    }
+    
+    /**
+     * Create a notification for seller approval
+     */
+    public function notifySellerApproved(User $user): void
+    {
+        Notification::create([
+            'user_id' => $user->id,
+            'type' => 'seller_approved',
+            'title' => 'درخواست فروشندگی تایید شد',
+            'message' => 'تبریک! درخواست فروشندگی شما تایید شد و اکنون می‌توانید محصولات خود را اضافه کنید',
+            'icon' => 'check_circle',
+            'color' => 'green',
+            'link' => route('dashboard'),
+            'is_read' => false,
+        ]);
+        
+        $this->notifyAdmins('seller', 'فروشنده تایید شد', sprintf(
+            'درخواست فروشندگی کاربر "%s" تایید شد',
+            $user->name
+        ), 'check_circle', 'green', route('admin.sellers.show', $user->id));
+    }
+    
+    /**
+     * Create a notification for seller rejection
+     */
+    public function notifySellerRejected(User $user, string $reason): void
+    {
+        Notification::create([
+            'user_id' => $user->id,
+            'type' => 'seller_rejected',
+            'title' => 'درخواست فروشندگی رد شد',
+            'message' => sprintf('درخواست فروشندگی شما رد شد. دلیل: %s', $reason),
+            'icon' => 'cancel',
+            'color' => 'red',
+            'link' => route('seller-request.create'),
+            'is_read' => false,
+        ]);
+        
+        $this->notifyAdmins('seller', 'فروشنده رد شد', sprintf(
+            'درخواست فروشندگی کاربر "%s" رد شد. دلیل: %s',
+            $user->name,
+            $reason
+        ), 'cancel', 'red', route('admin.sellers.show', $user->id));
+    }
+    
+    /**
+     * Create a notification for seller suspension
+     */
+    public function notifySellerSuspended(User $user, string $reason): void
+    {
+        Notification::create([
+            'user_id' => $user->id,
+            'type' => 'seller_suspended',
+            'title' => 'حساب فروشندگی شما تعلیق شد',
+            'message' => sprintf('حساب فروشندگی شما تعلیق شد. دلیل: %s', $reason),
+            'icon' => 'block',
+            'color' => 'orange',
+            'link' => route('dashboard'),
+            'is_read' => false,
+        ]);
+        
+        $this->notifyAdmins('seller', 'فروشنده تعلیق شد', sprintf(
+            'حساب فروشندگی کاربر "%s" تعلیق شد. دلیل: %s',
+            $user->name,
+            $reason
+        ), 'block', 'orange', route('admin.sellers.show', $user->id));
+    }
+    
+    /**
+     * Create a notification for seller reactivation
+     */
+    public function notifySellerReactivated(User $user): void
+    {
+        Notification::create([
+            'user_id' => $user->id,
+            'type' => 'seller_reactivated',
+            'title' => 'حساب فروشندگی شما فعال شد',
+            'message' => 'حساب فروشندگی شما مجدداً فعال شد و می‌توانید محصولات خود را اضافه کنید',
+            'icon' => 'check_circle',
+            'color' => 'green',
+            'link' => route('dashboard'),
+            'is_read' => false,
+        ]);
+        
+        $this->notifyAdmins('seller', 'فروشنده فعال شد', sprintf(
+            'حساب فروشندگی کاربر "%s" فعال شد',
+            $user->name
+        ), 'check_circle', 'green', route('admin.sellers.show', $user->id));
+    }
+    
+    /**
+     * Create a notification for new listing
+     */
+    public function notifyNewListing(Listing $listing): void
+    {
+        $seller = $listing->seller;
+        
+        Notification::create([
+            'user_id' => $seller->id,
+            'type' => 'listing',
+            'title' => 'آگهی جدید ایجاد شد',
+            'message' => sprintf('آگهی "%s" با موفقیت ایجاد شد', $listing->title),
+            'icon' => 'add',
+            'color' => 'blue',
+            'link' => route('listings.show', $listing->id),
+            'is_read' => false,
+        ]);
+        
+        $this->notifyAdmins('listing', 'آگهی جدید', sprintf(
+            'آگهی "%s" توسط "%s" ایجاد شد',
+            $listing->title,
+            $seller->name
+        ), 'add', 'blue', route('admin.listings.show', $listing->id));
+    }
+    
+    /**
+     * Create a notification for listing approval
+     */
+    public function notifyListingApproved(Listing $listing): void
+    {
+        $seller = $listing->seller;
+        
+        Notification::create([
+            'user_id' => $seller->id,
+            'type' => 'listing_approved',
+            'title' => 'آگهی تایید شد',
+            'message' => sprintf('آگهی "%s" تایید شد و در سایت نمایش داده می‌شود', $listing->title),
+            'icon' => 'check_circle',
+            'color' => 'green',
+            'link' => route('listings.show', $listing->id),
+            'is_read' => false,
+        ]);
+    }
+    
+    /**
+     * Create a notification for listing rejection
+     */
+    public function notifyListingRejected(Listing $listing, string $reason): void
+    {
+        $seller = $listing->seller;
+        
+        Notification::create([
+            'user_id' => $seller->id,
+            'type' => 'listing_rejected',
+            'title' => 'آگهی رد شد',
+            'message' => sprintf('آگهی "%s" رد شد. دلیل: %s', $listing->title, $reason),
+            'icon' => 'cancel',
+            'color' => 'red',
+            'link' => route('listings.show', $listing->id),
+            'is_read' => false,
+        ]);
+    }
+    
+    /**
+     * Create a notification for order status update
+     */
+    public function notifyOrderStatusUpdated(Order $order, string $oldStatus, string $newStatus): void
+    {
+        // Notify buyer
+        Notification::create([
+            'user_id' => $order->buyer_id,
+            'type' => 'order_status',
+            'title' => 'تغییر وضعیت سفارش',
+            'message' => sprintf('وضعیت سفارش #%d از "%s" به "%s" تغییر کرد', 
+                $order->id, 
+                $this->getOrderStatusLabel($oldStatus),
+                $this->getOrderStatusLabel($newStatus)
+            ),
+            'icon' => 'update',
+            'color' => 'blue',
+            'link' => route('orders.show', $order->id),
+            'is_read' => false,
+        ]);
+        
+        // Notify seller
+        Notification::create([
+            'user_id' => $order->seller_id,
+            'type' => 'order_status',
+            'title' => 'تغییر وضعیت سفارش',
+            'message' => sprintf('وضعیت سفارش #%d از "%s" به "%s" تغییر کرد', 
+                $order->id, 
+                $this->getOrderStatusLabel($oldStatus),
+                $this->getOrderStatusLabel($newStatus)
+            ),
+            'icon' => 'update',
+            'color' => 'blue',
+            'link' => route('admin.orders.show', $order->id),
+            'is_read' => false,
+        ]);
+    }
+    
+    /**
+     * Helper method to get order status labels
+     */
+    private function getOrderStatusLabel(string $status): string
+    {
+        $labels = [
+            'pending' => 'در انتظار پرداخت',
+            'paid' => 'پرداخت شده',
+            'processing' => 'در حال پردازش',
+            'shipped' => 'ارسال شده',
+            'delivered' => 'تحویل داده شده',
+            'cancelled' => 'لغو شده',
+            'refunded' => 'مرجوع شده',
+        ];
+        
+        return $labels[$status] ?? $status;
     }
     
     /**

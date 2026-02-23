@@ -25,6 +25,8 @@ class User extends Authenticatable
         'seller_approved_at',
         'seller_rejection_reason',
         'seller_request_data',
+        'seller_rating',
+        'seller_rating_count',
     ];
 
     protected $hidden = [

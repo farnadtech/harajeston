@@ -61,7 +61,47 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        return view('dashboard.seller-new', compact('stats', 'activeListings', 'recentOrders'));
+        // Recent activities - combining bids, orders, and listing status changes
+        $recentBids = Bid::whereHas('listing', function($q) use ($user) {
+                $q->where('seller_id', $user->id);
+            })
+            ->with('user', 'listing')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function($bid) {
+                return [
+                    'type' => 'bid',
+                    'icon' => 'gavel',
+                    'color' => 'blue',
+                    'title' => 'پیشنهاد جدید',
+                    'description' => $bid->user->name . ' پیشنهاد ' . number_format($bid->amount) . ' تومان برای ' . $bid->listing->title,
+                    'time' => $bid->created_at,
+                ];
+            });
+
+        $recentOrderActivities = Order::where('seller_id', $user->id)
+            ->with('buyer')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function($order) {
+                return [
+                    'type' => 'order',
+                    'icon' => 'shopping_bag',
+                    'color' => 'green',
+                    'title' => 'سفارش جدید',
+                    'description' => 'سفارش #' . $order->order_number . ' از ' . $order->buyer->name,
+                    'time' => $order->created_at,
+                ];
+            });
+
+        // Merge and sort activities
+        $recentActivities = $recentBids->concat($recentOrderActivities)
+            ->sortByDesc('time')
+            ->take(10);
+
+        return view('dashboard.seller', compact('stats', 'activeListings', 'recentOrders', 'recentActivities'));
     }
 
     /**

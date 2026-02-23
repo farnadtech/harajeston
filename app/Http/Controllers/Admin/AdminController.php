@@ -20,13 +20,13 @@ class AdminController extends Controller
                 $q->where('created_at', '>=', now()->subDays(30));
             })->count(),
             'pending_approvals' => Listing::where('status', 'pending')->count() + 
-                                   User::where('role', 'seller')->whereNull('email_verified_at')->count(),
+                                   User::where('seller_status', 'pending')->count(),
         ];
 
-        // Pending sellers (for approval widget)
-        $pendingSellers = User::where('role', 'seller')
-            ->whereNull('email_verified_at')
+        // Pending sellers (for approval widget) - REAL pending sellers
+        $pendingSellers = User::where('seller_status', 'pending')
             ->with('store')
+            ->orderBy('seller_requested_at', 'desc')
             ->take(4)
             ->get();
 

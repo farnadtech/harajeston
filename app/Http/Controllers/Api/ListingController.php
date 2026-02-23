@@ -53,6 +53,37 @@ class ListingController extends Controller
         return new ListingResource($listing);
     }
 
+    public function search(Request $request)
+    {
+        $query = Listing::with(['seller', 'images'])
+            ->where('status', 'active'); // Only show active listings
+
+        // Search by title or description
+        if ($request->has('q') && !empty($request->q)) {
+            $searchTerm = $request->q;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('title', 'like', "%{$searchTerm}%")
+                  ->orWhere('description', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        // Limit to 10 results for suggestions
+        $listings = $query->limit(10)->get();
+
+        // Format results for search suggestions
+        $results = $listings->map(function ($listing) {
+            return [
+                'id' => $listing->id,
+                'title' => $listing->title,
+                'image_url' => $listing->images->first() ? url('storage/' . $listing->images->first()->file_path) : null,
+                'price' => $listing->starting_price ?? $listing->buy_now_price,
+                'url' => route('listings.show', $listing),
+            ];
+        });
+
+        return response()->json($results);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

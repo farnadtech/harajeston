@@ -1,6 +1,9 @@
-@extends('layouts.app')
+@extends('layouts.seller')
 
 @section('title', 'ایجاد آگهی جدید')
+
+@section('page-title', 'ایجاد آگهی جدید')
+@section('page-subtitle', 'افزودن مزایده جدید به فروشگاه')
 
 @push('styles')
 <link rel="stylesheet" href="{{ url('css/persian-datepicker-package.css') }}?v={{ now()->timestamp }}">
@@ -24,11 +27,7 @@
 @endpush
 
 @section('content')
-<div class="container mx-auto px-4 py-6 max-w-4xl">
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">ایجاد آگهی جدید</h1>
-        <p class="text-sm text-gray-600 mt-1">ایجاد آگهی حراجی</p>
-    </div>
+<div class="max-w-4xl mx-auto">
 
     {{-- نمایش خطاهای validation --}}
     @if ($errors->any())
@@ -303,7 +302,6 @@
             </a>
         </div>
     </form>
-</div>
 @endsection
 
 @push('scripts')

@@ -108,6 +108,10 @@ class SellerController extends Controller
                 ]);
             }
 
+            // Send notification
+            $notificationService = new \App\Services\NotificationService();
+            $notificationService->notifySellerApproved($seller);
+
             DB::commit();
 
             return back()->with('success', 'فروشنده با موفقیت تایید شد.');
@@ -126,12 +130,32 @@ class SellerController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
-        $seller->update([
-            'seller_status' => 'rejected',
-            'seller_rejection_reason' => $request->reason,
-        ]);
+        DB::beginTransaction();
+        try {
+            $seller->update([
+                'seller_status' => 'rejected',
+                'seller_rejection_reason' => $request->reason,
+            ]);
 
-        return back()->with('success', 'درخواست رد شد.');
+            // Send notification
+            $notificationService = new \App\Services\NotificationService();
+            $notificationService->notifySellerRejected($seller, $request->reason);
+
+            // غیرفعال کردن تمام آگهی‌های فعال و pending
+            $seller->listings()
+                ->whereIn('status', ['active', 'pending'])
+                ->update([
+                    'status' => 'rejected',
+                    'rejection_reason' => 'رد درخواست فروشندگی توسط مدیریت',
+                ]);
+
+            DB::commit();
+
+            return back()->with('success', 'درخواست رد شد و آگهی‌های فروشنده غیرفعال شدند.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'خطا: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -143,18 +167,32 @@ class SellerController extends Controller
             'reason' => 'required|string|max:500',
         ]);
 
-        $seller->update([
-            'seller_status' => 'suspended',
-            'seller_rejection_reason' => $request->reason,
-        ]);
+        DB::beginTransaction();
+        try {
+            $seller->update([
+                'seller_status' => 'suspended',
+                'seller_rejection_reason' => $request->reason,
+            ]);
 
-        // غیرفعال کردن تمام آگهی‌های فعال
-        $seller->listings()->where('status', 'active')->update([
-            'status' => 'suspended',
-            'suspension_reason' => 'تعلیق فروشنده توسط مدیریت',
-        ]);
+            // Send notification
+            $notificationService = new \App\Services\NotificationService();
+            $notificationService->notifySellerSuspended($seller, $request->reason);
 
-        return back()->with('success', 'فروشنده تعلیق شد.');
+            // غیرفعال کردن تمام آگهی‌های فعال و pending
+            $seller->listings()
+                ->whereIn('status', ['active', 'pending'])
+                ->update([
+                    'status' => 'suspended',
+                    'suspension_reason' => 'تعلیق فروشنده توسط مدیریت',
+                ]);
+
+            DB::commit();
+
+            return back()->with('success', 'فروشنده تعلیق شد و آگهی‌های او غیرفعال شدند.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'خطا: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -173,18 +211,39 @@ class SellerController extends Controller
                 'seller_rejection_reason' => null,
             ]);
 
+            // Send notification
+            $notificationService = new \App\Services\NotificationService();
+            $notificationService->notifySellerReactivated($seller);
+
             // فعال‌سازی مجدد آگهی‌های تعلیق شده (فقط اگر قبلا به خاطر تعلیق فروشنده suspend شده بودن)
-            $seller->listings()
+            $suspendedCount = $seller->listings()
                 ->where('status', 'suspended')
                 ->where('suspension_reason', 'تعلیق فروشنده توسط مدیریت')
                 ->update([
-                    'status' => 'active',
+                    'status' => 'active', // مستقیماً فعال می‌کنیم
                     'suspension_reason' => null,
+                ]);
+
+            // فعال‌سازی مجدد آگهی‌های رد شده (فقط اگر قبلا به خاطر رد فروشنده reject شده بودن)
+            $rejectedCount = $seller->listings()
+                ->where('status', 'rejected')
+                ->where('rejection_reason', 'رد درخواست فروشندگی توسط مدیریت')
+                ->update([
+                    'status' => 'active', // مستقیماً فعال می‌کنیم
+                    'rejection_reason' => null,
                 ]);
 
             DB::commit();
 
-            return back()->with('success', 'فروشنده فعال شد.');
+            $totalReactivated = $suspendedCount + $rejectedCount;
+            $message = "فروشنده فعال شد";
+            if ($totalReactivated > 0) {
+                $message .= " و {$totalReactivated} آگهی به حالت فعال برگشتند.";
+            } else {
+                $message .= ".";
+            }
+
+            return back()->with('success', $message);
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'خطا: ' . $e->getMessage());

@@ -12,6 +12,69 @@ class CreateListingRequest extends FormRequest
         return $this->user()->role === 'seller' || $this->user()->role === 'admin';
     }
 
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        // Convert Persian dates to Gregorian
+        if ($this->has('starts_at')) {
+            $this->merge([
+                'starts_at' => $this->convertPersianToGregorian($this->starts_at),
+            ]);
+        }
+
+        if ($this->has('ends_at')) {
+            $this->merge([
+                'ends_at' => $this->convertPersianToGregorian($this->ends_at),
+            ]);
+        }
+    }
+
+    /**
+     * Convert Persian date to Gregorian format
+     */
+    private function convertPersianToGregorian(?string $persianDate): ?string
+    {
+        if (!$persianDate) {
+            return null;
+        }
+
+        try {
+            // Check if already in Gregorian format (YYYY-MM-DD)
+            if (preg_match('/^\d{4}-\d{2}-\d{2}/', $persianDate)) {
+                return $persianDate;
+            }
+
+            // Parse Persian date (format: 1403/12/04 14:30)
+            $parts = explode(' ', $persianDate);
+            $dateParts = explode('/', $parts[0]);
+            $timeParts = isset($parts[1]) ? explode(':', $parts[1]) : ['00', '00'];
+
+            if (count($dateParts) !== 3) {
+                return null;
+            }
+
+            $jYear = (int) $dateParts[0];
+            $jMonth = (int) $dateParts[1];
+            $jDay = (int) $dateParts[2];
+            $hour = (int) $timeParts[0];
+            $minute = (int) $timeParts[1];
+
+            // Convert to Gregorian using Jalalian package
+            $gregorian = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d H:i', $persianDate)
+                ->toCarbon()
+                ->format('Y-m-d H:i:s');
+
+            return $gregorian;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to convert Persian date: ' . $e->getMessage(), [
+                'date' => $persianDate
+            ]);
+            return null;
+        }
+    }
+
     public function rules(): array
     {
         $rules = [

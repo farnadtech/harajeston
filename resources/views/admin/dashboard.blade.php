@@ -128,18 +128,15 @@
                             <p class="text-xs text-gray-500 truncate">{{ $seller->store->store_name ?? 'فروشگاه' }}</p>
                         </div>
                         <div class="flex gap-1">
-                            <form method="POST" action="#" class="inline">
+                            <form method="POST" action="{{ route('admin.sellers.approve', $seller) }}" class="inline">
                                 @csrf
-                                <button type="submit" class="p-1.5 text-green-600 bg-green-100 rounded-lg hover:bg-green-200 transition-colors">
+                                <button type="submit" class="p-1.5 text-green-600 bg-green-100 rounded-lg hover:bg-green-200 transition-colors" title="تایید فروشنده">
                                     <span class="material-symbols-outlined text-lg">check</span>
                                 </button>
                             </form>
-                            <form method="POST" action="#" class="inline">
-                                @csrf
-                                <button type="submit" class="p-1.5 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors">
-                                    <span class="material-symbols-outlined text-lg">close</span>
-                                </button>
-                            </form>
+                            <button type="button" onclick="showRejectModal({{ $seller->id }}, '{{ $seller->name }}')" class="p-1.5 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors" title="رد درخواست">
+                                <span class="material-symbols-outlined text-lg">close</span>
+                            </button>
                         </div>
                     </div>
                 @empty
@@ -290,4 +287,52 @@
         @endif
     </div>
 </div>
+
+<!-- Reject Seller Modal -->
+<div id="rejectModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-gray-900">رد درخواست فروشندگی</h3>
+            <button onclick="closeRejectModal()" class="text-gray-400 hover:text-gray-600">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <form id="rejectForm" method="POST" action="">
+            @csrf
+            <div class="mb-4">
+                <p class="text-sm text-gray-600 mb-3">آیا از رد درخواست فروشندگی <span id="sellerName" class="font-bold"></span> مطمئن هستید؟</p>
+                <label class="block text-sm font-medium text-gray-700 mb-2">دلیل رد درخواست:</label>
+                <textarea name="reason" rows="4" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary" placeholder="لطفا دلیل رد درخواست را وارد کنید..."></textarea>
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button type="button" onclick="closeRejectModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">انصراف</button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">رد درخواست</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showRejectModal(sellerId, sellerName) {
+    const modal = document.getElementById('rejectModal');
+    const form = document.getElementById('rejectForm');
+    const nameSpan = document.getElementById('sellerName');
+    
+    form.action = `/haraj/public/admin/sellers/${sellerId}/reject`;
+    nameSpan.textContent = sellerName;
+    modal.classList.remove('hidden');
+}
+
+function closeRejectModal() {
+    const modal = document.getElementById('rejectModal');
+    modal.classList.add('hidden');
+}
+
+// Close modal on outside click
+document.getElementById('rejectModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeRejectModal();
+    }
+});
+</script>
 @endsection

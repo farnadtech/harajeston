@@ -203,9 +203,12 @@
                     <h1 class="text-2xl lg:text-3xl font-black text-gray-900 mb-3 leading-tight">{{ $listing->title }}</h1>
                     
                     <!-- Tags Section (if exists) -->
-                    @if($listing->tags && count($listing->tags) > 0)
+                    @php
+                        $tagsArray = is_array($listing->tags) ? $listing->tags : (is_string($listing->tags) ? json_decode($listing->tags, true) : []);
+                    @endphp
+                    @if($tagsArray && count($tagsArray) > 0)
                     <div class="flex flex-wrap gap-2 mb-3">
-                        @foreach($listing->tags as $tag)
+                        @foreach($tagsArray as $tag)
                             <a href="{{ route('listings.index', ['tag' => trim($tag)]) }}" class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors border border-blue-100">
                                 #{{ trim($tag) }}
                             </a>
@@ -294,7 +297,17 @@
                         </div>
                     @endif
                     
-                    @if($listing->isActive())
+                    @if($listing->status === 'suspended')
+                        <div class="p-6 bg-red-50 rounded-xl border-2 border-red-200 text-center">
+                            <span class="material-symbols-outlined text-red-600 text-5xl mb-3">block</span>
+                            <p class="text-lg text-red-900 font-bold mb-2">این آگهی تعلیق شده است</p>
+                            @if($listing->suspension_reason)
+                                <p class="text-sm text-red-700 bg-red-100 px-4 py-2 rounded-lg inline-block">
+                                    <span class="font-bold">دلیل:</span> {{ $listing->suspension_reason }}
+                                </p>
+                            @endif
+                        </div>
+                    @elseif($listing->isActive())
                         @livewire('auction-bidding', ['listing' => $listing])
                     @elseif($listing->isPending())
                         <div class="p-4 bg-blue-50 rounded-xl border border-blue-200 text-center">
@@ -309,7 +322,17 @@
                         </div>
                     @endif
                 @else
-                    @if($listing->isActive())
+                    @if($listing->status === 'suspended')
+                        <div class="p-6 bg-red-50 rounded-xl border-2 border-red-200 text-center">
+                            <span class="material-symbols-outlined text-red-600 text-5xl mb-3">block</span>
+                            <p class="text-lg text-red-900 font-bold mb-2">این آگهی تعلیق شده است</p>
+                            @if($listing->suspension_reason)
+                                <p class="text-sm text-red-700 bg-red-100 px-4 py-2 rounded-lg inline-block">
+                                    <span class="font-bold">دلیل:</span> {{ $listing->suspension_reason }}
+                                </p>
+                            @endif
+                        </div>
+                    @elseif($listing->isActive())
                         <div class="space-y-4 mb-6">
                             <div class="p-4 bg-yellow-50 rounded-xl border border-yellow-200 text-center">
                                 <p class="text-sm text-yellow-800 mb-3">برای شرکت در مزایده باید وارد شوید</p>
@@ -344,8 +367,8 @@
                         <h4 class="font-bold text-gray-900 text-sm">{{ $listing->seller->store->store_name ?? $listing->seller->name }}</h4>
                         <div class="flex items-center gap-1 mt-1">
                             <span class="material-symbols-outlined text-yellow-500 text-sm">star</span>
-                            <span class="text-xs font-bold text-gray-700">۴.۸</span>
-                            <span class="text-xs text-gray-400">(@persian(rand(50, 200)) فروش موفق)</span>
+                            <span class="text-xs font-bold text-gray-700">@persian(number_format($listing->seller->seller_rating ?? 0, 1))</span>
+                            <span class="text-xs text-gray-400">(@persian($listing->seller->successful_sales ?? 0) فروش موفق)</span>
                         </div>
                     </div>
                     @if($listing->seller->store)

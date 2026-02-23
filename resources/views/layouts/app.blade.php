@@ -119,14 +119,208 @@
                 
                 <!-- Center: Search Bar (Hidden on mobile, visible on desktop) -->
                 <div class="hidden md:flex flex-1 max-w-2xl px-8">
-                    <form method="GET" action="{{ route('listings.index') }}" class="relative w-full group">
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
-                            <span class="material-symbols-outlined">search</span>
+                    <div class="relative w-full group">
+                        <form method="GET" action="{{ route('listings.index') }}" class="relative w-full" id="searchForm">
+                            <input name="search" value="{{ request('search') }}" 
+                                   class="block w-full h-12 pr-4 pl-12 bg-[#f1f3f7] border-transparent rounded-xl focus:bg-white focus:border-primary focus:ring-primary sm:text-sm transition-all duration-200" 
+                                   placeholder="جستجو در بین هزاران کالا..." 
+                                   type="text"
+                                   autocomplete="off"
+                                   id="searchInput"/>
+                            <button type="submit" class="absolute inset-y-1 left-1 bg-primary text-white px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1">
+                                <span class="material-symbols-outlined text-lg">search</span>
+                                <span class="hidden lg:inline">جستجو</span>
+                            </button>
+                        </form>
+                        
+                        <!-- Search Suggestions Dropdown -->
+                        <div id="searchSuggestions" class="hidden absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-lg z-50 border border-gray-200 overflow-hidden">
+                            <div id="suggestionsList" class="max-h-96 overflow-y-auto">
+                                <!-- Suggestions will be populated here -->
+                            </div>
                         </div>
-                        <input name="search" value="{{ request('search') }}" class="block w-full h-12 pr-10 pl-4 bg-[#f1f3f7] border-transparent rounded-xl focus:bg-white focus:border-primary focus:ring-primary sm:text-sm transition-all duration-200" placeholder="جستجو در بین هزاران کالا..." type="text"/>
-                        <button type="submit" class="absolute inset-y-1 left-1 bg-primary text-white px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">جستجو</button>
-                    </form>
+                    </div>
                 </div>
+                
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const searchInput = document.getElementById('searchInput');
+                        const searchForm = document.getElementById('searchForm');
+                        const suggestionsContainer = document.getElementById('searchSuggestions');
+                        const suggestionsList = document.getElementById('suggestionsList');
+                        
+                        let searchTimeout;
+                        let currentFocus = -1;
+                        
+                        searchInput.addEventListener('input', function() {
+                            clearTimeout(searchTimeout);
+                            
+                            const query = this.value.trim();
+                            
+                            if (query.length === 0) {
+                                suggestionsContainer.classList.add('hidden');
+                                currentFocus = -1;
+                                return;
+                            }
+                            
+                            if (query.length < 2) {
+                                return; // Don't search for less than 2 characters
+                            }
+                            
+                            // Show loading state
+                            suggestionsList.innerHTML = `
+                                <div class="px-4 py-8 text-center text-gray-400">
+                                    <span class="material-symbols-outlined text-4xl mb-2 block animate-spin">progress_activity</span>
+                                    <p class="text-sm">در حال جستجو...</p>
+                                </div>
+                            `;
+                            suggestionsContainer.classList.remove('hidden');
+                            
+                            // Debounce the search
+                            searchTimeout = setTimeout(() => {
+                                performLiveSearch(query);
+                            }, 300); // Wait 300ms after user stops typing
+                        });
+                        
+                        searchInput.addEventListener('keydown', function(e) {
+                            if (e.key === 'ArrowDown') {
+                                e.preventDefault();
+                                currentFocus++;
+                                addActive(currentFocus);
+                            } else if (e.key === 'ArrowUp') {
+                                e.preventDefault();
+                                currentFocus--;
+                                addActive(currentFocus);
+                            } else if (e.key === 'Enter') {
+                                const activeItem = document.querySelector('#suggestionsList .autocomplete-active');
+                                if (activeItem) {
+                                    e.preventDefault();
+                                    activeItem.click();
+                                }
+                                // Otherwise let form submit normally
+                            } else if (e.key === 'Escape') {
+                                suggestionsContainer.classList.add('hidden');
+                                currentFocus = -1;
+                            }
+                        });
+                        
+                        function performLiveSearch(query) {
+                            // Use Laravel route
+                            const apiUrl = '{{ url("/api/listings/search") }}?q=' + encodeURIComponent(query);
+                            
+                            fetch(apiUrl, {
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                                },
+                                credentials: 'same-origin'
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('خطا در جستجو');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                displaySuggestions(data);
+                            })
+                            .catch(error => {
+                                console.error('Search error:', error);
+                                suggestionsList.innerHTML = `
+                                    <div class="px-4 py-8 text-center text-red-500">
+                                        <span class="material-symbols-outlined text-4xl mb-2 block">error</span>
+                                        <p class="text-sm">خطا در جستجو</p>
+                                    </div>
+                                `;
+                            });
+                        }
+                        
+                        function displaySuggestions(results) {
+                            if (!results || results.length === 0) {
+                                suggestionsList.innerHTML = `
+                                    <div class="px-4 py-8 text-center text-gray-400">
+                                        <span class="material-symbols-outlined text-4xl mb-2 block">search_off</span>
+                                        <p class="text-sm">نتیجه‌ای یافت نشد</p>
+                                    </div>
+                                `;
+                                return;
+                            }
+                            
+                            suggestionsList.innerHTML = '';
+                            
+                            results.forEach((result, index) => {
+                                const suggestionItem = document.createElement('a');
+                                suggestionItem.href = result.url;
+                                suggestionItem.className = 'block px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition-colors';
+                                
+                                let imageHtml = '';
+                                if (result.image_url) {
+                                    imageHtml = `<div class="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                                                    <img src="${result.image_url}" alt="${result.title}" class="w-full h-full object-cover">
+                                                 </div>`;
+                                } else {
+                                    imageHtml = `<div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                                                    <span class="material-symbols-outlined text-gray-400">image</span>
+                                                 </div>`;
+                                }
+                                
+                                const priceText = result.price ? new Intl.NumberFormat('fa-IR').format(result.price) + ' تومان' : 'قیمت تماس';
+                                
+                                suggestionItem.innerHTML = `
+                                    <div class="flex items-center gap-3">
+                                        ${imageHtml}
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900 truncate">${result.title}</p>
+                                            <p class="text-xs text-primary font-bold mt-0.5">${priceText}</p>
+                                        </div>
+                                        <span class="material-symbols-outlined text-gray-400 text-sm">arrow_back</span>
+                                    </div>
+                                `;
+                                
+                                suggestionsList.appendChild(suggestionItem);
+                            });
+                            
+                            currentFocus = -1;
+                        }
+                        
+                        function addActive(i) {
+                            const items = suggestionsList.getElementsByTagName('a');
+                            if (!items || items.length === 0) return false;
+                            
+                            removeActive(items);
+                            
+                            if (i >= items.length) currentFocus = 0;
+                            if (i < 0) currentFocus = (items.length - 1);
+                            
+                            if (items[currentFocus]) {
+                                items[currentFocus].classList.add('autocomplete-active', 'bg-primary/10');
+                                items[currentFocus].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                            }
+                        }
+                        
+                        function removeActive(items) {
+                            for (let i = 0; i < items.length; i++) {
+                                items[i].classList.remove('autocomplete-active', 'bg-primary/10');
+                            }
+                        }
+                        
+                        // Hide suggestions when clicking outside
+                        document.addEventListener('click', function(e) {
+                            if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+                                suggestionsContainer.classList.add('hidden');
+                                currentFocus = -1;
+                            }
+                        });
+                        
+                        // Show suggestions when input is focused and has value
+                        searchInput.addEventListener('focus', function() {
+                            if (this.value.trim().length >= 2 && suggestionsList.children.length > 0) {
+                                suggestionsContainer.classList.remove('hidden');
+                            }
+                        });
+                    });
+                </script>
                 
                 <!-- Left Side: User Actions -->
                 <div class="flex items-center gap-2 sm:gap-4 shrink-0">
@@ -139,9 +333,138 @@
                         @endauth
                     </a>
                     @auth
-                        <button class="p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors">
-                            <span class="material-symbols-outlined">notifications</span>
-                        </button>
+                        <div class="relative" id="notificationDropdown">
+                            <button onclick="toggleNotifications()" class="relative p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors">
+                                <span class="material-symbols-outlined">notifications</span>
+                                <span id="notificationBadge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center"></span>
+                            </button>
+                            
+                            <div id="notificationMenu" class="hidden absolute left-0 mt-2 w-80 bg-white rounded-xl shadow-xl z-50 border border-gray-100 overflow-hidden">
+                                <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                                    <h3 class="font-bold text-gray-900">اعلان‌ها</h3>
+                                    <a href="{{ route('user.notifications.index') }}" class="text-xs text-primary hover:text-blue-700">مشاهده همه</a>
+                                </div>
+                                <div id="notificationList" class="max-h-96 overflow-y-auto">
+                                    <div class="px-4 py-8 text-center text-gray-400">
+                                        <span class="material-symbols-outlined text-4xl mb-2 block">notifications_off</span>
+                                        <p class="text-sm">در حال بارگذاری...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <script>
+                        let notificationsOpen = false;
+                        
+                        function toggleNotifications() {
+                            const menu = document.getElementById('notificationMenu');
+                            notificationsOpen = !notificationsOpen;
+                            
+                            if (notificationsOpen) {
+                                menu.classList.remove('hidden');
+                                loadNotifications();
+                            } else {
+                                menu.classList.add('hidden');
+                            }
+                        }
+                        
+                        function loadNotifications() {
+                            fetch('{{ route('user.notifications.recent') }}', {
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                                },
+                                credentials: 'same-origin'
+                            })
+                            .then(res => {
+                                if (!res.ok) {
+                                    throw new Error(`HTTP error! status: ${res.status}`);
+                                }
+                                return res.json();
+                            })
+                            .then(data => {
+                                updateNotificationBadge(data.unread_count);
+                                renderNotifications(data.notifications);
+                            })
+                            .catch(err => {
+                                console.error('Error loading notifications:', err);
+                                // Show error in notification list
+                                const list = document.getElementById('notificationList');
+                                list.innerHTML = `
+                                    <div class="px-4 py-8 text-center text-red-500">
+                                        <span class="material-symbols-outlined text-4xl mb-2 block">error</span>
+                                        <p class="text-sm">خطا در بارگذاری اعلان‌ها</p>
+                                        <p class="text-xs mt-1">${err.message}</p>
+                                    </div>
+                                `;
+                            });
+                        }
+                        
+                        function updateNotificationBadge(count) {
+                            const badge = document.getElementById('notificationBadge');
+                            if (count > 0) {
+                                badge.textContent = count;
+                                badge.classList.remove('hidden');
+                            } else {
+                                badge.classList.add('hidden');
+                            }
+                        }
+                        
+                        function renderNotifications(notifications) {
+                            const list = document.getElementById('notificationList');
+                            
+                            if (notifications.length === 0) {
+                                list.innerHTML = `
+                                    <div class="px-4 py-8 text-center text-gray-400">
+                                        <span class="material-symbols-outlined text-4xl mb-2 block">notifications_off</span>
+                                        <p class="text-sm">اعلانی وجود ندارد</p>
+                                    </div>
+                                `;
+                                return;
+                            }
+                            
+                            list.innerHTML = notifications.map(notif => `
+                                <a href="${notif.link || '{{ route('user.notifications.index') }}'}" 
+                                   class="block px-4 py-3 hover:bg-gray-50 border-b border-gray-50 transition-colors ${!notif.is_read ? 'bg-blue-50/30' : ''}">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-${notif.color}-100">
+                                            <span class="material-symbols-outlined text-lg text-${notif.color}-600">${notif.icon}</span>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900 mb-1">${notif.title}</p>
+                                            <p class="text-xs text-gray-600 line-clamp-2">${notif.message}</p>
+                                            <p class="text-xs text-gray-400 mt-1">${notif.time_ago}</p>
+                                        </div>
+                                        ${!notif.is_read ? '<span class="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1"></span>' : ''}
+                                    </div>
+                                </a>
+                            `).join('');
+                        }
+                        
+                        // Close dropdown when clicking outside
+                        document.addEventListener('click', function(event) {
+                            const dropdown = document.getElementById('notificationDropdown');
+                            if (dropdown && !dropdown.contains(event.target) && notificationsOpen) {
+                                toggleNotifications();
+                            }
+                        });
+                        
+                        // Load badge count on page load
+                        document.addEventListener('DOMContentLoaded', function() {
+                            fetch('{{ route('user.notifications.recent') }}', {
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                                },
+                                credentials: 'same-origin'
+                            })
+                            .then(res => res.json())
+                            .then(data => updateNotificationBadge(data.unread_count))
+                            .catch(err => console.error('Error loading badge:', err));
+                        });
+                        </script>
                     @endauth
                     <div class="h-8 w-[1px] bg-gray-200 mx-1 hidden sm:block"></div>
                     @auth

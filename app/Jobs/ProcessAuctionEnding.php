@@ -43,9 +43,8 @@ class ProcessAuctionEnding implements ShouldQueue
                 Log::info('ProcessAuctionEnding: Ended auction ' . $auction->id);
             } catch (\Exception $e) {
                 Log::error('ProcessAuctionEnding: Failed to end auction ' . $auction->id . ': ' . $e->getMessage());
-                
-                // Re-throw to trigger retry logic
-                throw $e;
+                // Don't re-throw - continue processing other auctions
+                // Individual auction failures shouldn't fail the entire job
             }
         }
     }

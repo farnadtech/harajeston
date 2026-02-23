@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification Debug Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+    <style>
+        body {
+            font-family: Vazir, sans-serif;
+            background: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .notification-container {
+            position: relative;
+            display: inline-block;
+        }
+        .notification-menu {
+            position: absolute;
+            left: 0;
+            top: 100%;
+            margin-top: 8px;
+            width: 320px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+            z-index: 1000;
+        }
+        .notification-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: #ef4444;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hidden {
+            display: none;
+        }
+        .notification-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background-color 0.2s;
+        }
+        .notification-item:hover {
+            background-color: #f9fafb;
+        }
+        .notification-item.unread {
+            background-color: #eff6ff;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Notification Panel</h1>
+    <p>Click the notification icon below to test:</p>
+    
+    <div class="notification-container" id="notificationDropdown">
+        <button onclick="toggleNotifications()" style="position: relative; padding: 12px; background: #f3f4f6; border: none; border-radius: 50%; cursor: pointer;">
+            <span class="material-symbols-outlined">notifications</span>
+            <span id="notificationBadge" class="notification-badge hidden">3</span>
+        </button>
+        
+        <div id="notificationMenu" class="notification-menu hidden">
+            <div style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-weight: bold; color: #1f2937;">اعلان‌ها</h3>
+                <a href="#" style="font-size: 12px; color: #3b82f6; text-decoration: none;">مشاهده همه</a>
+            </div>
+            <div id="notificationList" style="max-height: 384px; overflow-y: auto;">
+                <div style="padding: 32px; text-align: center; color: #9ca3af;">
+                    <span class="material-symbols-outlined" style="font-size: 48px; margin-bottom: 8px; display: block;">notifications_off</span>
+                    <p style="margin: 0; font-size: 14px;">در حال بارگذاری...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <h2>Debug Information:</h2>
+        <div id="debugInfo"></div>
+    </div>
+
+    <script>
+        let notificationsOpen = false;
+        
+        function updateDebugInfo(message) {
+            const debugDiv = document.getElementById('debugInfo');
+            const timestamp = new Date().toLocaleTimeString();
+            debugDiv.innerHTML += `<p>[${timestamp}] ${message}</p>`;
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+        }
+        
+        function toggleNotifications() {
+            const menu = document.getElementById('notificationMenu');
+            notificationsOpen = !notificationsOpen;
+            
+            updateDebugInfo(`toggleNotifications called. notificationsOpen: ${notificationsOpen}`);
+            
+            if (notificationsOpen) {
+                menu.classList.remove('hidden');
+                updateDebugInfo('Menu shown, calling loadNotifications()');
+                loadNotifications();
+            } else {
+                menu.classList.add('hidden');
+                updateDebugInfo('Menu hidden');
+            }
+        }
+        
+        function loadNotifications() {
+            updateDebugInfo('loadNotifications started');
+            
+            // Simulate API call
+            setTimeout(() => {
+                try {
+                    updateDebugInfo('Simulating fetch request...');
+                    
+                    // Mock response data
+                    const mockData = {
+                        notifications: [
+                            {
+                                id: '1',
+                                title: 'تست اعلان ۱',
+                                message: 'این یک اعلان تست است',
+                                icon: 'notifications',
+                                color: 'blue',
+                                is_read: false,
+                                time_ago: 'همین الان'
+                            },
+                            {
+                                id: '2',
+                                title: 'تست اعلان ۲',
+                                message: 'اعلان دوم برای تست',
+                                icon: 'check_circle',
+                                color: 'green',
+                                is_read: true,
+                                time_ago: '۵ دقیقه پیش'
+                            }
+                        ],
+                        unread_count: 1
+                    };
+                    
+                    updateDebugInfo(`Received ${mockData.notifications.length} notifications, ${mockData.unread_count} unread`);
+                    updateNotificationBadge(mockData.unread_count);
+                    renderNotifications(mockData.notifications);
+                    
+                } catch (error) {
+                    updateDebugInfo(`Error in loadNotifications: ${error.message}`);
+                    console.error('Error loading notifications:', error);
+                }
+            }, 500);
+        }
+        
+        function updateNotificationBadge(count) {
+            const badge = document.getElementById('notificationBadge');
+            updateDebugInfo(`updateNotificationBadge called with count: ${count}`);
+            
+            if (count > 0) {
+                badge.textContent = count;
+                badge.classList.remove('hidden');
+                updateDebugInfo('Badge shown');
+            } else {
+                badge.classList.add('hidden');
+                updateDebugInfo('Badge hidden');
+            }
+        }
+        
+        function renderNotifications(notifications) {
+            const list = document.getElementById('notificationList');
+            updateDebugInfo(`renderNotifications called with ${notifications.length} notifications`);
+            
+            if (notifications.length === 0) {
+                list.innerHTML = `
+                    <div style="padding: 32px; text-align: center; color: #9ca3af;">
+                        <span class="material-symbols-outlined" style="font-size: 48px; margin-bottom: 8px; display: block;">notifications_off</span>
+                        <p style="margin: 0; font-size: 14px;">اعلانی وجود ندارد</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            list.innerHTML = notifications.map(notif => `
+                <div class="notification-item ${!notif.is_read ? 'unread' : ''}">
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: ${notif.color === 'blue' ? '#dbeafe' : '#dcfce7'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <span class="material-symbols-outlined" style="font-size: 20px; color: ${notif.color === 'blue' ? '#3b82f6' : '#16a34a'};">${notif.icon}</span>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 500; color: #1f2937;">${notif.title}</p>
+                            <p style="margin: 0 0 4px 0; font-size: 12px; color: #6b7280;">${notif.message}</p>
+                            <p style="margin: 0; font-size: 12px; color: #9ca3af;">${notif.time_ago}</p>
+                        </div>
+                        ${!notif.is_read ? '<span style="width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; margin-top: 4px;"></span>' : ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            updateDebugInfo('Notifications rendered successfully');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('notificationDropdown');
+            if (dropdown && !dropdown.contains(event.target) && notificationsOpen) {
+                updateDebugInfo('Clicked outside, closing notifications');
+                toggleNotifications();
+            }
+        });
+        
+        // Load badge count on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDebugInfo('Page loaded, initializing notification system');
+            // Simulate initial badge load
+            setTimeout(() => {
+                updateNotificationBadge(2);
+            }, 1000);
+        });
+        
+        updateDebugInfo('Script initialized');
+    </script>
+</body>
+</html>

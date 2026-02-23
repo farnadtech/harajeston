@@ -97,6 +97,7 @@ Route::get('/password/reset/{token}', [\App\Http\Controllers\Auth\ResetPasswordC
 Route::post('/password/reset', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])->name('password.update');
 
 // API Routes
+Route::get('/api/listings/search', [\App\Http\Controllers\Api\ListingController::class, 'search']);
 Route::get('/api/categories/structure', [\App\Http\Controllers\Api\CategoryController::class, 'getStructure']);
 Route::get('/api/categories/{category}/attributes', [\App\Http\Controllers\Api\CategoryController::class, 'getAttributes']);
 Route::get('/api/categories/{category}/path', [\App\Http\Controllers\Api\CategoryController::class, 'getPath']);
@@ -121,8 +122,10 @@ Route::middleware('auth')->group(function () {
     // Listings (Authenticated) - IMPORTANT: /listings/create must come BEFORE /listings/{listing}
     Route::get('/my-listings', [ListingController::class, 'myListings'])->name('my-listings');
     Route::get('/listings/create', [ListingController::class, 'create'])->name('listings.create');
+    Route::get('/listings/{listing}/edit', [ListingController::class, 'edit'])->name('listings.edit');
     
     Route::post('/listings', [ListingController::class, 'store'])->name('listings.store');
+    Route::put('/listings/{listing}', [ListingController::class, 'update'])->name('listings.update');
     Route::post('/listings/{listing}/participate', [ListingController::class, 'participate'])->name('listings.participate');
 });
 
@@ -171,6 +174,12 @@ Route::middleware('auth')->group(function () {
     // Seller Reviews
     Route::get('/orders/{order}/review', [\App\Http\Controllers\SellerReviewController::class, 'create'])->name('seller-reviews.create');
     Route::post('/orders/{order}/review', [\App\Http\Controllers\SellerReviewController::class, 'store'])->name('seller-reviews.store');
+    
+    // User Notifications (non-admin)
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('user.notifications.index');
+    Route::get('/notifications/recent', [\App\Http\Controllers\NotificationController::class, 'getRecent'])->name('user.notifications.recent');
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('user.notifications.read');
+    Route::post('/notifications/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('user.notifications.mark-all-read');
     
     // Admin Routes
     Route::prefix('admin')->middleware('admin')->group(function () {

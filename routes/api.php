@@ -36,6 +36,9 @@ Route::get('/categories/{category}/path', [CategoryController::class, 'getPath']
 // Public store routes
 Route::get('/stores/{slug}', [StoreController::class, 'show']);
 
+// Public listing search
+Route::get('/listings/search', [ListingController::class, 'search']);
+
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {

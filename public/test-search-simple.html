@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست ساده جستجو</title>
+    <style>
+        body { font-family: Tahoma; padding: 20px; }
+        .result { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>تست API جستجو</h1>
+    
+    <input type="text" id="search" placeholder="جستجو..." style="width: 300px; padding: 10px;">
+    <button onclick="testSearch()">جستجو</button>
+    
+    <div id="output"></div>
+    
+    <script>
+        function testSearch() {
+            const query = document.getElementById('search').value;
+            const output = document.getElementById('output');
+            
+            output.innerHTML = '<p>در حال جستجو...</p>';
+            
+            // Test 1: Direct URL
+            const url1 = `/api/listings/search?q=${encodeURIComponent(query)}`;
+            output.innerHTML += `<p>URL 1: <code>${url1}</code></p>`;
+            
+            fetch(url1)
+                .then(response => {
+                    output.innerHTML += `<p class="success">Status: ${response.status}</p>`;
+                    return response.text();
+                })
+                .then(text => {
+                    output.innerHTML += `<div class="result"><strong>پاسخ:</strong><pre>${text}</pre></div>`;
+                })
+                .catch(error => {
+                    output.innerHTML += `<p class="error">خطا: ${error.message}</p>`;
+                });
+            
+            // Test 2: With full path
+            const url2 = `http://localhost/haraj/public/api/listings/search?q=${encodeURIComponent(query)}`;
+            output.innerHTML += `<p>URL 2: <code>${url2}</code></p>`;
+            
+            fetch(url2)
+                .then(response => {
+                    output.innerHTML += `<p class="success">Status: ${response.status}</p>`;
+                    return response.text();
+                })
+                .then(text => {
+                    output.innerHTML += `<div class="result"><strong>پاسخ:</strong><pre>${text}</pre></div>`;
+                })
+                .catch(error => {
+                    output.innerHTML += `<p class="error">خطا: ${error.message}</p>`;
+                });
+        }
+        
+        // Auto test on load
+        window.onload = function() {
+            document.getElementById('search').value = 'تست';
+            testSearch();
+        };
+    </script>
+</body>
+</html>

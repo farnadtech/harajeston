@@ -1,8 +1,12 @@
-@extends('layouts.app')
+@extends('layouts.seller')
+
+@section('title', 'ویرایش فروشگاه')
+
+@section('page-title', 'ویرایش فروشگاه')
+@section('page-subtitle', 'مدیریت اطلاعات فروشگاه خود')
 
 @section('content')
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-4xl mx-auto">
+<div class="max-w-4xl mx-auto"
         <h1 class="text-3xl font-bold text-gray-900 mb-8">ویرایش فروشگاه</h1>
 
         @if(session('success'))
@@ -128,5 +132,4 @@
             </a>
         </div>
     </div>
-</div>
 @endsection
