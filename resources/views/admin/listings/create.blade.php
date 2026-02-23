@@ -4,6 +4,23 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ url('css/persian-datepicker-package.css') }}?v={{ now()->timestamp }}">
+<style>
+    /* حذف فلش پیش‌فرض select */
+    select {
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+    }
+    
+    /* اضافه کردن فلش سفارشی در سمت چپ */
+    select {
+        background: white url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E") no-repeat !important;
+        background-size: 1.5em 1.5em !important;
+        background-position: 0.5rem center !important;
+        padding-left: 2.5rem !important;
+        padding-right: 0.75rem !important;
+    }
+</style>
 @endpush
 
 @section('content')

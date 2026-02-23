@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست دسترسی به URL</title>
+    <style>
+        body {
+            font-family: Tahoma, Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 30px;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .url-test {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border-right: 4px solid #007bff;
+        }
+        .url-test h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-right: 4px solid #0dcaf0;
+        }
+        .warning {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-right: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 تست دسترسی به صفحه ایجاد حراجی</h1>
+        
+        <div class="warning">
+            <strong>⚠️ مهم:</strong> قبل از تست، مطمئن شوید که با اکانت فروشنده لاگین کرده‌اید!
+        </div>
+
+        <div class="url-test">
+            <h3>روش 1: با index.php (همیشه کار می‌کند)</h3>
+            <p>این روش حتی اگر mod_rewrite غیرفعال باشد کار می‌کند:</p>
+            <a href="/haraj/public/index.php/listings/create" class="btn" target="_blank">
+                تست با index.php
+            </a>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                URL: /haraj/public/index.php/listings/create
+            </p>
+        </div>
+
+        <div class="url-test">
+            <h3>روش 2: بدون index.php (نیاز به mod_rewrite)</h3>
+            <p>این روش فقط اگر mod_rewrite فعال باشد کار می‌کند:</p>
+            <a href="/haraj/public/listings/create" class="btn" target="_blank">
+                تست بدون index.php
+            </a>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                URL: /haraj/public/listings/create
+            </p>
+        </div>
+
+        <div class="url-test">
+            <h3>روش 3: URL کامل</h3>
+            <p>تست با آدرس کامل:</p>
+            <a href="http://localhost/haraj/public/index.php/listings/create" class="btn" target="_blank">
+                تست URL کامل
+            </a>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                URL: http://localhost/haraj/public/index.php/listings/create
+            </p>
+        </div>
+
+        <div class="info">
+            <h3>📋 نتیجه تست:</h3>
+            <ul style="text-align: right;">
+                <li>اگر <strong>روش 1</strong> کار کرد اما <strong>روش 2</strong> نه → mod_rewrite غیرفعال است</li>
+                <li>اگر هر دو کار کردند → همه چیز درست است!</li>
+                <li>اگر هیچکدام کار نکرد → مشکل از authentication است (لاگین نیستید یا seller نیستید)</li>
+            </ul>
+        </div>
+
+        <div class="info">
+            <h3>🔧 راه‌حل اگر mod_rewrite غیرفعال است:</h3>
+            <p>در فایل <code>httpd.conf</code> یا <code>apache2.conf</code> خط زیر را پیدا کنید:</p>
+            <pre style="background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto;">
+#LoadModule rewrite_module modules/mod_rewrite.so
+            </pre>
+            <p>و # را از ابتدای آن حذف کنید، سپس Apache را restart کنید.</p>
+        </div>
+
+        <div class="url-test">
+            <h3>🏠 لینک‌های دیگر برای تست:</h3>
+            <a href="/haraj/public/index.php/dashboard" class="btn" style="background: #28a745;">
+                داشبورد (با index.php)
+            </a>
+            <a href="/haraj/public/index.php/my-listings" class="btn" style="background: #17a2b8;">
+                مزایده‌های من (با index.php)
+            </a>
+            <a href="/haraj/public/login" class="btn" style="background: #ffc107; color: #000;">
+                صفحه لاگین
+            </a>
+        </div>
+    </div>
+</body>
+</html>

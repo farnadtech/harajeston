@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="utf-8"/>
+    <title>تست فرم ورود</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-8">
+    <h1 class="text-2xl mb-4">تست فرم ورود</h1>
+    
+    <form method="POST" action="/login" class="space-y-4 max-w-md">
+        <div>
+            <label>ایمیل:</label>
+            <input type="email" name="email" value="test@test.com" class="border p-2 w-full" required/>
+        </div>
+        <div>
+            <label>رمز عبور:</label>
+            <input type="password" name="password" value="12345678" class="border p-2 w-full" required/>
+        </div>
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">
+            ورود
+        </button>
+    </form>
+
+    <script>
+        document.querySelector('form').addEventListener('submit', function(e) {
+            console.log('Form is submitting...');
+            console.log('Action:', this.action);
+            console.log('Method:', this.method);
+            console.log('Email:', this.querySelector('[name="email"]').value);
+            console.log('Password:', this.querySelector('[name="password"]').value);
+        });
+    </script>
+</body>
+</html>

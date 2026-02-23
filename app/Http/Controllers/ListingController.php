@@ -185,13 +185,63 @@ class ListingController extends Controller
         // Return search results view
         return view('listings.search', compact('listings', 'request'));
     }
+    /**
+     * Show seller's own listings
+     */
+    public function myListings(Request $request)
+    {
+        $user = auth()->user();
+
+        // Get status filter
+        $status = $request->get('status', 'all');
+
+        // Build query
+        $query = Listing::where('seller_id', $user->id);
+
+        // Apply status filter
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        // Get counts for each status
+        $counts = [
+            'all' => Listing::where('seller_id', $user->id)->count(),
+            'active' => Listing::where('seller_id', $user->id)->where('status', 'active')->count(),
+            'pending' => Listing::where('seller_id', $user->id)->where('status', 'pending')->count(),
+            'completed' => Listing::where('seller_id', $user->id)->where('status', 'completed')->count(),
+            'rejected' => Listing::where('seller_id', $user->id)->where('status', 'rejected')->count(),
+        ];
+
+        // Get listings with pagination
+        $listings = $query->with(['category', 'images'])
+            ->withCount('bids')
+            ->orderBy('created_at', 'desc')
+            ->paginate(20)
+            ->appends($request->except('page'));
+
+        return view('listings.my-listings', compact('listings', 'counts'));
+    }
+
+
 
     /**
      * Show the form for creating a new listing
      */
     public function create()
     {
-        return view('listings.create');
+        // بررسی نقش فروشنده
+        if (!auth()->user()->isSeller()) {
+            return redirect()->route('dashboard')
+                ->with('error', 'فقط فروشندگان می‌توانند حراجی ایجاد کنند.');
+        }
+
+        // بررسی وضعیت فروشنده
+        if (!auth()->user()->isSellerActive()) {
+            return redirect()->route('dashboard')
+                ->with('error', 'حساب فروشندگی شما هنوز تایید نشده است.');
+        }
+
+        return view('listings.create-new');
     }
 
     /**

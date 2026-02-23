@@ -102,11 +102,9 @@ class SellerController extends Controller
             if (!$seller->store) {
                 Store::create([
                     'user_id' => $seller->id,
-                    'name' => $data['store_name'],
-                    'slug' => \Str::slug($data['store_name']),
+                    'store_name' => $data['store_name'] ?? 'فروشگاه ' . $seller->name,
+                    'slug' => \Str::slug($data['store_name'] ?? 'store-' . $seller->id),
                     'description' => $data['store_description'] ?? '',
-                    'phone' => $data['phone'] ?? '',
-                    'address' => $data['address'] ?? null,
                 ]);
             }
 

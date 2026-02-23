@@ -25,11 +25,17 @@ Route::get('/', [ListingController::class, 'index'])->name('home');
 
 // Authentication Routes
 Route::get('/login', function () { return view('auth.login'); })->name('login');
+Route::get('/register', function () { return view('auth.register'); })->name('register');
 Route::post('/login', function (\Illuminate\Http\Request $request) {
-    $credentials = $request->validate([
-        'email' => 'required|email',
-        'password' => 'required',
-    ]);
+    $login = $request->input('login');
+    
+    // Check if login is email or phone
+    $fieldType = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
+    
+    $credentials = [
+        $fieldType => $login,
+        'password' => $request->input('password')
+    ];
     
     if (auth()->attempt($credentials, $request->filled('remember'))) {
         $request->session()->regenerate();
@@ -37,27 +43,37 @@ Route::post('/login', function (\Illuminate\Http\Request $request) {
     }
     
     return back()->withErrors([
-        'email' => 'اطلاعات ورود نادرست است.',
-    ])->onlyInput('email');
+        'login' => 'اطلاعات ورود نادرست است.',
+    ])->withInput($request->only('login'));
 });
-
-Route::get('/register', function () { return view('auth.register'); })->name('register');
 Route::post('/register', function (\Illuminate\Http\Request $request) {
     $validated = $request->validate([
         'name' => 'required|string|max:255',
+        'phone' => 'required|string|max:20',
         'email' => 'required|string|email|max:255|unique:users',
         'password' => 'required|string|min:8|confirmed',
-        'username' => 'nullable|string|max:255|unique:users',
+        'terms' => 'required|accepted',
+    ], [
+        'name.required' => 'نام و نام خانوادگی الزامی است.',
+        'phone.required' => 'شماره تلفن الزامی است.',
+        'email.required' => 'ایمیل الزامی است.',
+        'email.email' => 'فرمت ایمیل صحیح نیست.',
+        'email.unique' => 'این ایمیل قبلاً ثبت شده است.',
+        'password.required' => 'رمز عبور الزامی است.',
+        'password.min' => 'رمز عبور باید حداقل ۸ کاراکتر باشد.',
+        'password.confirmed' => 'تکرار رمز عبور مطابقت ندارد.',
+        'terms.required' => 'باید قوانین و مقررات را بپذیرید.',
+        'terms.accepted' => 'باید قوانین و مقررات را بپذیرید.',
     ]);
     
     // All new users start as buyers with no seller status
     $user = \App\Models\User::create([
         'name' => $validated['name'],
+        'phone' => $validated['phone'],
         'email' => $validated['email'],
         'password' => bcrypt($validated['password']),
         'role' => 'buyer',
         'seller_status' => 'none',
-        'username' => $validated['username'] ?? null,
     ]);
     
     // Create wallet
@@ -73,7 +89,12 @@ Route::post('/register', function (\Illuminate\Http\Request $request) {
 });
 
 Route::post('/logout', function () { auth()->logout(); return redirect('/'); })->name('logout');
-Route::get('/password/request', function () { return view('auth.forgot-password'); })->name('password.request');
+
+// Password Reset Routes
+Route::get('/password/request', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+Route::post('/password/email', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::get('/password/reset/{token}', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'showResetForm'])->name('password.reset');
+Route::post('/password/reset', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])->name('password.update');
 
 // API Routes
 Route::get('/api/categories/structure', [\App\Http\Controllers\Api\CategoryController::class, 'getStructure']);
@@ -82,7 +103,6 @@ Route::get('/api/categories/{category}/path', [\App\Http\Controllers\Api\Categor
 
 // Listings
 Route::get('/listings', [ListingController::class, 'index'])->name('listings.index');
-Route::get('/listings/{listing}', [ListingController::class, 'show'])->name('listings.show');
 
 // Comments (Public - requires auth)
 Route::middleware('auth')->group(function () {
@@ -98,11 +118,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/become-seller', [\App\Http\Controllers\SellerRequestController::class, 'store'])->name('seller-request.store');
     Route::get('/seller-request/status', [\App\Http\Controllers\SellerRequestController::class, 'status'])->name('seller-request.status');
     
-    // Listings (Authenticated)
+    // Listings (Authenticated) - IMPORTANT: /listings/create must come BEFORE /listings/{listing}
+    Route::get('/my-listings', [ListingController::class, 'myListings'])->name('my-listings');
     Route::get('/listings/create', [ListingController::class, 'create'])->name('listings.create');
+    
     Route::post('/listings', [ListingController::class, 'store'])->name('listings.store');
     Route::post('/listings/{listing}/participate', [ListingController::class, 'participate'])->name('listings.participate');
-    
+});
+
+// Listings show route - MUST come AFTER /listings/create to avoid conflicts
+Route::get('/listings/{listing}', [ListingController::class, 'show'])->name('listings.show');
+
+Route::middleware('auth')->group(function () {
     // Bidding
     Route::post('/bids', [BidController::class, 'store'])
         ->name('bids.store')

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="utf-8"/>
+    <title>تست Alpine.js</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet"/>
+    <style>
+        body { font-family: 'Vazirmatn', sans-serif; }
+        
+        /* Remove default select arrow */
+        select {
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            background-image: none !important;
+        }
+        
+        /* Custom arrow */
+        select:not(.no-arrow) {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-position: left 0.75rem center !important;
+            background-size: 1.25em 1.25em !important;
+            padding-left: 2.75rem !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h1 class="text-2xl font-bold mb-6">تست Alpine.js و انتخابگر دسته</h1>
+        
+        <!-- Test 1: Basic Alpine -->
+        <div class="mb-8 p-4 bg-blue-50 rounded-lg">
+            <h2 class="text-lg font-bold mb-3">تست 1: Alpine.js اصلی</h2>
+            <div x-data="{ count: 0 }">
+                <button @click="count++" class="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                    کلیک: <span x-text="count"></span>
+                </button>
+                <p class="mt-2 text-sm text-gray-600">اگر عدد افزایش یافت، Alpine.js کار می‌کند ✓</p>
+            </div>
+        </div>
+        
+        <!-- Test 2: Select with Arrow -->
+        <div class="mb-8 p-4 bg-green-50 rounded-lg">
+            <h2 class="text-lg font-bold mb-3">تست 2: فلش Select</h2>
+            <select class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                <option>گزینه 1</option>
+                <option>گزینه 2</option>
+                <option>گزینه 3</option>
+            </select>
+            <p class="mt-2 text-sm text-gray-600">باید فقط یک فلش در سمت چپ باشد ✓</p>
+        </div>
+        
+        <!-- Test 3: Category Selector Simulation -->
+        <div class="mb-8 p-4 bg-yellow-50 rounded-lg">
+            <h2 class="text-lg font-bold mb-3">تست 3: شبیه‌سازی انتخابگر دسته</h2>
+            <div x-data="testCategorySelector()">
+                <!-- Level 1 -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">دسته اصلی</label>
+                    <select @change="selectLevel1($event.target.value)" 
+                            x-model="level1"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                        <option value="">انتخاب کنید</option>
+                        <option value="electronics">الکترونیک</option>
+                        <option value="fashion">پوشاک</option>
+                        <option value="home">خانه</option>
+                    </select>
+                </div>
+                
+                <!-- Level 2 -->
+                <div x-show="showLevel2" x-transition class="mb-4">
+                    <label class="block text-sm font-medium mb-2">زیردسته</label>
+                    <select @change="selectLevel2($event.target.value)"
+                            x-model="level2"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                        <option value="">انتخاب کنید</option>
+                        <template x-for="item in level2Options" :key="item">
+                            <option :value="item" x-text="item"></option>
+                        </template>
+                    </select>
+                </div>
+                
+                <!-- Level 3 -->
+                <div x-show="showLevel3" x-transition class="mb-4">
+                    <label class="block text-sm font-medium mb-2">دسته نهایی</label>
+                    <select x-model="level3"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                        <option value="">انتخاب کنید</option>
+                        <template x-for="item in level3Options" :key="item">
+                            <option :value="item" x-text="item"></option>
+                        </template>
+                    </select>
+                </div>
+                
+                <!-- Result -->
+                <div x-show="level3" x-transition class="p-3 bg-green-100 border border-green-300 rounded-lg">
+                    <p class="text-sm">
+                        <strong>انتخاب شده:</strong>
+                        <span x-text="`${level1} > ${level2} > ${level3}`"></span>
+                    </p>
+                </div>
+                
+                <!-- Debug Info -->
+                <div class="mt-4 p-3 bg-gray-100 rounded-lg text-xs">
+                    <p><strong>Debug:</strong></p>
+                    <p>Level 1: <span x-text="level1 || 'خالی'"></span></p>
+                    <p>Level 2: <span x-text="level2 || 'خالی'"></span></p>
+                    <p>Level 3: <span x-text="level3 || 'خالی'"></span></p>
+                    <p>Show Level 2: <span x-text="showLevel2"></span></p>
+                    <p>Show Level 3: <span x-text="showLevel3"></span></p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Console Check -->
+        <div class="p-4 bg-red-50 rounded-lg">
+            <h2 class="text-lg font-bold mb-3">بررسی کنسول</h2>
+            <p class="text-sm text-gray-700 mb-2">کنسول مرورگر را باز کنید (F12) و پیام‌های زیر را بررسی کنید:</p>
+            <ul class="text-sm text-gray-600 list-disc list-inside space-y-1">
+                <li>پیام "Test initialized" باید نمایش داده شود</li>
+                <li>وقتی دسته اول را انتخاب می‌کنید، "Level 1 selected" نمایش داده می‌شود</li>
+                <li>وقتی دسته دوم را انتخاب می‌کنید، "Level 2 selected" نمایش داده می‌شود</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('testCategorySelector', () => ({
+                level1: '',
+                level2: '',
+                level3: '',
+                showLevel2: false,
+                showLevel3: false,
+                level2Options: [],
+                level3Options: [],
+                
+                init() {
+                    console.log('✓ Test initialized');
+                },
+                
+                selectLevel1(value) {
+                    console.log('=== Level 1 selected:', value);
+                    this.level2 = '';
+                    this.level3 = '';
+                    this.showLevel2 = false;
+                    this.showLevel3 = false;
+                    
+                    if (value === 'electronics') {
+                        this.level2Options = ['موبایل', 'لپتاپ', 'تبلت'];
+                        this.showLevel2 = true;
+                        console.log('✓ Showing level 2 options:', this.level2Options);
+                    } else if (value === 'fashion') {
+                        this.level2Options = ['مردانه', 'زنانه', 'بچگانه'];
+                        this.showLevel2 = true;
+                        console.log('✓ Showing level 2 options:', this.level2Options);
+                    } else if (value === 'home') {
+                        this.level2Options = ['آشپزخانه', 'حمام', 'اتاق خواب'];
+                        this.showLevel2 = true;
+                        console.log('✓ Showing level 2 options:', this.level2Options);
+                    }
+                },
+                
+                selectLevel2(value) {
+                    console.log('=== Level 2 selected:', value);
+                    this.level3 = '';
+                    this.showLevel3 = false;
+                    
+                    if (value) {
+                        this.level3Options = ['نهایی 1', 'نهایی 2', 'نهایی 3'];
+                        this.showLevel3 = true;
+                        console.log('✓ Showing level 3 options:', this.level3Options);
+                    }
+                }
+            }));
+        });
+        
+        // Check if Alpine is loaded
+        window.addEventListener('alpine:initialized', () => {
+            console.log('✓✓✓ Alpine.js initialized successfully!');
+        });
+    </script>
+</body>
+</html>

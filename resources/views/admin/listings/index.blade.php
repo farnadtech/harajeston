@@ -218,10 +218,11 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center gap-2">
-                                <a href="{{ route('admin.listings.show', $listing) }}" 
+                                <a href="{{ route('listings.show', $listing) }}" 
                                    class="text-primary hover:text-primary/80" 
-                                   title="مشاهده جزئیات">
-                                    <span class="material-symbols-outlined text-[20px]">visibility</span>
+                                   title="مشاهده آگهی در سایت"
+                                   target="_blank">
+                                    <span class="material-symbols-outlined text-[20px]">open_in_new</span>
                                 </a>
                                 <a href="{{ route('admin.listings.manage', $listing) }}" 
                                    class="text-blue-600 hover:text-blue-800" 

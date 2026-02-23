@@ -2,260 +2,435 @@
 
 @section('title', 'ایجاد آگهی جدید')
 
+@push('styles')
+<link rel="stylesheet" href="{{ url('css/persian-datepicker-package.css') }}?v={{ now()->timestamp }}">
+<style>
+    /* حذف فلش پیش‌فرض select */
+    select {
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+    }
+    
+    /* اضافه کردن فلش سفارشی در سمت چپ */
+    select {
+        background: white url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E") no-repeat !important;
+        background-size: 1.5em 1.5em !important;
+        background-position: 0.5rem center !important;
+        padding-left: 2.5rem !important;
+        padding-right: 0.75rem !important;
+    }
+</style>
+@endpush
+
 @section('content')
-<div class="max-w-4xl mx-auto">
-    <h1 class="text-3xl font-bold mb-6">ایجاد آگهی جدید</h1>
+<div class="container mx-auto px-4 py-6 max-w-4xl">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">ایجاد آگهی جدید</h1>
+        <p class="text-sm text-gray-600 mt-1">ایجاد آگهی حراجی</p>
+    </div>
 
-    <div class="bg-white rounded-lg shadow-md p-6" x-data="{ 
-        type: 'auction',
-        showAuctionFields: true,
-        showDirectSaleFields: false,
-        basePrice: 0,
-        deposit: 0,
-        updateDeposit() {
-            this.deposit = Math.round(this.basePrice * 0.1);
-        }
-    }">
-        <form method="POST" action="{{ url('/listings') }}" enctype="multipart/form-data">
-            @csrf
-
-            <!-- Step 1: Type Selection -->
-            <div class="mb-6">
-                <label class="block text-gray-700 font-bold mb-3">نوع آگهی</label>
-                <div class="grid grid-cols-3 gap-4">
-                    <label class="cursor-pointer">
-                        <input type="radio" name="type" value="auction" x-model="type" 
-                               @change="showAuctionFields = true; showDirectSaleFields = false"
-                               class="hidden peer">
-                        <div class="border-2 border-gray-300 peer-checked:border-purple-600 peer-checked:bg-purple-50 rounded-lg p-4 text-center transition">
-                            <span class="text-2xl block mb-2">🔨</span>
-                            <span class="font-bold">مزایده</span>
-                        </div>
-                    </label>
-
-                    <label class="cursor-pointer">
-                        <input type="radio" name="type" value="direct_sale" x-model="type"
-                               @change="showAuctionFields = false; showDirectSaleFields = true"
-                               class="hidden peer">
-                        <div class="border-2 border-gray-300 peer-checked:border-green-600 peer-checked:bg-green-50 rounded-lg p-4 text-center transition">
-                            <span class="text-2xl block mb-2">🛒</span>
-                            <span class="font-bold">فروش مستقیم</span>
-                        </div>
-                    </label>
-
-                    <label class="cursor-pointer">
-                        <input type="radio" name="type" value="hybrid" x-model="type"
-                               @change="showAuctionFields = true; showDirectSaleFields = true"
-                               class="hidden peer">
-                        <div class="border-2 border-gray-300 peer-checked:border-blue-600 peer-checked:bg-blue-50 rounded-lg p-4 text-center transition">
-                            <span class="text-2xl block mb-2">⚡</span>
-                            <span class="font-bold">ترکیبی</span>
-                        </div>
-                    </label>
+    {{-- نمایش خطاهای validation --}}
+    @if ($errors->any())
+        <div class="bg-red-50 border-r-4 border-red-500 rounded-lg p-4 mb-6">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <span class="material-symbols-outlined text-red-500 text-2xl">error</span>
                 </div>
-                @error('type')
-                    <span class="text-red-500 text-sm">{{ $message }}</span>
-                @enderror
+                <div class="mr-3 flex-1">
+                    <h3 class="text-sm font-bold text-red-800 mb-2">لطفاً خطاهای زیر را برطرف کنید:</h3>
+                    <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
             </div>
+        </div>
+    @endif
 
-            <!-- Basic Information -->
-            <div class="mb-6">
-                <label class="block text-gray-700 font-bold mb-2">عنوان آگهی</label>
-                <input type="text" name="title" value="{{ old('title') }}"
-                       class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       placeholder="عنوان جذاب برای آگهی خود وارد کنید" required>
+    <form action="{{ url('/listings') }}" method="POST" enctype="multipart/form-data">
+        @csrf
+
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
+            <!-- Basic Info -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">عنوان حراجی *</label>
+                <input type="text" name="title" value="{{ old('title') }}" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
                 @error('title')
-                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
-            <div class="mb-6">
-                <label class="block text-gray-700 font-bold mb-2">توضیحات</label>
-                <textarea name="description" rows="5"
-                          class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="توضیحات کامل درباره محصول..." required>{{ old('description') }}</textarea>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">توضیحات *</label>
+                <textarea name="description" rows="5" required
+                          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">{{ old('description') }}</textarea>
                 @error('description')
-                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
-            <!-- Category Selection -->
-            <div class="mb-6">
+            <!-- Category -->
+            <div>
                 <x-category-selector :selected="old('category_id')" />
             </div>
 
-            <!-- Listing Attributes -->
+            <!-- Attributes -->
             <x-listing-attributes />
 
-            <!-- Auction Fields -->
-            <div x-show="showAuctionFields" x-transition>
-                <h3 class="text-xl font-bold mb-4 text-purple-600">اطلاعات مزایده</h3>
+            <!-- Condition -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">وضعیت کالا *</label>
+                <select name="condition" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="new" {{ old('condition') === 'new' ? 'selected' : '' }}>نو</option>
+                    <option value="like_new" {{ old('condition') === 'like_new' ? 'selected' : '' }}>در حد نو</option>
+                    <option value="used" {{ old('condition') === 'used' ? 'selected' : '' }}>دست دوم</option>
+                </select>
+                @error('condition')
+                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <!-- Auction Settings -->
+            <div class="border-t border-gray-200 pt-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">تنظیمات مزایده</h3>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-gray-700 font-bold mb-2">قیمت پایه (ریال)</label>
-                        <input type="number" name="base_price" x-model="basePrice" @input="updateDeposit"
-                               value="{{ old('base_price') }}"
-                               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        @error('base_price')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">قیمت شروع (تومان) *</label>
+                        <input type="number" name="starting_price" value="{{ old('starting_price') }}" required min="0"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        @error('starting_price')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                         @enderror
                     </div>
 
                     <div>
-                        <label class="block text-gray-700 font-bold mb-2">سپرده (۱۰٪ خودکار)</label>
-                        <input type="text" x-model="deposit" readonly
-                               class="w-full px-4 py-2 border rounded-lg bg-gray-100">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">قیمت خرید فوری (تومان)</label>
+                        <input type="number" name="buy_now_price" value="{{ old('buy_now_price') }}" min="0"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        @error('buy_now_price')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ سپرده (تومان)</label>
+                        <input type="number" name="deposit_amount" value="{{ old('deposit_amount', 0) }}" min="0"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        @error('deposit_amount')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">حداقل افزایش پیشنهاد (تومان)</label>
+                        <input type="number" name="bid_increment" value="{{ old('bid_increment', 10000) }}" min="0"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        @error('bid_increment')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">زمان شروع *</label>
+                        <input type="text" 
+                               name="starts_at" 
+                               id="starts_at" 
+                               value="{{ old('starts_at') }}" 
+                               required
+                               class="persian-datepicker-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                               placeholder="انتخاب تاریخ و زمان"
+                               autocomplete="off"
+                               onchange="calculateEndDate()">
+                        @error('starts_at')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    @php
+                        $forceDuration = \App\Models\SiteSetting::get('force_auction_duration', false);
+                        $durationDays = \App\Models\SiteSetting::get('auction_duration_days', 7);
+                    @endphp
+
+                    <div id="ends_at_container" class="{{ $forceDuration ? 'hidden' : '' }}">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">زمان پایان *</label>
+                        <input type="text" 
+                               name="ends_at" 
+                               id="ends_at" 
+                               value="{{ old('ends_at') }}" 
+                               {{ $forceDuration ? '' : 'required' }}
+                               class="persian-datepicker-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                               placeholder="انتخاب تاریخ و زمان"
+                               autocomplete="off">
+                        @error('ends_at')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    @if($forceDuration)
+                    <div class="col-span-2">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-blue-600 mt-0.5">info</span>
+                                <div>
+                                    <p class="text-sm font-medium text-blue-900">محاسبه خودکار زمان پایان</p>
+                                    <p class="text-sm text-blue-700 mt-1">
+                                        زمان پایان حراجی به صورت خودکار {{ \App\Services\PersianNumberService::convertToPersian($durationDays) }} روز بعد از زمان شروع محاسبه می‌شود.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="ends_at" id="ends_at_hidden" value="{{ old('ends_at') }}">
+                    </div>
+                    @endif
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">تاریخ شروع</label>
-                        <input type="datetime-local" name="start_time" value="{{ old('start_time') }}"
-                               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        @error('start_time')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
-                        @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">تاریخ پایان</label>
-                        <input type="datetime-local" name="end_time" value="{{ old('end_time') }}"
-                               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        @error('end_time')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
-                        @enderror
-                    </div>
+                <div class="mt-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="auto_extend" value="1" {{ old('auto_extend') ? 'checked' : '' }}
+                               class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary">
+                        <span class="text-sm text-gray-700">تمدید خودکار در صورت پیشنهاد در دقایق پایانی</span>
+                    </label>
                 </div>
             </div>
 
-            <!-- Direct Sale Fields -->
-            <div x-show="showDirectSaleFields" x-transition>
-                <h3 class="text-xl font-bold mb-4 text-green-600">اطلاعات فروش مستقیم</h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">قیمت (ریال)</label>
-                        <input type="number" name="price" value="{{ old('price') }}"
-                               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        @error('price')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
-                        @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">موجودی انبار</label>
-                        <input type="number" name="stock" value="{{ old('stock') }}"
-                               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        @error('stock')
-                            <span class="text-red-500 text-sm">{{ $message }}</span>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-
-            <!-- Shipping Methods Selection -->
-            <div class="mb-6">
-                <label class="block text-gray-700 font-bold mb-3">روش‌های ارسال</label>
-                <p class="text-sm text-gray-500 mb-3">حداقل یک روش ارسال را انتخاب کنید</p>
-                
+            <!-- Shipping Methods -->
+            <div class="border-t border-gray-200 pt-6">
+                <label class="block text-sm font-medium text-gray-700 mb-3">روش‌های ارسال * <span class="text-xs text-gray-500">(حداقل یک روش را انتخاب کنید)</span></label>
                 @php
                     $shippingMethods = \App\Models\ShippingMethod::where('is_active', true)->get();
                 @endphp
                 
-                <div class="space-y-3">
+                @if($shippingMethods->count() > 0)
+                <div class="space-y-3" id="shippingMethodsContainer">
                     @foreach($shippingMethods as $method)
-                    <label class="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 cursor-pointer transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                        <input type="checkbox" name="shipping_methods[]" value="{{ $method->id }}" 
-                               class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-                               onchange="toggleShippingCost({{ $method->id }})">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-blue-600">local_shipping</span>
-                                <span class="font-bold text-gray-900">{{ $method->name }}</span>
+                    <div class="border rounded-lg p-4 hover:bg-gray-50 transition-colors" data-method-id="{{ $method->id }}">
+                        <label class="flex items-start gap-3 cursor-pointer">
+                            <input type="checkbox" 
+                                   name="shipping_methods[]" 
+                                   value="{{ $method->id }}"
+                                   class="w-4 h-4 text-primary rounded focus:ring-primary mt-1 shipping-method-checkbox"
+                                   onchange="togglePriceInput(this, {{ $method->id }})">
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div>
+                                        <span class="font-medium text-gray-900">{{ $method->name }}</span>
+                                        @if($method->estimated_days)
+                                            <span class="text-xs text-gray-500 mr-2">({{ \App\Services\PersianNumberService::convertToPersian($method->estimated_days) }} روز)</span>
+                                        @endif
+                                    </div>
+                                    <span class="text-sm text-gray-600">
+                                        قیمت پایه: {{ \App\Services\PersianNumberService::convertToPersian(number_format($method->base_cost)) }} تومان
+                                    </span>
+                                </div>
+                                
+                                <div class="price-adjustment-container hidden" id="price-container-{{ $method->id }}">
+                                    <label class="block text-xs text-gray-600 mb-1">قیمت سفارشی برای این محصول (تومان)</label>
+                                    <input type="number" 
+                                           name="shipping_costs[{{ $method->id }}]" 
+                                           id="price-input-{{ $method->id }}"
+                                           value="{{ $method->base_cost }}"
+                                           min="0"
+                                           step="1000"
+                                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           placeholder="قیمت ارسال برای این محصول">
+                                    <p class="text-xs text-gray-500 mt-1">می‌توانید قیمت ارسال را برای این محصول تغییر دهید</p>
+                                </div>
                             </div>
-                            @if($method->description)
-                                <p class="text-sm text-gray-500 mt-1">{{ $method->description }}</p>
-                            @endif
-                            @if($method->estimated_days)
-                                <p class="text-xs text-gray-400 mt-1">
-                                    زمان تحویل: {{ \App\Services\PersianNumberService::convertToPersian($method->estimated_days) }} روز کاری
-                                </p>
-                            @endif
-                        </div>
-                        <div class="text-left">
-                            <span class="text-sm text-gray-500">هزینه پایه:</span>
-                            <div class="font-bold text-gray-900">
-                                {{ \App\Services\PersianNumberService::convertToPersian(number_format($method->base_cost)) }} تومان
-                            </div>
-                        </div>
-                    </label>
-                    
-                    <!-- Custom Cost Adjustment -->
-                    <div id="shipping_cost_{{ $method->id }}" class="hidden mr-8 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            تنظیم قیمت سفارشی (اختیاری)
                         </label>
-                        <div class="flex items-center gap-3">
-                            <input type="number" 
-                                   name="shipping_costs[{{ $method->id }}]" 
-                                   placeholder="0" 
-                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                   step="1000">
-                            <span class="text-sm text-gray-500">تومان (+ یا - از قیمت پایه)</span>
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">
-                            مثال: +۱۰۰۰۰ برای افزایش یا -۵۰۰۰ برای کاهش قیمت
-                        </p>
                     </div>
                     @endforeach
                 </div>
-                
+                @else
+                <p class="text-sm text-gray-500">هیچ روش ارسالی تعریف نشده است.</p>
+                @endif
                 @error('shipping_methods')
-                    <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span>
+                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
-            <!-- Image Upload -->
-            <div class="mb-6">
-                <label class="block text-gray-700 font-bold mb-2">تصاویر محصول</label>
-                <input type="file" name="images[]" multiple accept="image/*"
-                       class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <p class="text-sm text-gray-500 mt-1">حداکثر ۵ تصویر - فرمت‌های مجاز: JPG, PNG</p>
-                @error('images')
-                    <span class="text-red-500 text-sm">{{ $message }}</span>
+            <!-- Tags -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">برچسب‌ها (با کاما جدا کنید)</label>
+                <input type="text" name="tags" value="{{ old('tags') }}"
+                       placeholder="مثال: لپتاپ, گیمینگ, ارزان"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                <p class="text-xs text-gray-500 mt-1">حداکثر 5 برچسب</p>
+                @error('tags')
+                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>
+        </div>
 
-            <!-- Submit Button -->
-            <div class="flex gap-4">
-                <button type="submit" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-bold">
-                    ایجاد آگهی
-                </button>
-                <a href="{{ url('/dashboard') }}" class="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
-                    انصراف
-                </a>
+        <!-- Images Section -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">تصاویر محصول</h3>
+            <p class="text-sm text-gray-600 mb-4">حداکثر 8 تصویر می‌توانید آپلود کنید. اولین تصویر به عنوان تصویر اصلی نمایش داده می‌شود.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">انتخاب تصاویر</label>
+                    <input type="file" 
+                           name="images[]" 
+                           id="images" 
+                           multiple 
+                           accept="image/*"
+                           class="block w-full text-sm text-gray-500
+                                  file:mr-4 file:py-2 file:px-4
+                                  file:rounded-lg file:border-0
+                                  file:text-sm file:font-semibold
+                                  file:bg-primary file:text-white
+                                  hover:file:bg-blue-600
+                                  cursor-pointer">
+                    <p class="text-xs text-gray-500 mt-1">فرمت‌های مجاز: JPG, PNG, GIF - حداکثر حجم هر تصویر: 2MB</p>
+                    @error('images')
+                    <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div id="imagePreview" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4" style="display: none;"></div>
             </div>
-        </form>
-    </div>
+        </div>
+
+        <div class="flex gap-3 mt-6">
+            <button type="submit" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors font-medium">
+                ایجاد آگهی
+            </button>
+            <a href="{{ url('/dashboard') }}" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium">
+                انصراف
+            </a>
+        </div>
+    </form>
 </div>
+@endsection
 
 @push('scripts')
+<script src="{{ url('js/persian-datepicker-package.js') }}?v={{ now()->timestamp }}"></script>
 <script>
-function toggleShippingCost(methodId) {
-    const checkbox = document.querySelector(`input[name="shipping_methods[]"][value="${methodId}"]`);
-    const costDiv = document.getElementById(`shipping_cost_${methodId}`);
+const FORCE_DURATION = {{ $forceDuration ? 'true' : 'false' }};
+const DURATION_DAYS = {{ $durationDays }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const startsAtInput = document.getElementById('starts_at');
+    if (startsAtInput && !startsAtInput.dataset.pickerInitialized) {
+        new PersianDatePicker(startsAtInput, { minDate: 'today' });
+    }
     
+    const endsAtInput = document.getElementById('ends_at');
+    if (endsAtInput && !endsAtInput.dataset.pickerInitialized && !FORCE_DURATION) {
+        new PersianDatePicker(endsAtInput);
+    }
+});
+
+function calculateEndDate() {
+    if (!FORCE_DURATION) return;
+    const startsAtInput = document.getElementById('starts_at');
+    const endsAtHidden = document.getElementById('ends_at_hidden');
+    if (!startsAtInput || !endsAtHidden) return;
+    const startsAtValue = startsAtInput.value;
+    if (!startsAtValue) return;
+    const match = startsAtValue.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{1,2})$/);
+    if (!match) return;
+    const jy = parseInt(match[1]);
+    const jm = parseInt(match[2]);
+    const jd = parseInt(match[3]);
+    const hour = parseInt(match[4]);
+    const minute = parseInt(match[5]);
+    let newJd = jd + DURATION_DAYS;
+    let newJm = jm;
+    let newJy = jy;
+    const daysInMonth = [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29];
+    while (newJd > daysInMonth[newJm - 1]) {
+        newJd -= daysInMonth[newJm - 1];
+        newJm++;
+        if (newJm > 12) {
+            newJm = 1;
+            newJy++;
+        }
+    }
+    const endsAtValue = `${newJy}/${String(newJm).padStart(2, '0')}/${String(newJd).padStart(2, '0')} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    endsAtHidden.value = endsAtValue;
+}
+
+function togglePriceInput(checkbox, methodId) {
+    const container = document.getElementById('price-container-' + methodId);
+    const input = document.getElementById('price-input-' + methodId);
     if (checkbox.checked) {
-        costDiv.classList.remove('hidden');
+        container.classList.remove('hidden');
+        input.disabled = false;
     } else {
-        costDiv.classList.add('hidden');
-        // پاک کردن مقدار ورودی
-        const input = costDiv.querySelector('input[type="number"]');
-        if (input) input.value = '';
+        container.classList.add('hidden');
+        input.disabled = true;
     }
 }
+
+document.querySelector('form').addEventListener('submit', function(e) {
+    const checkedMethods = document.querySelectorAll('.shipping-method-checkbox:checked');
+    if (checkedMethods.length === 0) {
+        e.preventDefault();
+        alert('لطفاً حداقل یک روش ارسال را انتخاب کنید.');
+        document.getElementById('shippingMethodsContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+    }
+    const numberInputs = this.querySelectorAll('input[type="number"]');
+    numberInputs.forEach(input => {
+        if (input.value) {
+            input.value = input.value.replace(/,/g, '');
+        }
+    });
+});
+
+@if ($errors->any())
+    window.addEventListener('DOMContentLoaded', function() {
+        const errorBox = document.querySelector('.bg-red-50');
+        if (errorBox) {
+            errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+@endif
+
+document.getElementById('images').addEventListener('change', function(e) {
+    const files = Array.from(e.target.files);
+    const previewContainer = document.getElementById('imagePreview');
+    previewContainer.innerHTML = '';
+    if (files.length === 0) {
+        previewContainer.style.display = 'none';
+        return;
+    }
+    if (files.length > 8) {
+        alert('حداکثر 8 تصویر می‌توانید انتخاب کنید.');
+        e.target.value = '';
+        return;
+    }
+    previewContainer.style.display = 'grid';
+    files.forEach((file, index) => {
+        if (file.size > 2 * 1024 * 1024) {
+            alert(`حجم تصویر "${file.name}" بیش از 2MB است.`);
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const div = document.createElement('div');
+            div.className = 'relative group';
+            div.innerHTML = `
+                <img src="${event.target.result}" 
+                     class="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                     alt="Preview ${index + 1}">
+                <div class="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded">
+                    ${index === 0 ? 'تصویر اصلی' : index + 1}
+                </div>
+                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
+                    <span class="text-white opacity-0 group-hover:opacity-100 text-sm">
+                        ${(file.size / 1024).toFixed(0)} KB
+                    </span>
+                </div>
+            `;
+            previewContainer.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+    });
+});
 </script>
 @endpush
-@endsection

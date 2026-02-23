@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BidController;
 use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\ImageController;
 use App\Http\Controllers\Api\ListingController;
@@ -26,6 +27,11 @@ use Illuminate\Support\Facades\Route;
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+// Public category routes
+Route::get('/categories/structure', [CategoryController::class, 'getStructure']);
+Route::get('/categories/{category}/attributes', [CategoryController::class, 'getAttributes']);
+Route::get('/categories/{category}/path', [CategoryController::class, 'getPath']);
 
 // Public store routes
 Route::get('/stores/{slug}', [StoreController::class, 'show']);

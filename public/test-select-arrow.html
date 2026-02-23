@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست فلش Select</title>
+    <style>
+        body {
+            font-family: Tahoma, Arial;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+        
+        .test-box {
+            background: white;
+            padding: 30px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            color: #1f2937;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: Tahoma;
+        }
+        
+        /* روش 1: حذف کامل appearance */
+        .method-1 select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background: white;
+            padding-left: 40px;
+            padding-right: 12px;
+        }
+        
+        /* روش 2: استفاده از wrapper */
+        .select-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .select-wrapper::after {
+            content: '▼';
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .select-wrapper select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 100%;
+            background: white;
+            padding-left: 40px;
+            padding-right: 12px;
+        }
+        
+        /* روش 3: استفاده از SVG inline */
+        .method-3 select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-color: white;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            background-position: left 12px center;
+            padding-left: 40px;
+            padding-right: 12px;
+        }
+        
+        /* روش 4: استفاده از Unicode arrow */
+        .method-4 select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background: white;
+            padding-left: 40px;
+            padding-right: 12px;
+            position: relative;
+        }
+        
+        .method-4 {
+            position: relative;
+        }
+        
+        .method-4::after {
+            content: '◀';
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%) rotate(-90deg);
+            pointer-events: none;
+            color: #6b7280;
+            font-size: 12px;
+        }
+        
+        .note {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🎯 تست فلش Select در RTL</h1>
+
+<div class="test-box">
+    <h2>روش 1: فقط حذف appearance (بدون فلش)</h2>
+    <div class="method-1">
+        <select>
+            <option>گزینه اول</option>
+            <option>گزینه دوم</option>
+            <option>گزینه سوم</option>
+        </select>
+    </div>
+    <div class="note">
+        ❌ این روش فلش نداره - فقط appearance رو حذف می‌کنه
+    </div>
+</div>
+
+<div class="test-box">
+    <h2>روش 2: استفاده از Wrapper با ::after</h2>
+    <div class="select-wrapper">
+        <select>
+            <option>گزینه اول</option>
+            <option>گزینه دوم</option>
+            <option>گزینه سوم</option>
+        </select>
+    </div>
+    <div class="note success">
+        ✅ این روش کار می‌کنه - فلش در سمت چپ هست
+    </div>
+</div>
+
+<div class="test-box">
+    <h2>روش 3: استفاده از SVG Background</h2>
+    <div class="method-3">
+        <select>
+            <option>گزینه اول</option>
+            <option>گزینه دوم</option>
+            <option>گزینه سوم</option>
+        </select>
+    </div>
+    <div class="note success">
+        ✅ این روش هم کار می‌کنه - فلش SVG در سمت چپ
+    </div>
+</div>
+
+<div class="test-box">
+    <h2>روش 4: Unicode Arrow با Wrapper</h2>
+    <div class="method-4">
+        <select>
+            <option>گزینه اول</option>
+            <option>گزینه دوم</option>
+            <option>گزینه سوم</option>
+        </select>
+    </div>
+    <div class="note success">
+        ✅ فلش Unicode چرخیده در سمت چپ
+    </div>
+</div>
+
+<div class="test-box" style="background: #1f2937; color: white;">
+    <h2 style="color: white; border-color: #3b82f6;">💡 نتیجه‌گیری</h2>
+    <p><strong>بهترین روش برای Laravel Blade:</strong></p>
+    <ul style="line-height: 2;">
+        <li>✅ روش 2 (Wrapper) - نیاز به تغییر HTML داره</li>
+        <li>✅ روش 3 (SVG Background) - فقط CSS کافیه</li>
+    </ul>
+    <p style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.2); border-radius: 5px;">
+        <strong>توصیه:</strong> از روش 3 استفاده کن چون نیازی به تغییر HTML نداره و فقط با CSS کار می‌کنه.
+    </p>
+</div>
+
+</body>
+</html>

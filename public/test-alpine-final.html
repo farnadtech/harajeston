@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="utf-8"/>
+    <title>تست نهایی Alpine.js</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=swap" rel="stylesheet"/>
+    <style>
+        body { font-family: 'Vazirmatn', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-2xl mx-auto space-y-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h1 class="text-2xl font-bold mb-6">تست نهایی Alpine.js</h1>
+            
+            <!-- دکمه‌های تست -->
+            <div class="space-y-3 mb-6">
+                <button onclick="testCategory(58)" class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    تست دسته 58
+                </button>
+                <button onclick="testCategory(59)" class="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    تست دسته 59
+                </button>
+                <button onclick="clearCategory()" class="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    پاک کردن
+                </button>
+            </div>
+            
+            <!-- بخش ویژگی‌ها -->
+            <div id="attributesSection" x-data="attributesData()">
+                <!-- پیام راهنما -->
+                <div x-show="!hasCategory" class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                    <span class="material-symbols-outlined text-blue-600 text-3xl">info</span>
+                    <p class="text-sm text-blue-700 mt-2">روی یکی از دکمه‌ها کلیک کنید</p>
+                </div>
+                
+                <!-- بارگذاری -->
+                <div x-show="loading" class="text-center py-6">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
+                    <p class="text-sm text-gray-600 mt-2">در حال بارگذاری...</p>
+                </div>
+                
+                <!-- ویژگی‌ها -->
+                <div x-show="hasCategory && !loading && attributes.length > 0" class="space-y-3">
+                    <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p class="text-sm text-green-800 font-medium">✓ ویژگی‌ها لود شدند:</p>
+                    </div>
+                    <template x-for="attr in attributes" :key="attr.id">
+                        <div class="p-3 border border-gray-200 rounded-lg">
+                            <p class="text-sm font-medium text-gray-700" x-text="attr.name"></p>
+                            <p class="text-xs text-gray-500" x-text="'نوع: ' + attr.type"></p>
+                        </div>
+                    </template>
+                </div>
+                
+                <!-- عدم وجود ویژگی -->
+                <div x-show="hasCategory && !loading && attributes.length === 0" class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                    <span class="material-symbols-outlined text-gray-400 text-3xl">check_circle</span>
+                    <p class="text-sm text-gray-600 mt-2">این دسته ویژگی ندارد</p>
+                </div>
+            </div>
+            
+            <!-- لاگ -->
+            <div class="mt-6 p-4 bg-gray-900 text-green-400 rounded-lg font-mono text-xs" id="log" style="max-height: 300px; overflow-y: auto;">
+                <div>→ آماده برای تست...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alpine.js باید قبل از اسکریپت‌های دیگر لود بشه (بدون defer) -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <script>
+    // تابع لاگ
+    function log(message, type = 'info') {
+        const logDiv = document.getElementById('log');
+        const colors = {
+            info: 'text-blue-400',
+            success: 'text-green-400',
+            error: 'text-red-400',
+            warning: 'text-yellow-400'
+        };
+        const div = document.createElement('div');
+        div.className = colors[type];
+        div.textContent = `${new Date().toLocaleTimeString('fa-IR')} - ${message}`;
+        logDiv.appendChild(div);
+        logDiv.scrollTop = logDiv.scrollHeight;
+        console.log(message);
+    }
+
+    // Alpine.js data function
+    function attributesData() {
+        return {
+            hasCategory: false,
+            loading: false,
+            attributes: [],
+            
+            loadAttributes(categoryId) {
+                log(`→ Loading attributes for category: ${categoryId}`, 'info');
+                
+                this.hasCategory = true;
+                this.loading = true;
+                
+                fetch(`/api/categories/${categoryId}/attributes`)
+                    .then(response => {
+                        log(`✓ Response status: ${response.status}`, response.ok ? 'success' : 'error');
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        log(`✓ Data received`, 'success');
+                        this.loading = false;
+                        if (data.attributes && data.attributes.length > 0) {
+                            this.attributes = data.attributes;
+                            log(`✓ ${data.attributes.length} attributes loaded`, 'success');
+                        } else {
+                            this.attributes = [];
+                            log('✓ No attributes for this category', 'warning');
+                        }
+                    })
+                    .catch(error => {
+                        log(`✗ Error: ${error.message}`, 'error');
+                        this.loading = false;
+                        this.attributes = [];
+                    });
+            },
+            
+            clear() {
+                log('✓ Clearing attributes', 'info');
+                this.hasCategory = false;
+                this.attributes = [];
+            }
+        };
+    }
+
+    // Alpine.js events
+    document.addEventListener('alpine:init', () => {
+        log('✓ Alpine.js init event fired', 'success');
+    });
+
+    document.addEventListener('alpine:initialized', () => {
+        log('✓ Alpine.js fully initialized', 'success');
+        window.alpineReady = true;
+    });
+
+    // تست دسته
+    function testCategory(categoryId) {
+        log(`→ Testing category: ${categoryId}`, 'info');
+        
+        if (!window.alpineReady) {
+            log('✗ Alpine.js not ready yet', 'error');
+            return;
+        }
+        
+        const section = document.querySelector('#attributesSection');
+        if (!section || !section.__x || !section.__x.$data) {
+            log('✗ Alpine.js not initialized on element', 'error');
+            return;
+        }
+        
+        log('✓ Calling loadAttributes method', 'success');
+        section.__x.$data.loadAttributes(categoryId);
+    }
+
+    // پاک کردن
+    function clearCategory() {
+        log('→ Clearing category', 'info');
+        
+        const section = document.querySelector('#attributesSection');
+        if (!section || !section.__x || !section.__x.$data) {
+            log('✗ Alpine.js not initialized on element', 'error');
+            return;
+        }
+        
+        section.__x.$data.clear();
+    }
+
+    // تست اتوماتیک
+    window.addEventListener('load', () => {
+        log('✓ Page loaded', 'success');
+        
+        // منتظر Alpine.js می‌مونیم
+        const checkAlpine = setInterval(() => {
+            if (window.alpineReady) {
+                clearInterval(checkAlpine);
+                log('→ Running auto test in 1 second...', 'info');
+                setTimeout(() => testCategory(58), 1000);
+            }
+        }, 100);
+    });
+    </script>
+</body>
+</html>

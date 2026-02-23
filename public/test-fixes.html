@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>تست فیکس‌ها</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+        }
+        
+        /* فیکس فلش select برای RTL */
+        select {
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            background-color: white !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-size: 1.5em 1.5em !important;
+            background-position: left 0.5rem center !important;
+            padding-left: 2.5rem !important;
+            padding-right: 0.75rem !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-4xl mx-auto space-y-8">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-6">تست فیکس‌های سیستم</h1>
+            
+            <!-- تست 1: فلش Select -->
+            <div class="mb-8">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-blue-600">check_circle</span>
+                    تست 1: فلش Select در سمت چپ
+                </h2>
+                <p class="text-sm text-gray-600 mb-3">فلش باید در سمت چپ باشه (نه راست)</p>
+                <select class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                    <option>گزینه اول</option>
+                    <option>گزینه دوم</option>
+                    <option>گزینه سوم</option>
+                </select>
+                <div class="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p class="text-sm text-green-800">✓ اگر فلش در سمت چپ هست، فیکس کار می‌کنه</p>
+                </div>
+            </div>
+            
+            <!-- تست 2: Alpine.js و لود ویژگی‌ها -->
+            <div class="mb-8">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-blue-600">check_circle</span>
+                    تست 2: Alpine.js و لود ویژگی‌ها
+                </h2>
+                <p class="text-sm text-gray-600 mb-3">بعد از انتخاب دسته، ویژگی‌ها باید لود بشن</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">انتخاب دسته</label>
+                        <select id="categorySelect" class="w-full px-4 py-3 border border-gray-300 rounded-lg">
+                            <option value="">انتخاب کنید</option>
+                            <option value="58">موبایل (دسته 58)</option>
+                            <option value="59">لپ‌تاپ (دسته 59)</option>
+                            <option value="60">تبلت (دسته 60)</option>
+                        </select>
+                    </div>
+                    
+                    <div id="attributesSection" x-data="{ hasCategory: false, loading: false, attributes: [] }">
+                        <!-- پیام راهنما -->
+                        <div x-show="!hasCategory" class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                            <span class="material-symbols-outlined text-blue-600 text-3xl">info</span>
+                            <p class="text-sm text-blue-700 mt-2">ابتدا دسته‌بندی را انتخاب کنید</p>
+                        </div>
+                        
+                        <!-- بارگذاری -->
+                        <div x-show="loading" class="text-center py-6">
+                            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
+                            <p class="text-sm text-gray-600 mt-2">در حال بارگذاری...</p>
+                        </div>
+                        
+                        <!-- ویژگی‌ها -->
+                        <div x-show="hasCategory && !loading && attributes.length > 0" class="space-y-3">
+                            <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <p class="text-sm text-green-800 font-medium">✓ ویژگی‌ها با موفقیت لود شدند:</p>
+                            </div>
+                            <template x-for="attr in attributes" :key="attr.id">
+                                <div class="p-3 border border-gray-200 rounded-lg">
+                                    <p class="text-sm font-medium text-gray-700" x-text="attr.name"></p>
+                                    <p class="text-xs text-gray-500" x-text="'نوع: ' + attr.type"></p>
+                                </div>
+                            </template>
+                        </div>
+                        
+                        <!-- عدم وجود ویژگی -->
+                        <div x-show="hasCategory && !loading && attributes.length === 0" class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                            <span class="material-symbols-outlined text-gray-400 text-3xl">check_circle</span>
+                            <p class="text-sm text-gray-600 mt-2">این دسته ویژگی ندارد</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- نتیجه کلی -->
+            <div class="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 class="font-bold text-blue-900 mb-2">راهنمای تست:</h3>
+                <ul class="text-sm text-blue-800 space-y-1">
+                    <li>1. بررسی کنید فلش select در سمت چپ باشه</li>
+                    <li>2. یک دسته انتخاب کنید</li>
+                    <li>3. ویژگی‌ها باید لود بشن (یا پیام "این دسته ویژگی ندارد" نمایش داده بشه)</li>
+                    <li>4. کنسول مرورگر رو باز کنید (F12) و خطاها رو بررسی کنید</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // گوش دادن به تغییر دسته
+    document.getElementById('categorySelect').addEventListener('change', function(e) {
+        const categoryId = e.target.value;
+        const section = document.querySelector('#attributesSection');
+        
+        console.log('Category selected:', categoryId);
+        
+        if (!categoryId) {
+            section.__x.$data.hasCategory = false;
+            section.__x.$data.attributes = [];
+            return;
+        }
+        
+        const alpineData = section.__x.$data;
+        alpineData.hasCategory = true;
+        alpineData.loading = true;
+        
+        console.log('Fetching attributes for category:', categoryId);
+        
+        // دریافت ویژگی‌ها
+        fetch(`/api/categories/${categoryId}/attributes`)
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Attributes data:', data);
+                alpineData.loading = false;
+                if (data.attributes && data.attributes.length > 0) {
+                    alpineData.attributes = data.attributes;
+                    console.log('✓ Attributes loaded successfully:', data.attributes.length);
+                } else {
+                    alpineData.attributes = [];
+                    console.log('✓ No attributes for this category');
+                }
+            })
+            .catch(error => {
+                console.error('✗ Error loading attributes:', error);
+                alpineData.loading = false;
+                alpineData.attributes = [];
+                alert('خطا در بارگذاری ویژگی‌ها: ' + error.message);
+            });
+    });
+    </script>
+</body>
+</html>

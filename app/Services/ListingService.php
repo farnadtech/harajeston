@@ -11,8 +11,7 @@ use Carbon\Carbon;
 class ListingService
 {
     /**
-     * Create listing with type-specific validation
-     * Supports auction, direct_sale, and hybrid types
+     * Create auction listing
      * 
      * @param User $seller
      * @param array $data
@@ -21,63 +20,40 @@ class ListingService
      */
     public function createListing(User $seller, array $data): Listing
     {
-        $type = $data['type']; // auction, direct_sale, hybrid
-        
-        // Validate type
-        if (!in_array($type, ['auction', 'direct_sale', 'hybrid'])) {
-            throw new \InvalidArgumentException('نوع آگهی نامعتبر است.');
+        // Validate auction times
+        if (!isset($data['starts_at']) || !isset($data['ends_at'])) {
+            throw new \InvalidArgumentException('زمان شروع و پایان حراجی الزامی است.');
         }
         
-        // Type-specific validation and processing
-        if ($type === 'auction' || $type === 'hybrid') {
-            // Calculate 10% deposit for auctions
-            if (!isset($data['base_price'])) {
-                throw new \InvalidArgumentException('قیمت پایه برای مزایده الزامی است.');
-            }
-            
-            $data['required_deposit'] = $data['base_price'] * 0.10;
-            
-            // Validate auction times
-            if (!isset($data['start_time']) || !isset($data['end_time'])) {
-                throw new \InvalidArgumentException('زمان شروع و پایان مزایده الزامی است.');
-            }
-            
-            $this->validateAuctionTimes($data['start_time'], $data['end_time']);
-        }
+        $this->validateAuctionTimes($data['starts_at'], $data['ends_at']);
         
-        if ($type === 'direct_sale' || $type === 'hybrid') {
-            if (!isset($data['price']) || !isset($data['stock'])) {
-                throw new \InvalidArgumentException('قیمت و موجودی برای فروش مستقیم الزامی است.');
-            }
-            
-            if ($data['stock'] < 0) {
-                throw new \InvalidArgumentException('موجودی نمی‌تواند منفی باشد.');
-            }
-        }
+        // Determine initial status
+        $startsAt = Carbon::parse($data['starts_at']);
+        $status = $startsAt->isFuture() ? 'pending' : 'active';
         
-        if ($type === 'hybrid') {
-            // Price validation is handled in CreateListingRequest
-            // No need to throw exception here
+        // If admin requires approval, set to pending regardless
+        if (isset($data['seller_id'])) {
+            // Admin is creating, use provided status or default to pending
+            $status = $data['status'] ?? 'pending';
         }
         
         $listing = Listing::create([
-            'seller_id' => $seller->id,
-            'type' => $type,
+            'seller_id' => $data['seller_id'] ?? $seller->id,
             'title' => $data['title'],
             'slug' => $this->generateUniqueSlug($data['title']),
             'description' => $data['description'],
             'category_id' => $data['category_id'] ?? null,
-            // Auction fields
-            'base_price' => $data['base_price'] ?? null,
-            'required_deposit' => $data['required_deposit'] ?? null,
-            'start_time' => $data['start_time'] ?? null,
-            'end_time' => $data['end_time'] ?? null,
-            // Direct sale fields
-            'price' => $data['price'] ?? null,
-            'stock' => $data['stock'] ?? null,
-            'low_stock_threshold' => $data['low_stock_threshold'] ?? 5,
-            // بررسی تنظیمات ادمین برای تایید خودکار
-            'status' => $this->determineInitialStatus($type),
+            'condition' => $data['condition'] ?? 'used',
+            'starting_price' => $data['starting_price'],
+            'current_price' => $data['starting_price'],
+            'buy_now_price' => $data['buy_now_price'] ?? null,
+            'deposit_amount' => $data['deposit_amount'] ?? 0,
+            'bid_increment' => $data['bid_increment'] ?? 10000,
+            'starts_at' => $startsAt,
+            'ends_at' => Carbon::parse($data['ends_at']),
+            'auto_extend' => $data['auto_extend'] ?? false,
+            'status' => $status,
+            'tags' => isset($data['tags']) ? $this->processTags($data['tags']) : null,
         ]);
 
         // ذخیره ویژگی‌ها
@@ -95,14 +71,42 @@ class ListingService
         // ذخیره روش‌های ارسال
         if (isset($data['shipping_methods']) && is_array($data['shipping_methods'])) {
             foreach ($data['shipping_methods'] as $methodId) {
-                $customCost = $data['shipping_costs'][$methodId] ?? 0;
+                $customCost = $data['shipping_costs'][$methodId] ?? null;
                 $listing->shippingMethods()->attach($methodId, [
                     'custom_cost_adjustment' => $customCost
                 ]);
             }
         }
 
+        // ذخیره تصاویر
+        if (isset($data['images']) && is_array($data['images'])) {
+            $imageService = app(ImageService::class);
+            foreach ($data['images'] as $index => $image) {
+                $path = $imageService->store($image, 'listings');
+                $listing->images()->create([
+                    'image_path' => $path,
+                    'is_primary' => $index === 0,
+                    'order' => $index,
+                ]);
+            }
+        }
+
         return $listing;
+    }
+
+    /**
+     * Process tags string into JSON array
+     * 
+     * @param string $tagsString
+     * @return string|null
+     */
+    protected function processTags(string $tagsString): ?string
+    {
+        $tags = array_map('trim', explode(',', $tagsString));
+        $tags = array_filter($tags); // Remove empty values
+        $tags = array_slice($tags, 0, 5); // Max 5 tags
+        
+        return !empty($tags) ? json_encode($tags, JSON_UNESCAPED_UNICODE) : null;
     }
 
     /**
@@ -121,135 +125,10 @@ class ListingService
             throw new \InvalidArgumentException('زمان پایان باید بعد از زمان شروع باشد.');
         }
         
-        if ($start->lt(Carbon::now())) {
-            throw new \InvalidArgumentException('زمان شروع نمی‌تواند در گذشته باشد.');
-        }
+        // Allow past start time for admin (they might be creating backdated auctions)
+        // For sellers, start time must be in future (validated in request)
     }
 
-    /**
-     * تعیین وضعیت اولیه آگهی بر اساس تنظیمات ادمین
-     * 
-     * @param string $type
-     * @return string
-     */
-    protected function determineInitialStatus(string $type): string
-    {
-        $requireApproval = \App\Models\SiteSetting::get('require_listing_approval', true);
-        
-        // اگر نیاز به تایید باشد، وضعیت draft می‌شود
-        if ($requireApproval) {
-            return 'draft';
-        }
-        
-        // اگر نیاز به تایید نباشد، بر اساس نوع آگهی تعیین می‌شود
-        return $type === 'auction' ? 'pending' : 'active';
-    }
-
-    /**
-     * Update stock with atomic operation
-     * Logs stock changes and sends alerts
-     * 
-     * @param Listing $listing
-     * @param int $newStock
-     * @param string $reason
-     * @return void
-     */
-    public function updateStock(Listing $listing, int $newStock, string $reason): void
-    {
-        if ($newStock < 0) {
-            throw new \InvalidArgumentException('موجودی نمی‌تواند منفی باشد.');
-        }
-        
-        DB::transaction(function () use ($listing, $newStock, $reason) {
-            $listing = Listing::where('id', $listing->id)
-                ->lockForUpdate()
-                ->first();
-            
-            $oldStock = $listing->stock;
-            $listing->stock = $newStock;
-            
-            // Update status based on stock
-            if ($newStock === 0) {
-                $listing->status = 'out_of_stock';
-            } elseif ($listing->status === 'out_of_stock' && $newStock > 0) {
-                $listing->status = 'active';
-            }
-            
-            $listing->save();
-            
-            // Note: Stock logging would be implemented here in production
-            // StockLog::create([...]);
-            
-            // Send low stock alert
-            if ($newStock > 0 && $newStock <= $listing->low_stock_threshold) {
-                // Note: Notification would be sent here
-                // $listing->seller->notify(new LowStockAlertNotification($listing));
-            }
-        });
-    }
-
-    /**
-     * Decrement stock atomically
-     * Prevents negative stock with transaction locking
-     * 
-     * @param Listing $listing
-     * @param int $quantity
-     * @return void
-     * @throws OutOfStockException
-     */
-    public function decrementStock(Listing $listing, int $quantity): void
-    {
-        if ($quantity <= 0) {
-            throw new \InvalidArgumentException('تعداد باید بیشتر از صفر باشد.');
-        }
-        
-        DB::transaction(function () use ($listing, $quantity) {
-            $listing = Listing::where('id', $listing->id)
-                ->lockForUpdate()
-                ->first();
-            
-            if ($listing->stock < $quantity) {
-                throw new OutOfStockException($listing->id, $listing->title);
-            }
-            
-            $listing->stock -= $quantity;
-            
-            if ($listing->stock === 0) {
-                $listing->status = 'out_of_stock';
-            }
-            
-            $listing->save();
-        });
-    }
-
-    /**
-     * Increment stock (for order cancellation, returns, etc.)
-     * 
-     * @param Listing $listing
-     * @param int $quantity
-     * @return void
-     */
-    public function incrementStock(Listing $listing, int $quantity): void
-    {
-        if ($quantity <= 0) {
-            throw new \InvalidArgumentException('تعداد باید بیشتر از صفر باشد.');
-        }
-        
-        DB::transaction(function () use ($listing, $quantity) {
-            $listing = Listing::where('id', $listing->id)
-                ->lockForUpdate()
-                ->first();
-            
-            $listing->stock += $quantity;
-            
-            // Reactivate if was out of stock
-            if ($listing->status === 'out_of_stock' && $listing->stock > 0) {
-                $listing->status = 'active';
-            }
-            
-            $listing->save();
-        });
-    }
 
     /**
      * Generate unique slug from title

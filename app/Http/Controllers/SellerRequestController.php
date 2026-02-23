@@ -44,13 +44,37 @@ class SellerRequestController extends Controller
         }
 
         $validated = $request->validate([
-            'store_name' => 'required|string|max:255|unique:stores,name',
+            'store_name' => 'required|string|max:255',
             'store_description' => 'required|string|max:1000',
             'phone' => 'required|string|max:20',
             'address' => 'nullable|string|max:500',
-            'national_id' => 'required|string|max:10',
+            'national_id' => [
+                'required',
+                'string',
+                'max:10',
+                'min:10',
+                function ($attribute, $value, $fail) {
+                    // Check if national_id already exists in seller_request_data
+                    $exists = \App\Models\User::whereNotNull('seller_request_data')
+                        ->where('seller_request_data->national_id', $value)
+                        ->exists();
+                    
+                    if ($exists) {
+                        $fail('این کد ملی قبلاً ثبت شده است.');
+                    }
+                },
+            ],
             'bank_account' => 'required|string|max:50',
             'bank_name' => 'required|string|max:100',
+        ], [
+            'store_name.required' => 'نام فروشگاه الزامی است.',
+            'store_description.required' => 'توضیحات فروشگاه الزامی است.',
+            'phone.required' => 'شماره تلفن الزامی است.',
+            'national_id.required' => 'کد ملی الزامی است.',
+            'national_id.min' => 'کد ملی باید ۱۰ رقم باشد.',
+            'national_id.max' => 'کد ملی باید ۱۰ رقم باشد.',
+            'bank_account.required' => 'شماره حساب الزامی است.',
+            'bank_name.required' => 'نام بانک الزامی است.',
         ]);
 
         DB::beginTransaction();
@@ -102,11 +126,9 @@ class SellerRequestController extends Controller
         // ایجاد فروشگاه
         Store::create([
             'user_id' => $user->id,
-            'name' => $data['store_name'],
+            'store_name' => $data['store_name'],
             'slug' => \Str::slug($data['store_name']),
             'description' => $data['store_description'],
-            'phone' => $data['phone'],
-            'address' => $data['address'] ?? null,
         ]);
     }
 

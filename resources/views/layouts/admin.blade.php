@@ -55,20 +55,43 @@
             background: #9ca3af;
         }
         
-        /* Custom select dropdown arrow */
+        /* حذف کامل فلش پیش‌فرض مرورگر */
         select {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: left 0.5rem center;
-            background-size: 1.5em 1.5em;
-            padding-left: 2.5rem !important;
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
         }
         
-        /* For RTL, adjust arrow position */
-        [dir="rtl"] select {
-            background-position: left 0.5rem center;
+        /* حذف فلش Tailwind Forms */
+        [type='text'],
+        [type='email'],
+        [type='url'],
+        [type='password'],
+        [type='number'],
+        [type='date'],
+        [type='datetime-local'],
+        [type='month'],
+        [type='search'],
+        [type='tel'],
+        [type='time'],
+        [type='week'],
+        [multiple],
+        textarea,
+        select {
+            background-image: none !important;
+            background-position: 0 0 !important;
+            padding-right: 0.75rem !important;
+        }
+        
+        /* فلش سفارشی در سمت چپ */
+        select:not(.no-arrow) {
+            background-color: white !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-position: left 0.5rem center !important;
+            background-size: 1.5em 1.5em !important;
             padding-left: 2.5rem !important;
-            padding-right: 1rem !important;
+            padding-right: 0.75rem !important;
         }
         
         /* Notification Styles */

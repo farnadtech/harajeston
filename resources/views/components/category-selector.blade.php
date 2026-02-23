@@ -1,13 +1,19 @@
-<div class="category-selector" x-data="categorySelector()">
-    <label class="form-label">{{ $label ?? 'دسته‌بندی' }} *</label>
-    
+@php
+    $componentId = 'category-selector-' . uniqid();
+@endphp
+
+<div class="category-selector space-y-4" id="{{ $componentId }}">
     {{-- مرحله 1: انتخاب دسته اصلی --}}
-    <div class="mb-3">
-        <label class="text-xs text-gray-600 mb-1 block">دسته اصلی</label>
-        <select @change="selectParent($event.target.value)" 
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+            <span class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-lg">category</span>
+                دسته اصلی
+            </span>
+        </label>
+        <select id="{{ $componentId }}-parent" 
                 name="parent_category"
-                class="form-select" 
-                x-model="selectedParent">
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
             <option value="">انتخاب دسته اصلی</option>
             @foreach($categories as $parent)
                 <option value="{{ $parent['id'] }}">{{ $parent['name'] }}</option>
@@ -16,174 +22,235 @@
     </div>
     
     {{-- مرحله 2: انتخاب زیردسته --}}
-    <div class="mb-3" x-show="showChildren" x-transition>
-        <label class="text-xs text-gray-600 mb-1 block">زیردسته</label>
-        <select @change="selectChild($event.target.value)" 
+    <div id="{{ $componentId }}-child-container" style="display: none;">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+            <span class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-lg">subdirectory_arrow_right</span>
+                زیردسته
+            </span>
+        </label>
+        <select id="{{ $componentId }}-child" 
                 name="child_category"
-                class="form-select" 
-                x-model="selectedChild">
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
             <option value="">انتخاب زیردسته</option>
-            <template x-for="child in children" :key="child.id">
-                <option :value="child.id" x-text="child.name"></option>
-            </template>
         </select>
     </div>
     
     {{-- مرحله 3: انتخاب دسته نهایی --}}
-    <div x-show="showGrandchildren" x-transition>
-        <label class="text-xs text-gray-600 mb-1 block">دسته نهایی *</label>
-        <select @change="selectFinal($event.target.value)" 
+    <div id="{{ $componentId }}-grand-container" style="display: none;">
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+            <span class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-lg">subdirectory_arrow_right</span>
+                دسته نهایی <span class="text-red-500">*</span>
+            </span>
+        </label>
+        <select id="{{ $componentId }}-grand" 
                 name="final_category"
-                class="form-select" 
-                x-model="selectedFinal">
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
             <option value="">انتخاب دسته نهایی (الزامی)</option>
-            <template x-for="grand in grandchildren" :key="grand.id">
-                <option :value="grand.id" x-text="grand.name"></option>
-            </template>
         </select>
-        <p class="text-xs text-amber-600 mt-1">⚠ لطفا دسته نهایی را انتخاب کنید</p>
+        <p class="text-sm text-amber-600 mt-2 flex items-center gap-1">
+            <span class="material-symbols-outlined text-base">warning</span>
+            لطفا دسته نهایی را انتخاب کنید
+        </p>
     </div>
     
     {{-- فیلد مخفی برای ارسال --}}
     <input type="hidden" 
            name="{{ $name ?? 'category_id' }}" 
-           id="categorySelect"
-           :value="finalCategoryId">
+           id="{{ $componentId }}-final">
     
-    <p class="text-xs text-gray-500 mt-2" x-show="selectedPath" x-text="selectedPath"></p>
+    {{-- نمایش مسیر انتخاب شده --}}
+    <div id="{{ $componentId }}-path" style="display: none;" class="bg-primary/5 border border-primary/20 rounded-lg p-3">
+        <p class="text-sm text-gray-700 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-base">check_circle</span>
+            <span class="font-medium">دسته انتخاب شده:</span>
+            <span id="{{ $componentId }}-path-text" class="text-primary"></span>
+        </p>
+    </div>
     
     @error($name ?? 'category_id')
-        <div class="text-red-500 text-sm mt-1">{{ $message }}</div>
+        <div class="text-red-500 text-sm mt-1 flex items-center gap-1">
+            <span class="material-symbols-outlined text-base">error</span>
+            {{ $message }}
+        </div>
     @enderror
 </div>
 
 <script>
-function categorySelector() {
-    return {
-        categories: @json($categories),
+(function() {
+    const componentId = '{{ $componentId }}';
+    const categories = @json($categories);
+    
+    console.log('✓ Category selector script loaded for:', componentId);
+    console.log('Categories count:', categories.length);
+    
+    let state = {
         selectedParent: '',
         selectedChild: '',
         selectedFinal: '',
         children: [],
-        grandchildren: [],
-        showChildren: false,
-        showGrandchildren: false,
-        finalCategoryId: '{{ old($name ?? "category_id", $selected ?? "") }}',
-        selectedPath: '',
+        grandchildren: []
+    };
+    
+    // Get elements
+    const parentSelect = document.getElementById(componentId + '-parent');
+    const childContainer = document.getElementById(componentId + '-child-container');
+    const childSelect = document.getElementById(componentId + '-child');
+    const grandContainer = document.getElementById(componentId + '-grand-container');
+    const grandSelect = document.getElementById(componentId + '-grand');
+    const finalInput = document.getElementById(componentId + '-final');
+    const pathDiv = document.getElementById(componentId + '-path');
+    const pathText = document.getElementById(componentId + '-path-text');
+    
+    // Parent change
+    parentSelect.addEventListener('change', function() {
+        const parentId = this.value;
+        console.log('=== Parent selected:', parentId);
         
-        init() {
-            // اگر مقدار قبلی وجود داره، بارگذاری کن
-            if (this.finalCategoryId) {
-                this.loadExistingSelection();
-            }
-        },
+        // Reset
+        state.selectedChild = '';
+        state.selectedFinal = '';
+        state.children = [];
+        state.grandchildren = [];
+        childSelect.innerHTML = '<option value="">انتخاب زیردسته</option>';
+        grandSelect.innerHTML = '<option value="">انتخاب دسته نهایی (الزامی)</option>';
+        childContainer.style.display = 'none';
+        grandContainer.style.display = 'none';
+        pathDiv.style.display = 'none';
+        finalInput.value = '';
         
-        selectParent(parentId) {
-            this.selectedChild = '';
-            this.selectedFinal = '';
-            this.children = [];
-            this.grandchildren = [];
-            this.showChildren = false;
-            this.showGrandchildren = false;
-            this.finalCategoryId = '';
-            this.selectedPath = '';
-            
-            if (!parentId) return;
-            
-            const parent = this.categories.find(c => c.id == parentId);
-            
-            if (parent && parent.children && parent.children.length > 0) {
-                this.children = Array.isArray(parent.children) ? parent.children : Object.values(parent.children);
-                this.showChildren = true;
-            } else if (parent) {
-                // اگر دسته اصلی هیچ زیردسته‌ای نداره
-                this.finalCategoryId = parentId;
-                this.selectedPath = parent.name;
-            }
-        },
-        
-        selectChild(childId) {
-            this.selectedFinal = '';
-            this.grandchildren = [];
-            this.showGrandchildren = false;
-            this.finalCategoryId = '';
-            this.selectedPath = '';
-            
-            if (!childId) return;
-            
-            const child = this.children.find(c => c.id == childId);
-            
-            if (child) {
-                const parent = this.categories.find(c => c.id == this.selectedParent);
-                
-                // تبدیل children به array اگر object باشه
-                let childChildren = child.children;
-                if (childChildren && !Array.isArray(childChildren)) {
-                    childChildren = Object.values(childChildren);
-                }
-                
-                if (childChildren && childChildren.length > 0) {
-                    // اگر سطح 2 زیردسته داره، باید سطح 3 انتخاب بشه
-                    this.grandchildren = childChildren;
-                    this.showGrandchildren = true;
-                } else {
-                    // اگر سطح 2 زیردسته نداره، خودش انتخاب نهایی است
-                    this.finalCategoryId = childId;
-                    this.selectedPath = parent.name + ' > ' + child.name;
-                }
-            }
-        },
-        
-        selectFinal(finalId) {
-            if (!finalId) {
-                this.finalCategoryId = '';
-                this.selectedPath = '';
-                return;
-            }
-            
-            const grand = this.grandchildren.find(c => c.id == finalId);
-            if (grand) {
-                const parent = this.categories.find(c => c.id == this.selectedParent);
-                const child = this.children.find(c => c.id == this.selectedChild);
-                
-                this.finalCategoryId = finalId;
-                this.selectedPath = parent.name + ' > ' + child.name + ' > ' + grand.name;
-            }
-        },
-        
-        loadExistingSelection() {
-            // پیدا کردن دسته انتخاب شده و بارگذاری مسیر کامل
-            fetch(`/api/categories/${this.finalCategoryId}/path`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.path && data.path.length > 0) {
-                        // سطح 1
-                        if (data.path.length >= 1) {
-                            this.selectedParent = data.path[0].id;
-                            this.children = data.path[0].children || [];
-                            this.showChildren = this.children.length > 0;
-                        }
-                        // سطح 2
-                        if (data.path.length >= 2) {
-                            this.selectedChild = data.path[1].id;
-                            const child = this.children.find(c => c.id == this.selectedChild);
-                            if (child && child.children) {
-                                this.grandchildren = child.children;
-                                this.showGrandchildren = this.grandchildren.length > 0;
-                            }
-                        }
-                        // سطح 3
-                        if (data.path.length >= 3) {
-                            this.selectedFinal = data.path[2].id;
-                            this.selectedPath = data.path.map(p => p.name).join(' > ');
-                        } else if (data.path.length === 2) {
-                            this.selectedPath = data.path.map(p => p.name).join(' > ');
-                        } else {
-                            this.selectedPath = data.path[0].name;
-                        }
-                    }
-                });
+        if (!parentId) {
+            // Dispatch event with null to clear attributes
+            window.dispatchEvent(new CustomEvent('category-selected', { 
+                detail: { categoryId: null } 
+            }));
+            return;
         }
-    }
-}
+        
+        const parent = categories.find(c => c.id == parentId);
+        console.log('Found parent:', parent);
+        
+        if (parent && parent.children) {
+            const childrenArray = Array.isArray(parent.children) ? parent.children : Object.values(parent.children);
+            console.log('Children count:', childrenArray.length);
+            
+            if (childrenArray.length > 0) {
+                state.children = childrenArray;
+                state.children.forEach(child => {
+                    const option = document.createElement('option');
+                    option.value = child.id;
+                    option.textContent = child.name;
+                    childSelect.appendChild(option);
+                });
+                childContainer.style.display = 'block';
+                console.log('✓ Children loaded');
+            } else {
+                // No children, set as final
+                finalInput.value = parentId;
+                pathText.textContent = parent.name;
+                pathDiv.style.display = 'block';
+                console.log('✓ No children, set as final');
+                
+                // Dispatch event for attributes
+                window.dispatchEvent(new CustomEvent('category-selected', { 
+                    detail: { categoryId: parentId } 
+                }));
+            }
+        }
+    });
+    
+    // Child change
+    childSelect.addEventListener('change', function() {
+        const childId = this.value;
+        console.log('=== Child selected:', childId);
+        
+        // Reset
+        state.selectedFinal = '';
+        state.grandchildren = [];
+        grandSelect.innerHTML = '<option value="">انتخاب دسته نهایی (الزامی)</option>';
+        grandContainer.style.display = 'none';
+        pathDiv.style.display = 'none';
+        finalInput.value = '';
+        
+        if (!childId) {
+            // Dispatch event with null to clear attributes
+            window.dispatchEvent(new CustomEvent('category-selected', { 
+                detail: { categoryId: null } 
+            }));
+            return;
+        }
+        
+        const child = state.children.find(c => c.id == childId);
+        console.log('Found child:', child);
+        
+        if (child) {
+            const parent = categories.find(c => c.id == state.selectedParent || c.id == parentSelect.value);
+            
+            let childChildren = child.children;
+            if (childChildren && !Array.isArray(childChildren)) {
+                childChildren = Object.values(childChildren);
+            }
+            console.log('Grandchildren count:', childChildren ? childChildren.length : 0);
+            
+            if (childChildren && childChildren.length > 0) {
+                state.grandchildren = childChildren;
+                state.grandchildren.forEach(grand => {
+                    const option = document.createElement('option');
+                    option.value = grand.id;
+                    option.textContent = grand.name;
+                    grandSelect.appendChild(option);
+                });
+                grandContainer.style.display = 'block';
+                console.log('✓ Grandchildren loaded');
+            } else {
+                // No grandchildren, set child as final
+                finalInput.value = childId;
+                pathText.textContent = parent.name + ' > ' + child.name;
+                pathDiv.style.display = 'block';
+                console.log('✓ No grandchildren, set as final');
+                
+                // Dispatch event for attributes
+                window.dispatchEvent(new CustomEvent('category-selected', { 
+                    detail: { categoryId: childId } 
+                }));
+            }
+        }
+    });
+    
+    // Grand change
+    grandSelect.addEventListener('change', function() {
+        const grandId = this.value;
+        console.log('=== Grand selected:', grandId);
+        
+        pathDiv.style.display = 'none';
+        finalInput.value = '';
+        
+        if (!grandId) {
+            // Dispatch event with null to clear attributes
+            window.dispatchEvent(new CustomEvent('category-selected', { 
+                detail: { categoryId: null } 
+            }));
+            return;
+        }
+        
+        const grand = state.grandchildren.find(c => c.id == grandId);
+        if (grand) {
+            const parent = categories.find(c => c.id == parentSelect.value);
+            const child = state.children.find(c => c.id == childSelect.value);
+            
+            finalInput.value = grandId;
+            pathText.textContent = parent.name + ' > ' + child.name + ' > ' + grand.name;
+            pathDiv.style.display = 'block';
+            console.log('✓ Final category set');
+            
+            // Dispatch event for attributes
+            window.dispatchEvent(new CustomEvent('category-selected', { 
+                detail: { categoryId: grandId } 
+            }));
+        }
+    });
+    
+    console.log('✓ Category selector initialized');
+})();
 </script>

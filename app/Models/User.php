@@ -17,6 +17,7 @@ class User extends Authenticatable
         'name',
         'username',
         'email',
+        'phone',
         'password',
         'role',
         'seller_status',
@@ -206,5 +207,16 @@ class User extends Authenticatable
     public function scopeSellerSuspended($query)
     {
         return $query->where('seller_status', 'suspended');
+    }
+
+    /**
+     * Send the password reset notification.
+     *
+     * @param  string  $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
     }
 }

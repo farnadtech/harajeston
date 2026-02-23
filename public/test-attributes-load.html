@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست لود ویژگی‌ها</title>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        body { font-family: Tahoma, Arial; padding: 20px; background: #f5f5f5; }
+        .box { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }
+        button { background: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2563eb; }
+        .log { background: #1f2937; color: #10b981; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; }
+        .log div { margin: 3px 0; }
+        .error { color: #ef4444; }
+        .success { color: #10b981; }
+        .info { color: #3b82f6; }
+    </style>
+</head>
+<body>
+
+<h1>🧪 تست لود ویژگی‌های دسته‌بندی</h1>
+
+<div class="box">
+    <h3>مرحله 1: تست API</h3>
+    <p>ابتدا بررسی می‌کنیم که API ویژگی‌ها کار می‌کنه یا نه</p>
+    <button onclick="testAPI(58)">تست API برای دسته 58</button>
+    <button onclick="testAPI(2)">تست API برای دسته 2</button>
+    <button onclick="testAPI(1)">تست API برای دسته 1</button>
+</div>
+
+<div class="box">
+    <h3>مرحله 2: تست Event Dispatch</h3>
+    <p>بررسی می‌کنیم که event به درستی dispatch می‌شه</p>
+    <button onclick="dispatchEvent(58)">Dispatch Event برای دسته 58</button>
+    <button onclick="dispatchEvent(2)">Dispatch Event برای دسته 2</button>
+</div>
+
+<div class="box">
+    <h3>مرحله 3: تست Alpine.js</h3>
+    <div id="attributesSection" x-data="{ hasCategory: false, loading: false, attributes: [] }">
+        <div x-show="!hasCategory" style="padding: 10px; background: #dbeafe; border-radius: 5px;">
+            ⏳ منتظر انتخاب دسته...
+        </div>
+        
+        <div x-show="loading" style="padding: 10px; background: #fef3c7; border-radius: 5px;">
+            ⌛ در حال بارگذاری...
+        </div>
+        
+        <div x-show="hasCategory && !loading && attributes.length > 0" style="padding: 10px; background: #d1fae5; border-radius: 5px;">
+            <p>✅ ویژگی‌ها لود شدند (<span x-text="attributes.length"></span> عدد)</p>
+            <template x-for="attr in attributes" :key="attr.id">
+                <div style="margin: 5px 0; padding: 5px; background: white; border-radius: 3px;">
+                    <strong x-text="attr.name"></strong> - 
+                    <span x-text="attr.type"></span>
+                    <span x-show="attr.is_required" style="color: red;"> *</span>
+                </div>
+            </template>
+        </div>
+        
+        <div x-show="hasCategory && !loading && attributes.length === 0" style="padding: 10px; background: #fee2e2; border-radius: 5px;">
+            ❌ هیچ ویژگی‌ای یافت نشد
+        </div>
+    </div>
+</div>
+
+<div class="box">
+    <h3>📋 لاگ</h3>
+    <div class="log" id="log"></div>
+    <button onclick="clearLog()">پاک کردن لاگ</button>
+</div>
+
+<script>
+let logDiv = document.getElementById('log');
+
+function log(message, type = 'info') {
+    const time = new Date().toLocaleTimeString('fa-IR');
+    const div = document.createElement('div');
+    div.className = type;
+    div.textContent = `[${time}] ${message}`;
+    logDiv.appendChild(div);
+    logDiv.scrollTop = logDiv.scrollHeight;
+    console.log(message);
+}
+
+function clearLog() {
+    logDiv.innerHTML = '';
+}
+
+// تست API
+async function testAPI(categoryId) {
+    log(`🔍 تست API برای دسته ${categoryId}...`, 'info');
+    
+    try {
+        const response = await fetch(`/api/categories/${categoryId}/attributes`);
+        log(`📡 Response Status: ${response.status}`, response.ok ? 'success' : 'error');
+        
+        const data = await response.json();
+        log(`📦 Data: ${JSON.stringify(data)}`, 'success');
+        
+        if (data.attributes) {
+            log(`✅ تعداد ویژگی‌ها: ${data.attributes.length}`, 'success');
+            data.attributes.forEach(attr => {
+                log(`  - ${attr.name} (${attr.type})`, 'info');
+            });
+        } else {
+            log(`⚠️ فیلد attributes در response وجود نداره`, 'error');
+        }
+    } catch (error) {
+        log(`❌ خطا: ${error.message}`, 'error');
+    }
+}
+
+// تست Event
+function dispatchEvent(categoryId) {
+    log(`📢 Dispatch event برای دسته ${categoryId}...`, 'info');
+    
+    const event = new CustomEvent('category-selected', { 
+        detail: { categoryId: categoryId } 
+    });
+    
+    window.dispatchEvent(event);
+    log(`✅ Event dispatched`, 'success');
+}
+
+// گوش دادن به event
+document.addEventListener('alpine:init', () => {
+    log('🎬 Alpine.js initialized', 'success');
+    
+    window.addEventListener('category-selected', (event) => {
+        const categoryId = event.detail.categoryId;
+        log(`🎯 Event دریافت شد: categoryId = ${categoryId}`, 'info');
+        
+        const section = document.querySelector('#attributesSection');
+        
+        if (!section) {
+            log('❌ المان #attributesSection پیدا نشد', 'error');
+            return;
+        }
+        
+        if (!section.__x) {
+            log('❌ Alpine data روی المان نیست', 'error');
+            return;
+        }
+        
+        const alpineData = section.__x.$data;
+        log('✅ Alpine data پیدا شد', 'success');
+        
+        if (!categoryId) {
+            alpineData.hasCategory = false;
+            alpineData.attributes = [];
+            log('🔄 Reset شد', 'info');
+            return;
+        }
+        
+        alpineData.hasCategory = true;
+        alpineData.loading = true;
+        log('⏳ شروع fetch...', 'info');
+        
+        fetch(`/api/categories/${categoryId}/attributes`)
+            .then(response => {
+                log(`📡 Response: ${response.status}`, response.ok ? 'success' : 'error');
+                return response.json();
+            })
+            .then(data => {
+                alpineData.loading = false;
+                log(`📦 Data دریافت شد`, 'success');
+                
+                if (data.attributes && data.attributes.length > 0) {
+                    alpineData.attributes = data.attributes;
+                    log(`✅ ${data.attributes.length} ویژگی لود شد`, 'success');
+                } else {
+                    alpineData.attributes = [];
+                    log(`⚠️ هیچ ویژگی‌ای نیست`, 'info');
+                }
+            })
+            .catch(error => {
+                log(`❌ خطا در fetch: ${error.message}`, 'error');
+                alpineData.loading = false;
+                alpineData.attributes = [];
+            });
+    });
+    
+    log('👂 Event listener اضافه شد', 'success');
+});
+
+log('🚀 صفحه لود شد', 'success');
+</script>
+
+</body>
+</html>

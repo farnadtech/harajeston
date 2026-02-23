@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>رفتن به صفحه ایجاد حراجی</title>
+    <style>
+        body {
+            font-family: Tahoma, Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 50px;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            margin: 10px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: right;
+        }
+        .warning {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: right;
+            border-right: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 رفتن به صفحه ایجاد حراجی</h1>
+        
+        <div class="warning">
+            <strong>⚠️ توجه:</strong> برای دسترسی به این صفحه باید:
+            <ul style="text-align: right; margin-top: 10px;">
+                <li>وارد سیستم شده باشید (لاگین)</li>
+                <li>نقش فروشنده (seller) داشته باشید</li>
+            </ul>
+        </div>
+
+        <div class="info">
+            <p><strong>مسیرهای مختلف برای دسترسی:</strong></p>
+        </div>
+
+        <a href="/haraj/public/listings/create" class="btn">
+            📝 رفتن به صفحه ایجاد حراجی
+        </a>
+
+        <br><br>
+
+        <a href="/haraj/public/dashboard" class="btn" style="background: #28a745;">
+            🏠 رفتن به داشبورد
+        </a>
+
+        <br><br>
+
+        <a href="/haraj/public/my-listings" class="btn" style="background: #17a2b8;">
+            📋 مزایده‌های من
+        </a>
+
+        <div class="info" style="margin-top: 30px;">
+            <p><strong>💡 راهنما:</strong></p>
+            <ol style="text-align: right;">
+                <li>اگر لاگین نیستید، ابتدا <a href="/haraj/public/login">وارد شوید</a></li>
+                <li>اگر فروشنده نیستید، <a href="/haraj/public/become-seller">درخواست فروشنده</a> بدهید</li>
+                <li>بعد از لاگین، روی دکمه بالا کلیک کنید</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Auto redirect after 3 seconds if user wants
+        console.log('صفحه آماده است. روی دکمه کلیک کنید.');
+    </script>
+</body>
+</html>

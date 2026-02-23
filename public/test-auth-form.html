@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست فرم احراز هویت</title>
+    <style>
+        body {
+            font-family: Tahoma, Arial, sans-serif;
+            padding: 20px;
+            direction: rtl;
+            text-align: right;
+        }
+        .test-section {
+            background: #f5f5f5;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        button {
+            background: #135bec;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>تست فرم‌های احراز هویت</h1>
+    
+    <div class="test-section">
+        <h2>1. تست فرم ثبت نام</h2>
+        <p>برای تست ثبت نام، فیلدهای زیر را پر کنید:</p>
+        <ul>
+            <li>نام و نام خانوادگی: تست کاربر</li>
+            <li>ایمیل: test@example.com</li>
+            <li>رمز عبور: 12345678</li>
+            <li>تکرار رمز عبور: 12345678</li>
+            <li>قبول قوانین: بله</li>
+        </ul>
+        <button onclick="window.location.href='/register'">رفتن به صفحه ثبت نام</button>
+    </div>
+
+    <div class="test-section">
+        <h2>2. تست فرم ورود</h2>
+        <p>برای تست ورود، از اطلاعات زیر استفاده کنید:</p>
+        <ul>
+            <li>ایمیل: test@example.com</li>
+            <li>رمز عبور: 12345678</li>
+        </ul>
+        <button onclick="window.location.href='/login'">رفتن به صفحه ورود</button>
+    </div>
+
+    <div class="test-section">
+        <h2>3. بررسی تغییرات</h2>
+        <ul class="success">
+            <li>✓ فرم ثبت نام حالا به روت POST /register متصل شده</li>
+            <li>✓ فرم ورود حالا به روت POST /login متصل شده</li>
+            <li>✓ تمام فیلدهای ثبت نام الزامی (required) هستند</li>
+            <li>✓ فیلد تکرار رمز عبور اضافه شده</li>
+            <li>✓ نمایش خطاها با استایل مناسب</li>
+            <li>✓ قابلیت نمایش/مخفی کردن رمز عبور</li>
+            <li>✓ حفظ مقادیر قبلی با old() در صورت خطا</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>4. فیلدهای الزامی در ثبت نام</h2>
+        <ul>
+            <li>نام و نام خانوادگی (name) - الزامی</li>
+            <li>ایمیل (email) - الزامی و باید یونیک باشد</li>
+            <li>رمز عبور (password) - الزامی، حداقل 8 کاراکتر</li>
+            <li>تکرار رمز عبور (password_confirmation) - الزامی</li>
+            <li>قبول قوانین (terms) - الزامی</li>
+        </ul>
+    </div>
+</body>
+</html>

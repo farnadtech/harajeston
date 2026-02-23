@@ -35,19 +35,17 @@ class DashboardController extends Controller
 
         $stats = [
             'active_auctions' => Listing::where('seller_id', $user->id)
-                ->where('type', 'auction')
                 ->where('status', 'active')
                 ->count(),
-            'direct_sales' => Listing::where('seller_id', $user->id)
-                ->whereIn('type', ['direct_sale', 'hybrid'])
-                ->where('status', 'active')
-                ->count(),
-            'pending_orders' => Order::where('seller_id', $user->id)
+            'pending_listings' => Listing::where('seller_id', $user->id)
                 ->where('status', 'pending')
+                ->count(),
+            'completed_auctions' => Listing::where('seller_id', $user->id)
+                ->where('status', 'completed')
                 ->count(),
             'total_sales' => Order::where('seller_id', $user->id)
                 ->where('status', 'completed')
-                ->sum('total_amount'),
+                ->sum('total'),
         ];
 
         $recentOrders = Order::where('seller_id', $user->id)
@@ -56,13 +54,14 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        $lowStockItems = Listing::where('seller_id', $user->id)
-            ->whereIn('type', ['direct_sale', 'hybrid'])
-            ->where('stock', '>', 0)
-            ->where('stock', '<=', 5)
+        $activeListings = Listing::where('seller_id', $user->id)
+            ->where('status', 'active')
+            ->with('category', 'images')
+            ->orderBy('ends_at', 'asc')
+            ->limit(10)
             ->get();
 
-        return view('dashboard.seller', compact('stats', 'recentOrders', 'lowStockItems'));
+        return view('dashboard.seller-new', compact('stats', 'activeListings', 'recentOrders'));
     }
 
     /**

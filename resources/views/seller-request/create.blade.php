@@ -39,7 +39,7 @@
             </div>
 
             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">نام فروشگاه *</label>
+                <label class="block text-sm font-bold text-gray-700 mb-2">نام فروشگاه <span class="text-red-500">*</span></label>
                 <input type="text" name="store_name" value="{{ old('store_name') }}" 
                        class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                        required>
@@ -49,7 +49,7 @@
             </div>
 
             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">توضیحات فروشگاه *</label>
+                <label class="block text-sm font-bold text-gray-700 mb-2">توضیحات فروشگاه <span class="text-red-500">*</span></label>
                 <textarea name="store_description" rows="4" 
                           class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                           required>{{ old('store_description') }}</textarea>
@@ -61,7 +61,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">شماره تماس *</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">شماره تماس <span class="text-red-500">*</span></label>
                     <input type="text" name="phone" value="{{ old('phone') }}" 
                            class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                            placeholder="09123456789"
@@ -72,7 +72,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-2">کد ملی *</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">کد ملی <span class="text-red-500">*</span></label>
                     <input type="text" name="national_id" value="{{ old('national_id') }}" 
                            class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                            maxlength="10"
@@ -97,7 +97,7 @@
                 
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">نام بانک *</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">نام بانک <span class="text-red-500">*</span></label>
                         <input type="text" name="bank_name" value="{{ old('bank_name') }}" 
                                class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                                placeholder="مثال: ملی، ملت، پاسارگاد"
@@ -108,7 +108,7 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">شماره حساب / شبا *</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">شماره حساب / شبا <span class="text-red-500">*</span></label>
                         <input type="text" name="bank_account" value="{{ old('bank_account') }}" 
                                class="w-full border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                                placeholder="IR..."
