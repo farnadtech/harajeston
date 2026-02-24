@@ -149,6 +149,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/wallet/add-funds', [WalletController::class, 'addFunds'])->name('wallet.add-funds');
     Route::post('/wallet/withdraw', [WalletController::class, 'withdraw'])->name('wallet.withdraw');
     Route::get('/wallet/export', [WalletController::class, 'export'])->name('wallet.export');
+    Route::any('/wallet/payment/callback', [WalletController::class, 'paymentCallback'])->name('wallet.payment.callback');
 
     
     // Store
@@ -188,6 +189,12 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/loser-fee', [SettingsController::class, 'updateLoserFee'])->name('admin.settings.loser-fee.update');
         Route::put('/settings/forfeit', [SettingsController::class, 'updateForfeit'])->name('admin.settings.forfeit.update');
         Route::put('/settings/listing', [SettingsController::class, 'updateListing'])->name('admin.settings.listing.update');
+
+        // Payment Gateways
+        Route::get('/payment-gateways', [\App\Http\Controllers\Admin\PaymentGatewayController::class, 'index'])->name('admin.payment-gateways.index');
+        Route::get('/payment-gateways/{gateway}/edit', [\App\Http\Controllers\Admin\PaymentGatewayController::class, 'edit'])->name('admin.payment-gateways.edit');
+        Route::put('/payment-gateways/{gateway}', [\App\Http\Controllers\Admin\PaymentGatewayController::class, 'update'])->name('admin.payment-gateways.update');
+        Route::patch('/payment-gateways/{gateway}/toggle', [\App\Http\Controllers\Admin\PaymentGatewayController::class, 'toggle'])->name('admin.payment-gateways.toggle');
 
         // Category Commissions
         Route::get('/category-commissions', [\App\Http\Controllers\Admin\CategoryCommissionController::class, 'index'])->name('admin.category-commissions.index');

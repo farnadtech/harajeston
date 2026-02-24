@@ -356,7 +356,7 @@ $__split = function ($name, $params = []) {
 };
 [$__name, $__params] = $__split('auction-countdown', ['listing' => $listing]);
 
-$__html = app('livewire')->mount($__name, $__params, '9XT7Xsr', $__slots ?? [], get_defined_vars());
+$__html = app('livewire')->mount($__name, $__params, 'Bv8drA8', $__slots ?? [], get_defined_vars());
 
 echo $__html;
 

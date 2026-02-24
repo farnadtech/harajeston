@@ -94,10 +94,10 @@
                         $taxPercentage = \App\Models\SiteSetting::get('wallet_charge_tax', 0);
                     @endphp
                     <input type="number" name="amount" id="chargeAmountBuyer" placeholder="مثال: 100000" required 
-                           min="{{ $minDeposit }}" max="{{ $maxDeposit }}"
                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                            oninput="calculateChargeTaxBuyer()">
                     <p class="text-xs text-gray-500 mt-1">حداقل: @price($minDeposit) - حداکثر: @price($maxDeposit) تومان</p>
+                    <p id="amountErrorBuyer" class="text-xs text-red-600 mt-1" style="display:none;"></p>
                 </div>
 
                 @if($taxPercentage > 0)
@@ -119,9 +119,32 @@
                 </div>
                 @endif
 
-                <button type="submit" class="w-full bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2">
+                @if($gateways->count() > 0)
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-3">انتخاب درگاه پرداخت</label>
+                    <div class="space-y-2">
+                        @foreach($gateways as $gateway)
+                        <label class="flex items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-green-500 transition-colors">
+                            <input type="radio" name="gateway" value="{{ $gateway->name }}" required
+                                   class="w-5 h-5 text-green-600 focus:ring-green-500">
+                            <div class="mr-3 flex-1">
+                                <span class="font-medium text-gray-900">{{ $gateway->display_name }}</span>
+                            </div>
+                            <span class="material-symbols-outlined text-gray-400">payment</span>
+                        </label>
+                        @endforeach
+                    </div>
+                </div>
+                @else
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                    <p class="text-sm text-yellow-800">در حال حاضر درگاه پرداخت فعالی وجود ندارد. لطفا با پشتیبانی تماس بگیرید.</p>
+                </div>
+                @endif
+
+                <button type="submit" class="w-full bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2" 
+                        id="submitChargeBuyer" {{ $gateways->count() == 0 ? 'disabled' : '' }}>
                     <span class="material-symbols-outlined">payments</span>
-                    <span>افزایش موجودی</span>
+                    <span>پرداخت و شارژ کیف پول</span>
                 </button>
             </form>
         </div>
@@ -134,19 +157,20 @@
                 </div>
                 <h2 class="text-xl font-bold text-gray-900">برداشت از حساب</h2>
             </div>
-            <form method="POST" action="{{ route('wallet.withdraw') }}" class="space-y-4">
+            <form method="POST" action="{{ route('wallet.withdraw') }}" class="space-y-4" id="withdrawFormBuyer">
                 @csrf
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ (تومان)</label>
                     @php
                         $minWithdraw = \App\Models\SiteSetting::get('wallet_min_withdraw', 50000);
                     @endphp
-                    <input type="number" name="amount" placeholder="مثال: 50000" required 
-                           min="{{ $minWithdraw }}" max="{{ $wallet->balance }}"
-                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                    <input type="number" name="amount" id="withdrawAmountBuyer" placeholder="مثال: 50000" required 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                           oninput="validateWithdrawBuyer()">
                     <p class="text-xs text-gray-500 mt-1">حداقل: @price($minWithdraw) - حداکثر: @price($wallet->balance) تومان</p>
+                    <p id="withdrawErrorBuyer" class="text-xs text-red-600 mt-1" style="display:none;"></p>
                 </div>
-                <button type="submit" class="w-full bg-red-600 text-white px-6 py-3 rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2">
+                <button type="submit" id="submitWithdrawBuyer" class="w-full bg-red-600 text-white px-6 py-3 rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined">account_balance</span>
                     <span>درخواست برداشت</span>
                 </button>
@@ -285,12 +309,39 @@
         <script src="{{ url('js/persian-datepicker-package.js') }}?v={{ now()->timestamp }}"></script>
         <script>
         const TAX_PERCENTAGE_BUYER = {{ $taxPercentage ?? 0 }};
+        const MIN_DEPOSIT = {{ $minDeposit }};
+        const MAX_DEPOSIT = {{ $maxDeposit }};
+        const MIN_WITHDRAW = {{ $minWithdraw }};
+        const MAX_WITHDRAW = {{ $wallet->balance }};
         
         function calculateChargeTaxBuyer() {
-            const amount = parseFloat(document.getElementById('chargeAmountBuyer').value) || 0;
+            const amountInput = document.getElementById('chargeAmountBuyer');
+            const amount = parseFloat(amountInput.value) || 0;
+            const errorElement = document.getElementById('amountErrorBuyer');
+            const submitButton = document.getElementById('submitChargeBuyer');
             
-            if (amount > 0 && TAX_PERCENTAGE_BUYER > 0) {
-                const tax = (amount * TAX_PERCENTAGE_BUYER) / 100;
+            // بررسی محدوده مبلغ
+            let hasError = false;
+            if (amount > 0 && amount < MIN_DEPOSIT) {
+                errorElement.textContent = 'حداقل مبلغ شارژ ' + MIN_DEPOSIT.toLocaleString('fa-IR') + ' تومان است.';
+                errorElement.style.display = 'block';
+                hasError = true;
+            } else if (amount > MAX_DEPOSIT) {
+                errorElement.textContent = 'حداکثر مبلغ شارژ ' + MAX_DEPOSIT.toLocaleString('fa-IR') + ' تومان است.';
+                errorElement.style.display = 'block';
+                hasError = true;
+            } else {
+                errorElement.style.display = 'none';
+            }
+            
+            // غیرفعال کردن دکمه در صورت خطا
+            if (submitButton) {
+                submitButton.disabled = hasError || amount <= 0;
+            }
+            
+            if (amount > 0 && TAX_PERCENTAGE_BUYER > 0 && !hasError) {
+                // محاسبه مالیات و رند کردن به عدد صحیح
+                const tax = Math.round((amount * TAX_PERCENTAGE_BUYER) / 100);
                 const total = amount + tax;
                 
                 document.getElementById('baseAmountBuyer').textContent = amount.toLocaleString('fa-IR') + ' تومان';
@@ -299,6 +350,32 @@
                 document.getElementById('taxInfoBuyer').style.display = 'block';
             } else {
                 document.getElementById('taxInfoBuyer').style.display = 'none';
+            }
+        }
+        
+        function validateWithdrawBuyer() {
+            const amountInput = document.getElementById('withdrawAmountBuyer');
+            const amount = parseFloat(amountInput.value) || 0;
+            const errorElement = document.getElementById('withdrawErrorBuyer');
+            const submitButton = document.getElementById('submitWithdrawBuyer');
+            
+            // بررسی محدوده مبلغ
+            let hasError = false;
+            if (amount > 0 && amount < MIN_WITHDRAW) {
+                errorElement.textContent = 'حداقل مبلغ برداشت ' + MIN_WITHDRAW.toLocaleString('fa-IR') + ' تومان است.';
+                errorElement.style.display = 'block';
+                hasError = true;
+            } else if (amount > MAX_WITHDRAW) {
+                errorElement.textContent = 'حداکثر مبلغ برداشت ' + MAX_WITHDRAW.toLocaleString('fa-IR') + ' تومان است (موجودی شما).';
+                errorElement.style.display = 'block';
+                hasError = true;
+            } else {
+                errorElement.style.display = 'none';
+            }
+            
+            // غیرفعال کردن دکمه در صورت خطا
+            if (submitButton) {
+                submitButton.disabled = hasError || amount <= 0;
             }
         }
 

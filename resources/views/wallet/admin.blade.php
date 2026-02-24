@@ -169,11 +169,12 @@
                         $maxDeposit = \App\Models\SiteSetting::get('wallet_max_deposit', 100000000);
                         $taxPercentage = \App\Models\SiteSetting::get('wallet_charge_tax', 0);
                     @endphp
-                    <input type="number" name="amount" id="chargeAmount" required min="{{ $minDeposit }}" max="{{ $maxDeposit }}" step="1000"
+                    <input type="number" name="amount" id="chargeAmount" required step="1000"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            placeholder="مثال: 100000"
                            oninput="calculateChargeTax()">
                     <p class="text-xs text-gray-500 mt-1">حداقل: {{ number_format($minDeposit) }} تومان | حداکثر: {{ number_format($maxDeposit) }} تومان</p>
+                    <p id="amountError" class="text-xs text-red-600 mt-1" style="display:none;"></p>
                 </div>
 
                 @if($taxPercentage > 0)
@@ -196,7 +197,7 @@
                 @endif
 
                 <div class="flex gap-3">
-                    <button type="submit" class="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">پرداخت</button>
+                    <button type="submit" id="submitCharge" class="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">پرداخت</button>
                     <button type="button" onclick="document.getElementById('addFundsModal').classList.add('hidden')"
                             class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">انصراف</button>
                 </div>
@@ -206,12 +207,36 @@
 
     <script>
     const TAX_PERCENTAGE = {{ $taxPercentage }};
+    const MIN_DEPOSIT = {{ $minDeposit }};
+    const MAX_DEPOSIT = {{ $maxDeposit }};
     
     function calculateChargeTax() {
-        const amount = parseFloat(document.getElementById('chargeAmount').value) || 0;
+        const amountInput = document.getElementById('chargeAmount');
+        const amount = parseFloat(amountInput.value) || 0;
+        const errorElement = document.getElementById('amountError');
+        const submitButton = document.getElementById('submitCharge');
         
-        if (amount > 0 && TAX_PERCENTAGE > 0) {
-            const tax = (amount * TAX_PERCENTAGE) / 100;
+        // بررسی محدوده مبلغ
+        let hasError = false;
+        if (amount > 0 && amount < MIN_DEPOSIT) {
+            errorElement.textContent = 'حداقل مبلغ شارژ ' + MIN_DEPOSIT.toLocaleString('fa-IR') + ' تومان است.';
+            errorElement.style.display = 'block';
+            hasError = true;
+        } else if (amount > MAX_DEPOSIT) {
+            errorElement.textContent = 'حداکثر مبلغ شارژ ' + MAX_DEPOSIT.toLocaleString('fa-IR') + ' تومان است.';
+            errorElement.style.display = 'block';
+            hasError = true;
+        } else {
+            errorElement.style.display = 'none';
+        }
+        
+        // غیرفعال کردن دکمه در صورت خطا
+        if (submitButton) {
+            submitButton.disabled = hasError || amount <= 0;
+        }
+        
+        if (amount > 0 && TAX_PERCENTAGE > 0 && !hasError) {
+            const tax = Math.round((amount * TAX_PERCENTAGE) / 100);
             const total = amount + tax;
             
             document.getElementById('baseAmount').textContent = amount.toLocaleString('fa-IR') + ' تومان';

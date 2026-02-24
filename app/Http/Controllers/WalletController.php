@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Services\WalletService;
+use App\Services\PaymentGatewayService;
 use Illuminate\Http\Request;
 
 class WalletController extends Controller
 {
     public function __construct(
-        protected WalletService $walletService
+        protected WalletService $walletService,
+        protected PaymentGatewayService $gatewayService
     ) {}
 
     /**
@@ -19,7 +21,8 @@ class WalletController extends Controller
         $user = auth()->user();
         $wallet = $user->wallet;
         
-        $query = $wallet->transactions();
+        // فقط تراکنش‌های موفق نمایش داده شوند
+        $query = $wallet->transactions()->where('status', 'completed');
 
         // Filter by date range (Jalali dates)
         if ($request->has('from_date') && $request->from_date) {
@@ -41,14 +44,24 @@ class WalletController extends Controller
         }
 
         $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
+        
+        // Get active payment gateways
+        $gateways = $this->gatewayService->getActiveGateways();
+
+        // Get wallet settings
+        $minDeposit = \App\Models\SiteSetting::get('wallet_min_deposit', 10000);
+        $maxDeposit = \App\Models\SiteSetting::get('wallet_max_deposit', 100000000);
+        $minWithdraw = \App\Models\SiteSetting::get('wallet_min_withdraw', 50000);
+        $maxWithdraw = $wallet->balance; // حداکثر برداشت = موجودی فعلی
+        $taxPercentage = \App\Models\SiteSetting::get('wallet_tax_percentage', 9);
 
         // Return different views based on user role
         if ($user->role === 'admin') {
-            return view('wallet.admin', compact('wallet', 'transactions'));
+            return view('wallet.admin', compact('wallet', 'transactions', 'gateways', 'minDeposit', 'maxDeposit', 'minWithdraw', 'maxWithdraw', 'taxPercentage'));
         } elseif ($user->canSell()) {
-            return view('wallet.seller', compact('wallet', 'transactions'));
+            return view('wallet.seller', compact('wallet', 'transactions', 'gateways', 'minDeposit', 'maxDeposit', 'minWithdraw', 'maxWithdraw', 'taxPercentage'));
         } else {
-            return view('wallet.show', compact('wallet', 'transactions'));
+            return view('wallet.show', compact('wallet', 'transactions', 'gateways', 'minDeposit', 'maxDeposit', 'minWithdraw', 'maxWithdraw', 'taxPercentage'));
         }
     }
 
@@ -62,20 +75,65 @@ class WalletController extends Controller
 
         $request->validate([
             'amount' => "required|numeric|min:{$minDeposit}|max:{$maxDeposit}",
+            'gateway' => 'required|string|exists:payment_gateways,name',
         ], [
             'amount.min' => "حداقل مبلغ افزایش موجودی " . number_format($minDeposit) . " تومان است.",
             'amount.max' => "حداکثر مبلغ افزایش موجودی " . number_format($maxDeposit) . " تومان است.",
+            'gateway.required' => 'لطفا درگاه پرداخت را انتخاب کنید.',
+            'gateway.exists' => 'درگاه پرداخت انتخاب شده معتبر نیست.',
         ]);
 
-        $this->walletService->addFunds(
-            auth()->user(),
-            $request->amount,
-            'شارژ حساب'
-        );
+        try {
+            $result = $this->gatewayService->initiateCharge(
+                auth()->user(),
+                (int) $request->amount,
+                $request->gateway
+            );
 
-        return redirect()
-            ->route('wallet.show')
-            ->with('success', 'موجودی با موفقیت افزوده شد.');
+            // Redirect to payment gateway
+            return redirect($result['redirect_url']);
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('wallet.show')
+                ->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Payment callback
+     */
+    public function paymentCallback(Request $request)
+    {
+        try {
+            // Get token from different gateway parameters
+            $token = $request->input('Authority') // ZarinPal
+                ?? $request->input('trackId') // Zibal
+                ?? $request->input('token') // Vandar
+                ?? $request->input('refid'); // PayPing
+
+            // Determine gateway from request or session
+            $gateway = $request->input('gateway') ?? session('payment_gateway', 'zarinpal');
+
+            if (!$token) {
+                throw new \Exception('توکن پرداخت یافت نشد');
+            }
+
+            $result = $this->gatewayService->verifyPayment($token, $gateway, $request->all());
+
+            if ($result['success']) {
+                return redirect()
+                    ->route('wallet.show')
+                    ->with('success', "پرداخت با موفقیت انجام شد. کد پیگیری: {$result['tracking_code']}");
+            }
+
+            return redirect()
+                ->route('wallet.show')
+                ->with('error', $result['message']);
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('wallet.show')
+                ->with('error', 'خطا در تایید پرداخت: ' . $e->getMessage());
+        }
     }
 
     /**

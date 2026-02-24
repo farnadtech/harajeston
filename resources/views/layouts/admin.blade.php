@@ -252,6 +252,11 @@
                 <span>روش‌های ارسال</span>
             </a>
             
+            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.payment-gateways.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.payment-gateways.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.payment-gateways.index') }}">
+                <span class="material-symbols-outlined group-hover:text-primary transition-colors">credit_card</span>
+                <span>درگاه‌های پرداخت</span>
+            </a>
+            
             <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.settings.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.settings.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.settings.index') }}">
                 <span class="material-symbols-outlined group-hover:text-primary transition-colors">settings</span>
                 <span>تنظیمات سایت</span>

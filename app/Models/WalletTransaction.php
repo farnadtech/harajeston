@@ -2,53 +2,52 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WalletTransaction extends Model
 {
-    use HasFactory;
-
+    public $timestamps = false;
+    
     protected $fillable = [
         'wallet_id',
         'type',
         'amount',
+        'tax_amount',
+        'final_amount',
+        'gateway',
+        'transaction_id',
+        'reference_id',
+        'status',
+        'description',
         'balance_before',
         'balance_after',
         'frozen_before',
         'frozen_after',
         'reference_type',
-        'reference_id',
-        'description',
     ];
 
     protected $casts = [
-        'amount' => 'integer',
-        'balance_before' => 'integer',
-        'balance_after' => 'integer',
-        'frozen_before' => 'integer',
-        'frozen_after' => 'integer',
+        'created_at' => 'datetime',
     ];
 
-    public $timestamps = true;
-    const UPDATED_AT = null; // Only use created_at
-
-    // Relationships
     public function wallet(): BelongsTo
     {
         return $this->belongsTo(Wallet::class);
     }
 
-    // Scope for filtering by type
-    public function scopeOfType($query, string $type)
+    public function user()
     {
-        return $query->where('type', $type);
+        return $this->wallet->user();
     }
 
-    // Scope for date range filtering
-    public function scopeBetweenDates($query, $startDate, $endDate)
+    public function scopeCompleted($query)
     {
-        return $query->whereBetween('created_at', [$startDate, $endDate]);
+        return $query->where('status', 'completed');
+    }
+
+    public function scopeCharges($query)
+    {
+        return $query->where('type', 'deposit');
     }
 }

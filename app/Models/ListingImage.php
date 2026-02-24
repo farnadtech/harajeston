@@ -34,7 +34,7 @@ class ListingImage extends Model
     // Accessor for full URL
     public function getUrlAttribute(): string
     {
-        return Storage::url($this->file_path);
+        return asset('storage/' . $this->file_path);
     }
 
     // Scope for ordering
