@@ -91,7 +91,10 @@ class ListingController extends Controller
         // Filter by tag
         if ($request->has('tag') && $request->tag) {
             $tag = trim($request->tag);
-            $query->whereRaw("JSON_SEARCH(tags, 'one', ?) IS NOT NULL", [$tag]);
+            $query->where(function($q) use ($tag) {
+                $q->whereJsonContains('tags', $tag)
+                  ->orWhereRaw("JSON_SEARCH(tags, 'one', ?) IS NOT NULL", [$tag]);
+            });
         }
 
         // Filter by seller
@@ -228,6 +231,54 @@ class ListingController extends Controller
         return view('listings.my-listings', compact('listings', 'counts'));
     }
 
+    /**
+     * Display listings where user has placed bids
+     */
+    public function myBids(Request $request)
+    {
+        $user = auth()->user();
+
+        // Get status filter
+        $status = $request->get('status', 'all');
+
+        // Build query - get listings where user has bids
+        $query = Listing::whereHas('bids', function($q) use ($user) {
+            $q->where('user_id', $user->id);
+        });
+
+        // Apply status filter
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        // Get counts for each status
+        $counts = [
+            'all' => Listing::whereHas('bids', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })->count(),
+            'active' => Listing::whereHas('bids', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })->where('status', 'active')->count(),
+            'completed' => Listing::whereHas('bids', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })->where('status', 'completed')->count(),
+        ];
+
+        // Get listings with user's bid info
+        $listings = $query->with(['category', 'images', 'seller'])
+            ->withCount('bids')
+            ->orderBy('ends_at', 'asc')
+            ->paginate(20)
+            ->appends($request->except('page'));
+
+        // Add user's bid to each listing
+        foreach ($listings as $listing) {
+            $listing->my_bid = $listing->bids()->where('user_id', $user->id)->latest()->first();
+        }
+
+        return view('listings.my-bids', compact('listings', 'counts'));
+    }
+
 
 
     /**
@@ -322,6 +373,15 @@ class ListingController extends Controller
     {
         $this->authorize('update', $listing);
 
+        // Load relationships with fresh data
+        $listing->load([
+            'category.attributes', 
+            'shippingMethods'
+        ]);
+        
+        // Force reload attributeValues
+        $listing->load('attributeValues');
+
         return view('listings.edit', compact('listing'));
     }
 
@@ -340,14 +400,65 @@ class ListingController extends Controller
     }
 
     /**
-     * Participate in auction (pay deposit)
+     * Participate in auction (pay deposit) or buy now
      */
     public function participate(ParticipateAuctionRequest $request, Listing $listing)
     {
-        $this->depositService->participateInAuction(auth()->user(), $listing);
+        // Check if this is a buy now request
+        if ($request->has('buy_now') && $request->buy_now == 1) {
+            try {
+                // Validate buy now is available
+                if (!$listing->buy_now_price || $listing->buy_now_price <= 0) {
+                    return redirect()
+                        ->route('listings.show', $listing)
+                        ->with('error', 'خرید فوری برای این حراجی فعال نیست.');
+                }
 
-        return redirect()
-            ->route('listings.show', $listing)
-            ->with('success', 'شما با موفقیت در مزایده شرکت کردید.');
+                // Check if listing is active
+                if (!$listing->isActive()) {
+                    return redirect()
+                        ->route('listings.show', $listing)
+                        ->with('error', 'این حراجی فعال نیست.');
+                }
+
+                // Check wallet balance
+                $wallet = auth()->user()->wallet;
+                if (!$wallet || $wallet->balance < $listing->buy_now_price) {
+                    return redirect()
+                        ->route('listings.show', $listing)
+                        ->with('error', 'موجودی کیف پول شما برای خرید فوری کافی نیست. مبلغ مورد نیاز: ' . number_format($listing->buy_now_price) . ' تومان');
+                }
+
+                // Create order for buy now
+                $order = $this->orderService->createOrderFromBuyNow($listing, auth()->user());
+                
+                return redirect()
+                    ->route('orders.show', $order)
+                    ->with('success', 'خرید فوری با موفقیت انجام شد. لطفا روش ارسال را انتخاب کنید.');
+                    
+            } catch (\App\Exceptions\Wallet\InsufficientBalanceException $e) {
+                return redirect()
+                    ->route('listings.show', $listing)
+                    ->with('error', 'موجودی کیف پول شما کافی نیست. لطفا ابتدا کیف پول خود را شارژ کنید.');
+            } catch (\Exception $e) {
+                \Log::error('Buy now error: ' . $e->getMessage());
+                return redirect()
+                    ->route('listings.show', $listing)
+                    ->with('error', 'خطا در انجام خرید فوری. لطفا دوباره تلاش کنید.');
+            }
+        }
+
+        // Regular auction participation (deposit)
+        try {
+            $this->depositService->participateInAuction(auth()->user(), $listing);
+
+            return redirect()
+                ->route('listings.show', $listing)
+                ->with('success', 'شما با موفقیت در مزایده شرکت کردید.');
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('listings.show', $listing)
+                ->with('error', 'خطا در شرکت در مزایده: ' . $e->getMessage());
+        }
     }
 }

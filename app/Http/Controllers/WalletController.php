@@ -42,7 +42,14 @@ class WalletController extends Controller
 
         $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
 
-        return view('wallet.show', compact('wallet', 'transactions'));
+        // Return different views based on user role
+        if ($user->role === 'admin') {
+            return view('wallet.admin', compact('wallet', 'transactions'));
+        } elseif ($user->canSell()) {
+            return view('wallet.seller', compact('wallet', 'transactions'));
+        } else {
+            return view('wallet.show', compact('wallet', 'transactions'));
+        }
     }
 
     /**

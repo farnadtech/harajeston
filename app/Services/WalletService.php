@@ -48,6 +48,26 @@ class WalletService
     }
 
     /**
+     * Calculate total amount with tax for wallet charge
+     * 
+     * @param float $amount Base amount to charge
+     * @return array ['base_amount' => float, 'tax' => float, 'total' => float, 'tax_percentage' => float]
+     */
+    public function calculateChargeWithTax(float $amount): array
+    {
+        $taxPercentage = \App\Models\SiteSetting::get('wallet_charge_tax', 0);
+        $tax = ($amount * $taxPercentage) / 100;
+        $total = $amount + $tax;
+        
+        return [
+            'base_amount' => $amount,
+            'tax' => $tax,
+            'total' => $total,
+            'tax_percentage' => $taxPercentage,
+        ];
+    }
+
+    /**
      * Deduct amount from user wallet
      */
     public function deduct(User $user, float $amount, string $description = 'کسر از حساب', ?Listing $listing = null): bool

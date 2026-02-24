@@ -31,6 +31,7 @@ class SettingsController extends Controller
             'min_deposit' => SiteSetting::get('wallet_min_deposit', 10000),
             'max_deposit' => SiteSetting::get('wallet_max_deposit', 100000000),
             'min_withdraw' => SiteSetting::get('wallet_min_withdraw', 50000),
+            'charge_tax' => SiteSetting::get('wallet_charge_tax', 0),
         ];
         $loserFeeSettings = [
             'enabled' => SiteSetting::get('loser_fee_enabled', false),
@@ -131,11 +132,13 @@ class SettingsController extends Controller
             'wallet_min_deposit' => 'required|integer|min:1000',
             'wallet_max_deposit' => 'required|integer|min:10000',
             'wallet_min_withdraw' => 'required|integer|min:1000',
+            'wallet_charge_tax' => 'required|numeric|min:0|max:100',
         ]);
 
         SiteSetting::set('wallet_min_deposit', $validated['wallet_min_deposit'], 'integer');
         SiteSetting::set('wallet_max_deposit', $validated['wallet_max_deposit'], 'integer');
         SiteSetting::set('wallet_min_withdraw', $validated['wallet_min_withdraw'], 'integer');
+        SiteSetting::set('wallet_charge_tax', $validated['wallet_charge_tax'], 'decimal');
 
         return redirect()->route('admin.settings.index')
             ->with('success', 'تنظیمات کیف پول با موفقیت به‌روزرسانی شد.');

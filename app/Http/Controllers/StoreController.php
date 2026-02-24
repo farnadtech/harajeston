@@ -28,12 +28,32 @@ class StoreController extends Controller
         // Load seller with rating
         $seller = $store->user;
 
+        // Get sort parameter
+        $sort = request('sort', 'newest');
+
         // همه محصولات حراج هستند
-        $listings = $store->listings()
+        $query = $store->listings()
             ->where('status', 'active')
-            ->with('images')
-            ->orderBy('ends_at', 'asc') // نزدیک‌ترین به پایان اول
-            ->paginate(20);
+            ->with('images');
+
+        // Apply sorting
+        switch ($sort) {
+            case 'price_asc':
+                $query->orderByRaw('COALESCE(current_price, starting_price) ASC');
+                break;
+            case 'price_desc':
+                $query->orderByRaw('COALESCE(current_price, starting_price) DESC');
+                break;
+            case 'ending_soon':
+                $query->orderBy('ends_at', 'asc');
+                break;
+            case 'newest':
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
+
+        $listings = $query->paginate(20)->appends(['sort' => $sort]);
 
         // Load approved reviews
         $reviews = $seller->sellerReviews()
@@ -54,7 +74,7 @@ class StoreController extends Controller
             ->where('status', 'completed')
             ->count();
 
-        return view('stores.show', compact('store', 'listings', 'seller', 'reviews', 'completedSales', 'ratingCounts'));
+        return view('stores.show', compact('store', 'listings', 'seller', 'reviews', 'completedSales', 'ratingCounts', 'sort'));
     }
 
     /**

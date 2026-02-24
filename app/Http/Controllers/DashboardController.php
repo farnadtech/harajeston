@@ -111,33 +111,81 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        $stats = [
-            'active_bids' => Bid::where('user_id', $user->id)
-                ->whereHas('listing', function ($q) {
-                    $q->where('status', 'active');
-                })
-                ->count(),
-            'recent_purchases' => Order::where('buyer_id', $user->id)
-                ->where('created_at', '>=', now()->subDays(30))
-                ->count(),
-            'frozen_deposits' => $user->wallet->frozen ?? 0,
-        ];
-
-        $activeBids = Bid::where('user_id', $user->id)
+        // Stats
+        $activeBidsCount = Bid::where('user_id', $user->id)
             ->whereHas('listing', function ($q) {
                 $q->where('status', 'active');
             })
+            ->count();
+
+        $wonAuctionsCount = Listing::where('current_winner_id', $user->id)
+            ->where('status', 'completed')
+            ->count();
+
+        $totalOrdersCount = Order::where('buyer_id', $user->id)->count();
+
+        // My active bids
+        $myActiveBids = Bid::where('user_id', $user->id)
+            ->whereHas('listing', function ($q) {
+                $q->where('status', 'active');
+            })
+            ->with(['listing' => function($q) {
+                $q->with('images');
+            }])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Recent orders
+        $recentOrders = Order::where('buyer_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Recent activities
+        $recentBidActivities = Bid::where('user_id', $user->id)
             ->with('listing')
             ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+            ->limit(5)
+            ->get()
+            ->map(function($bid) {
+                return [
+                    'type' => 'bid',
+                    'icon' => 'gavel',
+                    'color' => 'blue',
+                    'title' => 'پیشنهاد جدید',
+                    'description' => 'پیشنهاد ' . number_format($bid->amount) . ' تومان برای ' . $bid->listing->title,
+                    'time' => $bid->created_at,
+                ];
+            });
 
-        $recentOrders = Order::where('buyer_id', $user->id)
-            ->with('seller', 'items')
+        $recentOrderActivities = Order::where('buyer_id', $user->id)
             ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+            ->limit(5)
+            ->get()
+            ->map(function($order) {
+                return [
+                    'type' => 'order',
+                    'icon' => 'shopping_bag',
+                    'color' => 'green',
+                    'title' => 'سفارش جدید',
+                    'description' => 'سفارش #' . $order->id . ' به مبلغ ' . number_format($order->total_amount) . ' تومان',
+                    'time' => $order->created_at,
+                ];
+            });
 
-        return view('dashboard.buyer', compact('stats', 'activeBids', 'recentOrders'));
+        // Merge and sort activities
+        $recentActivities = $recentBidActivities->concat($recentOrderActivities)
+            ->sortByDesc('time')
+            ->take(10);
+
+        return view('dashboard.buyer-new', compact(
+            'activeBidsCount',
+            'wonAuctionsCount', 
+            'totalOrdersCount',
+            'myActiveBids',
+            'recentOrders',
+            'recentActivities'
+        ));
     }
 }

@@ -8,8 +8,7 @@ class UploadStoreBannerRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $store = $this->route('store');
-        return $this->user()->id === $store->user_id;
+        return $this->user()->canSell();
     }
 
     public function rules(): array

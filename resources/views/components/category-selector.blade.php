@@ -1,5 +1,8 @@
+@props(['selected' => null, 'name' => 'category_id'])
+
 @php
     $componentId = 'category-selector-' . uniqid();
+    $selectedCategoryId = old($name, $selected);
 @endphp
 
 <div class="category-selector space-y-4" id="{{ $componentId }}">
@@ -252,5 +255,68 @@
     });
     
     console.log('✓ Category selector initialized');
+    
+    // Initialize with selected category (for edit mode)
+    const selectedCategoryId = {{ $selectedCategoryId ?? 'null' }};
+    
+    if (selectedCategoryId) {
+        console.log('→ Initializing with selected category:', selectedCategoryId);
+        
+        // Find the category path
+        function findCategoryPath(catId) {
+            for (const parent of categories) {
+                if (parent.id == catId) {
+                    return { parent: parent.id, child: null, grand: null };
+                }
+                
+                if (parent.children) {
+                    const childrenArray = Array.isArray(parent.children) ? parent.children : Object.values(parent.children);
+                    for (const child of childrenArray) {
+                        if (child.id == catId) {
+                            return { parent: parent.id, child: child.id, grand: null };
+                        }
+                        
+                        if (child.children) {
+                            let grandArray = Array.isArray(child.children) ? child.children : Object.values(child.children);
+                            for (const grand of grandArray) {
+                                if (grand.id == catId) {
+                                    return { parent: parent.id, child: child.id, grand: grand.id };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+        
+        const path = findCategoryPath(selectedCategoryId);
+        
+        if (path) {
+            console.log('→ Found category path:', path);
+            
+            // Set parent
+            if (path.parent) {
+                parentSelect.value = path.parent;
+                parentSelect.dispatchEvent(new Event('change'));
+                
+                // Wait for children to load, then set child
+                if (path.child) {
+                    setTimeout(() => {
+                        childSelect.value = path.child;
+                        childSelect.dispatchEvent(new Event('change'));
+                        
+                        // Wait for grandchildren to load, then set grand
+                        if (path.grand) {
+                            setTimeout(() => {
+                                grandSelect.value = path.grand;
+                                grandSelect.dispatchEvent(new Event('change'));
+                            }, 100);
+                        }
+                    }, 100);
+                }
+            }
+        }
+    }
 })();
 </script>

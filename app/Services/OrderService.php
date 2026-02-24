@@ -30,6 +30,79 @@ class OrderService
     }
 
     /**
+     * Create order from buy now
+     */
+    public function createOrderFromBuyNow(\App\Models\Listing $listing, User $buyer): Order
+    {
+        return DB::transaction(function () use ($listing, $buyer) {
+            // Validate listing is available for buy now
+            if (!$listing->buy_now_price || $listing->buy_now_price <= 0) {
+                throw new \InvalidArgumentException('خرید فوری برای این حراجی فعال نیست.');
+            }
+
+            if (!$listing->isActive()) {
+                throw new \InvalidArgumentException('این حراجی فعال نیست.');
+            }
+
+            // Check wallet balance
+            $wallet = $buyer->wallet;
+            if (!$wallet || $wallet->balance < $listing->buy_now_price) {
+                throw new \App\Exceptions\Wallet\InsufficientBalanceException(
+                    $buyer->id,
+                    $listing->buy_now_price,
+                    $wallet ? $wallet->balance : 0
+                );
+            }
+
+            // Create order
+            $order = Order::create([
+                'order_number' => $this->generateOrderNumber(),
+                'buyer_id' => $buyer->id,
+                'seller_id' => $listing->seller_id,
+                'status' => 'pending',
+                'subtotal' => $listing->buy_now_price,
+                'shipping_cost' => 0, // Will be set when shipping method is selected
+                'total' => $listing->buy_now_price,
+                'shipping_address' => null, // Will be set later
+            ]);
+
+            // Create order item
+            OrderItem::create([
+                'order_id' => $order->id,
+                'listing_id' => $listing->id,
+                'quantity' => 1,
+                'price_snapshot' => $listing->buy_now_price,
+                'subtotal' => $listing->buy_now_price,
+            ]);
+
+            // Process payment - deduct from buyer
+            $this->walletService->deduct(
+                $buyer,
+                $listing->buy_now_price,
+                'خرید فوری حراجی: ' . $listing->title,
+                $order
+            );
+
+            // Add to seller (will be held until delivery confirmation)
+            $this->walletService->addFunds(
+                $listing->seller,
+                $listing->buy_now_price,
+                'فروش خرید فوری: ' . $listing->title
+            );
+
+            // End the auction
+            $listing->status = 'sold';
+            $listing->save();
+
+            // Send notifications
+            $buyer->notify(new \App\Notifications\OrderPlacedNotification($order, false));
+            $listing->seller->notify(new \App\Notifications\OrderPlacedNotification($order, true));
+
+            return $order->fresh();
+        });
+    }
+
+    /**
      * Create order from cart
      */
     public function createOrderFromCart(User $buyer, array $shippingData): Collection

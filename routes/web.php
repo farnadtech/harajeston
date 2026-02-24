@@ -49,13 +49,15 @@ Route::post('/login', function (\Illuminate\Http\Request $request) {
 Route::post('/register', function (\Illuminate\Http\Request $request) {
     $validated = $request->validate([
         'name' => 'required|string|max:255',
-        'phone' => 'required|string|max:20',
+        'phone' => ['required', 'string', 'regex:/^09[0-9]{9}$/', 'unique:users'],
         'email' => 'required|string|email|max:255|unique:users',
         'password' => 'required|string|min:8|confirmed',
         'terms' => 'required|accepted',
     ], [
         'name.required' => 'نام و نام خانوادگی الزامی است.',
         'phone.required' => 'شماره تلفن الزامی است.',
+        'phone.regex' => 'شماره تلفن باید 11 رقمی و با 09 شروع شود.',
+        'phone.unique' => 'این شماره تلفن قبلاً ثبت شده است.',
         'email.required' => 'ایمیل الزامی است.',
         'email.email' => 'فرمت ایمیل صحیح نیست.',
         'email.unique' => 'این ایمیل قبلاً ثبت شده است.',
@@ -121,6 +123,7 @@ Route::middleware('auth')->group(function () {
     
     // Listings (Authenticated) - IMPORTANT: /listings/create must come BEFORE /listings/{listing}
     Route::get('/my-listings', [ListingController::class, 'myListings'])->name('my-listings');
+    Route::get('/my-bids', [ListingController::class, 'myBids'])->name('my-bids');
     Route::get('/listings/create', [ListingController::class, 'create'])->name('listings.create');
     Route::get('/listings/{listing}/edit', [ListingController::class, 'edit'])->name('listings.edit');
     
@@ -154,16 +157,6 @@ Route::middleware('auth')->group(function () {
     Route::put('/stores', [StoreController::class, 'update'])->name('stores.update');
     Route::post('/stores/upload-banner', [StoreController::class, 'uploadBanner'])->name('stores.upload-banner');
     Route::post('/stores/upload-logo', [StoreController::class, 'uploadLogo'])->name('stores.upload-logo');
-    
-    // Cart
-    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-    Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
-    Route::put('/cart/{item}', [CartController::class, 'update'])->name('cart.update');
-    Route::delete('/cart/{item}', [CartController::class, 'remove'])->name('cart.remove');
-    
-    // Checkout
-    Route::get('/checkout', [CheckoutController::class, 'show'])->name('checkout.show');
-    Route::post('/checkout', [CheckoutController::class, 'process'])->name('checkout.process');
     
     // Orders
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
@@ -261,6 +254,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/sellers/{seller}/suspend', [\App\Http\Controllers\Admin\SellerController::class, 'suspend'])->name('admin.sellers.suspend');
         Route::post('/sellers/{seller}/activate', [\App\Http\Controllers\Admin\SellerController::class, 'activate'])->name('admin.sellers.activate');
         Route::delete('/sellers/{seller}', [\App\Http\Controllers\Admin\SellerController::class, 'destroy'])->name('admin.sellers.destroy');
+        
+        // Store Name Change Requests
+        Route::get('/store-name-requests', [\App\Http\Controllers\Admin\SellerController::class, 'storeNameRequests'])->name('admin.store-name-requests.index');
+        Route::post('/stores/{store}/approve-name', [\App\Http\Controllers\Admin\SellerController::class, 'approveStoreName'])->name('admin.stores.approve-name');
+        Route::post('/stores/{store}/reject-name', [\App\Http\Controllers\Admin\SellerController::class, 'rejectStoreName'])->name('admin.stores.reject-name');
         
         // Notifications
         Route::get('/notifications', [\App\Http\Controllers\Admin\NotificationController::class, 'index'])->name('admin.notifications.index');

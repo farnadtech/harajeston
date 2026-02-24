@@ -30,7 +30,10 @@ class AuctionBidding extends Component
     public function loadBiddingData()
     {
         $this->listing->refresh();
-        $this->currentHighestBid = $this->listing->current_highest_bid ?? $this->listing->base_price;
+        
+        // Get current highest bid or use starting price
+        $highestBid = $this->listing->bids()->orderBy('amount', 'desc')->first();
+        $this->currentHighestBid = $highestBid ? $highestBid->amount : $this->listing->starting_price;
         
         $bidService = app(BidService::class);
         $this->rankings = $bidService->getCurrentRankings($this->listing)

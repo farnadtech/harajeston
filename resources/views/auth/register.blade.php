@@ -79,13 +79,19 @@
                 <label class="block text-sm font-medium text-gray-700 mb-1">شماره تلفن <span class="text-red-500">*</span></label>
                 <div class="relative">
                     <input class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors pl-10" 
+                           id="phone"
                            name="phone" 
                            value="{{ old('phone') }}"
                            placeholder="09123456789" 
                            type="text"
-                           required/>
+                           pattern="09[0-9]{9}"
+                           maxlength="11"
+                           required
+                           oninput="validatePhone(this)"/>
                     <span class="material-symbols-outlined absolute left-3 top-3.5 text-gray-400">phone</span>
                 </div>
+                <p class="text-xs text-gray-500 mt-1">شماره موبایل باید 11 رقمی و با 09 شروع شود</p>
+                <p id="phoneError" class="text-xs text-red-600 mt-1 hidden">شماره تلفن باید 11 رقمی و با 09 شروع شود</p>
             </div>
             
             <div>
@@ -150,5 +156,50 @@
             <p class="text-xs text-gray-400">© ۱۴۰۳ تمامی حقوق محفوظ است</p>
         </div>
     </div>
+
+    <script>
+    function validatePhone(input) {
+        // Remove any non-digit characters
+        let value = input.value.replace(/\D/g, '');
+        
+        // Limit to 11 digits
+        if (value.length > 11) {
+            value = value.substring(0, 11);
+        }
+        
+        input.value = value;
+        
+        const errorElement = document.getElementById('phoneError');
+        
+        // Check if it's 11 digits and starts with 09
+        if (value.length === 11 && value.startsWith('09')) {
+            input.classList.remove('border-red-500');
+            input.classList.add('border-gray-200');
+            errorElement.classList.add('hidden');
+        } else if (value.length > 0) {
+            input.classList.add('border-red-500');
+            input.classList.remove('border-gray-200');
+            errorElement.classList.remove('hidden');
+        } else {
+            input.classList.remove('border-red-500');
+            input.classList.add('border-gray-200');
+            errorElement.classList.add('hidden');
+        }
+    }
+
+    // Validate on form submit
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const phoneInput = document.getElementById('phone');
+        const phone = phoneInput.value;
+        
+        if (phone.length !== 11 || !phone.startsWith('09')) {
+            e.preventDefault();
+            phoneInput.classList.add('border-red-500');
+            document.getElementById('phoneError').classList.remove('hidden');
+            phoneInput.focus();
+            return false;
+        }
+    });
+    </script>
 </body>
 </html>

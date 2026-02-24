@@ -29,6 +29,11 @@ class DepositService
      */
     public function participateInAuction(User $user, Listing $listing): AuctionParticipation
     {
+        // Prevent seller from participating in their own auction
+        if ($listing->seller_id === $user->id) {
+            throw new \Exception('شما نمی‌توانید در حراجی خودتان شرکت کنید.');
+        }
+        
         // Validate auction is active or pending
         if (!in_array($listing->status, ['pending', 'active'])) {
             throw new AuctionNotActiveException($listing->id, $listing->status);

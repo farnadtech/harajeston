@@ -35,6 +35,7 @@ class StoreService
      * Update store profile
      * Validates and updates store_name, description
      * Handles banner and logo image uploads
+     * If require_store_name_approval is enabled, store name changes need admin approval
      * 
      * @param Store $store
      * @param array $data
@@ -75,12 +76,34 @@ class StoreService
         // Update store information
         $updateData = [];
         
-        if (isset($data['store_name'])) {
-            $updateData['store_name'] = $data['store_name'];
+        // Handle store name change with approval if required
+        if (isset($data['store_name']) && $data['store_name'] !== $store->store_name) {
+            $requireApproval = \App\Models\SiteSetting::get('require_store_name_approval', true);
+            
+            if ($requireApproval) {
+                // Store name change requires admin approval
+                $store->pending_store_name = $data['store_name'];
+                $store->store_name_change_requested_at = now();
+            } else {
+                // Direct update without approval
+                $updateData['store_name'] = $data['store_name'];
+            }
         }
         
         if (isset($data['description'])) {
             $updateData['description'] = $data['description'];
+        }
+        
+        if (isset($data['address'])) {
+            $updateData['address'] = $data['address'];
+        }
+        
+        if (isset($data['phone'])) {
+            $updateData['phone'] = $data['phone'];
+        }
+        
+        if (isset($data['email'])) {
+            $updateData['email'] = $data['email'];
         }
         
         if (!empty($updateData)) {
@@ -88,7 +111,7 @@ class StoreService
         }
         
         // Save banner and logo paths if updated
-        if (isset($bannerPath) || isset($logoPath)) {
+        if (isset($bannerPath) || isset($logoPath) || isset($data['store_name'])) {
             $store->save();
         }
         
@@ -152,5 +175,47 @@ class StoreService
             // Note: In production, you might want to resize instead of rejecting
             // For now, we'll just validate
         }
+    }
+
+    /**
+     * Approve store name change request
+     * 
+     * @param Store $store
+     * @return Store
+     */
+    public function approveStoreNameChange(Store $store): Store
+    {
+        if ($store->pending_store_name) {
+            $oldName = $store->store_name;
+            $newName = $store->pending_store_name;
+            
+            // Update store name
+            $store->store_name = $newName;
+            
+            // Generate new slug
+            $store->slug = Store::generateUniqueSlug($newName);
+            
+            // Clear pending fields
+            $store->pending_store_name = null;
+            $store->store_name_change_requested_at = null;
+            $store->save();
+        }
+        
+        return $store->fresh();
+    }
+
+    /**
+     * Reject store name change request
+     * 
+     * @param Store $store
+     * @return Store
+     */
+    public function rejectStoreNameChange(Store $store): Store
+    {
+        $store->pending_store_name = null;
+        $store->store_name_change_requested_at = null;
+        $store->save();
+        
+        return $store->fresh();
     }
 }

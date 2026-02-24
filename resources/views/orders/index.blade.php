@@ -1,11 +1,7 @@
-@extends('layouts.seller')
+<x-dashboard-layout>
+    <x-slot name="title">سفارشات من</x-slot>
+    <x-slot name="pageTitle">سفارشات من</x-slot>
 
-@section('title', 'سفارشات من')
-
-@section('page-title', 'سفارشات من')
-@section('page-subtitle', 'مشاهده و مدیریت سفارشات خود')
-
-@section('content')
     <div class="space-y-6">
             <!-- Tabs -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 mb-6">
@@ -200,4 +196,4 @@
                 </div>
             @endif
     </div>
-@endsection
+</x-dashboard-layout>

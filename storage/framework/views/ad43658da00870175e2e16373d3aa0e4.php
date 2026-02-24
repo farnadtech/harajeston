@@ -1,6 +1,20 @@
+<?php $attributes ??= new \Illuminate\View\ComponentAttributeBag; ?>
+<?php foreach($attributes->onlyProps(['listing' => null]) as $__key => $__value) {
+    $$__key = $$__key ?? $__value;
+} ?>
+<?php $attributes = $attributes->exceptProps(['listing' => null]); ?>
+<?php foreach (array_filter((['listing' => null]), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
+    $$__key = $$__key ?? $__value;
+} ?>
+<?php $__defined_vars = get_defined_vars(); ?>
+<?php foreach ($attributes as $__key => $__value) {
+    if (array_key_exists($__key, $__defined_vars)) unset($$__key);
+} ?>
+<?php unset($__defined_vars); ?>
+
 <div id="attributesSection">
     <!-- پیام راهنما قبل از انتخاب دسته -->
-    <div id="noCategory" class="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+    <div id="noCategory" class="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center" style="<?php echo e($listing && $listing->category_id ? 'display: none;' : ''); ?>">
         <div class="flex flex-col items-center gap-3">
             <span class="material-symbols-outlined text-blue-600 text-4xl">info</span>
             <div>
@@ -31,6 +45,23 @@
 <script>
 (function() {
     console.log('✓ Attributes component loaded');
+    
+    // HTML escape function
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Existing attribute values (for edit mode)
+    const existingValues = <?php echo json_encode($listing && $listing->relationLoaded('attributeValues') ? $listing->attributeValues->pluck('value', 'category_attribute_id')->toArray() : [], 512) ?>;
+    console.log('→ Existing attribute values:', existingValues);
+    console.log('→ Listing has attributeValues:', <?php echo e($listing && $listing->relationLoaded('attributeValues') ? 'true' : 'false'); ?>);
+    console.log('→ AttributeValues count:', <?php echo e($listing && $listing->relationLoaded('attributeValues') ? $listing->attributeValues->count() : 0); ?>);
+    
+    // Initial category (for edit mode)
+    const initialCategoryId = <?php echo e($listing && $listing->category_id ? $listing->category_id : 'null'); ?>;
+    console.log('→ Initial category ID:', initialCategoryId);
     
     // Elements
     const noCategory = document.getElementById('noCategory');
@@ -78,43 +109,64 @@
                     attributesContainer.innerHTML = '';
                     data.attributes.forEach(attr => {
                         const div = document.createElement('div');
+                        const existingValue = existingValues[attr.id] || '';
                         
-                        let inputHtml = '';
-                        if (attr.type === 'select' && attr.options) {
-                            inputHtml = `
-                                <select name="attributes[${attr.id}]" ${attr.is_required ? 'required' : ''} 
-                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
-                                    <option value="">انتخاب کنید</option>
-                                    ${attr.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
-                                </select>
-                            `;
-                        } else if (attr.type === 'number') {
-                            inputHtml = `
-                                <input type="number" name="attributes[${attr.id}]" ${attr.is_required ? 'required' : ''} 
-                                       placeholder="${attr.name}"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
-                            `;
-                        } else {
-                            inputHtml = `
-                                <input type="text" name="attributes[${attr.id}]" ${attr.is_required ? 'required' : ''} 
-                                       placeholder="${attr.name}"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
-                            `;
-                        }
+                        console.log(`→ Attribute ${attr.id} (${attr.name}): existing value = "${existingValue}"`);
                         
                         div.innerHTML = `
                             <label class="block text-sm font-medium text-gray-700 mb-2">
-                                ${attr.name}
+                                ${escapeHtml(attr.name)}
                                 ${attr.is_required ? '<span class="text-red-500">*</span>' : ''}
                             </label>
-                            ${inputHtml}
                         `;
                         
+                        let inputElement;
+                        if (attr.type === 'select' && attr.options) {
+                            inputElement = document.createElement('select');
+                            inputElement.name = `attributes[${attr.id}]`;
+                            inputElement.className = 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors';
+                            if (attr.is_required) inputElement.required = true;
+                            
+                            // Add empty option
+                            const emptyOpt = document.createElement('option');
+                            emptyOpt.value = '';
+                            emptyOpt.textContent = 'انتخاب کنید';
+                            inputElement.appendChild(emptyOpt);
+                            
+                            // Add options
+                            attr.options.forEach(opt => {
+                                const option = document.createElement('option');
+                                option.value = opt;
+                                option.textContent = opt;
+                                if (existingValue && existingValue === opt) {
+                                    option.selected = true;
+                                }
+                                inputElement.appendChild(option);
+                            });
+                        } else if (attr.type === 'number') {
+                            inputElement = document.createElement('input');
+                            inputElement.type = 'number';
+                            inputElement.name = `attributes[${attr.id}]`;
+                            inputElement.placeholder = attr.name;
+                            inputElement.className = 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors';
+                            if (attr.is_required) inputElement.required = true;
+                            if (existingValue) inputElement.value = existingValue;
+                        } else {
+                            inputElement = document.createElement('input');
+                            inputElement.type = 'text';
+                            inputElement.name = `attributes[${attr.id}]`;
+                            inputElement.placeholder = attr.name;
+                            inputElement.className = 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors';
+                            if (attr.is_required) inputElement.required = true;
+                            if (existingValue) inputElement.value = existingValue;
+                        }
+                        
+                        div.appendChild(inputElement);
                         attributesContainer.appendChild(div);
                     });
                     
                     show(attributesContainer);
-                    console.log(`✓ ${data.attributes.length} attributes loaded`);
+                    console.log(`✓ ${data.attributes.length} attributes loaded with values`);
                 } else {
                     show(noAttributes);
                     console.log('✓ No attributes for this category');
@@ -147,6 +199,12 @@
     });
     
     console.log('✓ Event listener registered');
+    
+    // Load attributes on page load if category is already selected (edit mode)
+    if (initialCategoryId) {
+        console.log('→ Loading attributes for initial category');
+        loadAttributes(initialCategoryId);
+    }
 })();
 </script>
 <?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/components/listing-attributes.blade.php ENDPATH**/ ?>

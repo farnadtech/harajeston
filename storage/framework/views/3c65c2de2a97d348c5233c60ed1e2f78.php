@@ -1,18 +1,19 @@
-
-
-<?php $__env->startSection('title', 'کیف پول'); ?>
-
-<?php $__env->startPush('styles'); ?>
-<link rel="stylesheet" href="<?php echo e(url('css/persian-datepicker-package.css')); ?>?v=<?php echo e(now()->timestamp); ?>">
-<?php $__env->stopPush(); ?>
-
-<?php $__env->startSection('content'); ?>
-<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-    <!-- Page Header -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">کیف پول من</h1>
-        <p class="text-gray-600 mt-2">مدیریت موجودی و تراکنش‌های مالی</p>
-    </div>
+<?php if (isset($component)) { $__componentOriginal895f6ef515592ffd4805667c75b9d7a7 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal895f6ef515592ffd4805667c75b9d7a7 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashboard-layout','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? (array) $attributes->getIterator() : [])); ?>
+<?php $component->withName('dashboard-layout'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag && $constructor = (new ReflectionClass(Illuminate\View\AnonymousComponent::class))->getConstructor()): ?>
+<?php $attributes = $attributes->except(collect($constructor->getParameters())->map->getName()->all()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+     <?php $__env->slot('title', null, []); ?> کیف پول <?php $__env->endSlot(); ?>
+     <?php $__env->slot('pageTitle', null, []); ?> کیف پول من <?php $__env->endSlot(); ?>
+    
+     <?php $__env->slot('styles', null, []); ?> 
+        <link rel="stylesheet" href="<?php echo e(url('css/persian-datepicker-package.css')); ?>?v=<?php echo e(now()->timestamp); ?>">
+     <?php $__env->endSlot(); ?>
 
     <!-- Success/Error Messages -->
     <?php if(session('success')): ?>
@@ -92,19 +93,41 @@
                 </div>
                 <h2 class="text-xl font-bold text-gray-900">افزایش موجودی</h2>
             </div>
-            <form method="POST" action="<?php echo e(route('wallet.add-funds')); ?>" class="space-y-4">
+            <form method="POST" action="<?php echo e(route('wallet.add-funds')); ?>" class="space-y-4" id="addFundsFormBuyer">
                 <?php echo csrf_field(); ?>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ (تومان)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ شارژ (تومان)</label>
                     <?php
                         $minDeposit = \App\Models\SiteSetting::get('wallet_min_deposit', 10000);
                         $maxDeposit = \App\Models\SiteSetting::get('wallet_max_deposit', 100000000);
+                        $taxPercentage = \App\Models\SiteSetting::get('wallet_charge_tax', 0);
                     ?>
-                    <input type="number" name="amount" placeholder="مثال: 100000" required 
+                    <input type="number" name="amount" id="chargeAmountBuyer" placeholder="مثال: 100000" required 
                            min="<?php echo e($minDeposit); ?>" max="<?php echo e($maxDeposit); ?>"
-                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                           oninput="calculateChargeTaxBuyer()">
                     <p class="text-xs text-gray-500 mt-1">حداقل: <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($minDeposit, true); ?> - حداکثر: <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($maxDeposit, true); ?> تومان</p>
                 </div>
+
+                <?php if($taxPercentage > 0): ?>
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4" id="taxInfoBuyer" style="display: none;">
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-700">مبلغ شارژ:</span>
+                            <span class="font-semibold text-gray-900" id="baseAmountBuyer">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-700">مالیات (<?php echo e(\App\Services\PersianNumberService::convertToPersian($taxPercentage)); ?>%):</span>
+                            <span class="font-semibold text-blue-600" id="taxAmountBuyer">0</span>
+                        </div>
+                        <div class="border-t border-blue-300 pt-2 flex justify-between">
+                            <span class="font-bold text-gray-900">مبلغ قابل پرداخت:</span>
+                            <span class="font-bold text-lg text-blue-700" id="totalAmountBuyer">0</span>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <button type="submit" class="w-full bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined">payments</span>
                     <span>افزایش موجودی</span>
@@ -270,25 +293,50 @@
             </div>
         <?php endif; ?>
     </div>
-</div>
-<?php $__env->stopSection(); ?>
 
-<?php $__env->startPush('scripts'); ?>
-<script src="<?php echo e(url('js/persian-datepicker-package.js')); ?>?v=<?php echo e(now()->timestamp); ?>"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const fromDateInput = document.getElementById('from_date');
-    const toDateInput = document.getElementById('to_date');
-    
-    if (fromDateInput && typeof PersianDatePicker !== 'undefined') {
-        new PersianDatePicker(fromDateInput);
-    }
-    
-    if (toDateInput && typeof PersianDatePicker !== 'undefined') {
-        new PersianDatePicker(toDateInput);
-    }
-});
-</script>
-<?php $__env->stopPush(); ?>
+     <?php $__env->slot('scripts', null, []); ?> 
+        <script src="<?php echo e(url('js/persian-datepicker-package.js')); ?>?v=<?php echo e(now()->timestamp); ?>"></script>
+        <script>
+        const TAX_PERCENTAGE_BUYER = <?php echo e($taxPercentage ?? 0); ?>;
+        
+        function calculateChargeTaxBuyer() {
+            const amount = parseFloat(document.getElementById('chargeAmountBuyer').value) || 0;
+            
+            if (amount > 0 && TAX_PERCENTAGE_BUYER > 0) {
+                const tax = (amount * TAX_PERCENTAGE_BUYER) / 100;
+                const total = amount + tax;
+                
+                document.getElementById('baseAmountBuyer').textContent = amount.toLocaleString('fa-IR') + ' تومان';
+                document.getElementById('taxAmountBuyer').textContent = tax.toLocaleString('fa-IR') + ' تومان';
+                document.getElementById('totalAmountBuyer').textContent = total.toLocaleString('fa-IR') + ' تومان';
+                document.getElementById('taxInfoBuyer').style.display = 'block';
+            } else {
+                document.getElementById('taxInfoBuyer').style.display = 'none';
+            }
+        }
 
-<?php echo $__env->make('layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/wallet/show.blade.php ENDPATH**/ ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fromDateInput = document.getElementById('from_date');
+            const toDateInput = document.getElementById('to_date');
+            
+            if (fromDateInput && typeof PersianDatePicker !== 'undefined') {
+                new PersianDatePicker(fromDateInput);
+            }
+            
+            if (toDateInput && typeof PersianDatePicker !== 'undefined') {
+                new PersianDatePicker(toDateInput);
+            }
+        });
+        </script>
+     <?php $__env->endSlot(); ?>
+ <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal895f6ef515592ffd4805667c75b9d7a7)): ?>
+<?php $attributes = $__attributesOriginal895f6ef515592ffd4805667c75b9d7a7; ?>
+<?php unset($__attributesOriginal895f6ef515592ffd4805667c75b9d7a7); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal895f6ef515592ffd4805667c75b9d7a7)): ?>
+<?php $component = $__componentOriginal895f6ef515592ffd4805667c75b9d7a7; ?>
+<?php unset($__componentOriginal895f6ef515592ffd4805667c75b9d7a7); ?>
+<?php endif; ?>
+<?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/wallet/show.blade.php ENDPATH**/ ?>

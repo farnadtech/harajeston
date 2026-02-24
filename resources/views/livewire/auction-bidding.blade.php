@@ -16,11 +16,12 @@
             <label class="block text-sm font-bold text-gray-700 mb-3">پیشنهاد خود را وارد کنید</label>
             <div class="relative mb-4">
                 <input 
-                    type="text" 
+                    type="number" 
                     wire:model="bidAmount"
                     class="block w-full text-left ltr h-14 pr-4 pl-16 bg-white border-2 border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-primary text-xl font-bold transition-colors"
-                    placeholder="@price($currentHighestBid + 100000)"
+                    placeholder="{{ number_format($currentHighestBid + 100000) }}"
                     min="{{ $currentHighestBid + 1 }}"
+                    step="1000"
                 />
                 <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 font-medium pointer-events-none">تومان</span>
             </div>
@@ -29,9 +30,15 @@
             @enderror
             
             <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar mb-4">
-                <button type="button" wire:click="incrementBid(50000)" class="whitespace-nowrap px-4 py-2 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 text-sm font-medium text-gray-600 hover:text-primary transition-all">+ ۵۰,۰۰۰</button>
-                <button type="button" wire:click="incrementBid(100000)" class="whitespace-nowrap px-4 py-2 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 text-sm font-medium text-gray-600 hover:text-primary transition-all">+ ۱۰۰,۰۰۰</button>
-                <button type="button" wire:click="incrementBid(200000)" class="whitespace-nowrap px-4 py-2 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 text-sm font-medium text-gray-600 hover:text-primary transition-all">+ ۲۰۰,۰۰۰</button>
+                <button type="button" wire:click="incrementBid(50000)" class="whitespace-nowrap px-4 py-2 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 text-sm font-medium text-gray-600 hover:text-primary transition-all">
+                    + 50,000
+                </button>
+                <button type="button" wire:click="incrementBid(100000)" class="whitespace-nowrap px-4 py-2 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 text-sm font-medium text-gray-600 hover:text-primary transition-all">
+                    + 100,000
+                </button>
+                <button type="button" wire:click="incrementBid(200000)" class="whitespace-nowrap px-4 py-2 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 text-sm font-medium text-gray-600 hover:text-primary transition-all">
+                    + 200,000
+                </button>
             </div>
             
             <button 
@@ -41,7 +48,10 @@
             >
                 <span wire:loading.remove class="material-symbols-outlined">gavel</span>
                 <span wire:loading.remove>ثبت پیشنهاد</span>
-                <span wire:loading>در حال ثبت...</span>
+                <span wire:loading class="flex items-center gap-2">
+                    <span class="material-symbols-outlined animate-spin">progress_activity</span>
+                    در حال ثبت...
+                </span>
             </button>
             
             <p class="text-xs text-center text-gray-500 mt-2">

@@ -25,6 +25,7 @@ class Store extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'store_name_change_requested_at' => 'datetime',
     ];
 
     // Relationships

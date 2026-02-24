@@ -120,7 +120,7 @@ class ListingService
             'starts_at' => isset($data['starts_at']) ? Carbon::parse($data['starts_at']) : $listing->starts_at,
             'ends_at' => isset($data['ends_at']) ? Carbon::parse($data['ends_at']) : $listing->ends_at,
             'auto_extend' => $data['auto_extend'] ?? $listing->auto_extend,
-            'tags' => isset($data['tags']) ? $this->processTags($data['tags']) : $listing->tags,
+            'tags' => isset($data['tags']) ? (is_array($data['tags']) ? $data['tags'] : $this->processTagsToArray($data['tags'])) : $listing->tags,
         ]);
 
         // Update attributes
@@ -147,6 +147,12 @@ class ListingService
             // Attach new shipping methods
             foreach ($data['shipping_methods'] as $methodId) {
                 $customCost = $data['shipping_costs'][$methodId] ?? null;
+                
+                // If no custom cost provided, use 0 (will use base cost in display)
+                if ($customCost === null || $customCost === '') {
+                    $customCost = 0;
+                }
+                
                 $listing->shippingMethods()->attach($methodId, [
                     'custom_cost_adjustment' => $customCost
                 ]);
@@ -179,6 +185,21 @@ class ListingService
         $tags = array_slice($tags, 0, 5); // Max 5 tags
         
         return !empty($tags) ? json_encode($tags, JSON_UNESCAPED_UNICODE) : null;
+    }
+
+    /**
+     * Process tags string into array (for update with cast)
+     * 
+     * @param string $tagsString
+     * @return array|null
+     */
+    protected function processTagsToArray(string $tagsString): ?array
+    {
+        $tags = array_map('trim', explode(',', $tagsString));
+        $tags = array_filter($tags); // Remove empty values
+        $tags = array_slice($tags, 0, 5); // Max 5 tags
+        
+        return !empty($tags) ? array_values($tags) : null;
     }
 
     /**

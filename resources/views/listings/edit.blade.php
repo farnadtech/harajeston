@@ -88,8 +88,8 @@
                 <span class="material-symbols-outlined group-hover:text-primary transition-colors">inventory_2</span>
                 <span>مزایده‌های من</span>
             </a>
-            <a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/5 rounded-xl font-bold transition-colors" href="{{ route('listings.create') }}">
-                <span class="material-symbols-outlined">add_circle</span>
+            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="{{ route('listings.create') }}">
+                <span class="material-symbols-outlined group-hover:text-primary transition-colors">add_circle</span>
                 <span>افزودن مزایده جدید</span>
             </a>
             <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="{{ route('wallet.show') }}">
@@ -122,22 +122,12 @@
         <!-- Header -->
         <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0">
             <div class="hidden lg:block">
-                <h2 class="text-xl font-bold text-gray-800">ایجاد حراجی جدید</h2>
-                <p class="text-sm text-gray-500">افزودن محصول جدید به فروشگاه</p>
+                <h2 class="text-xl font-bold text-gray-800">ویرایش حراجی</h2>
+                <p class="text-sm text-gray-500">ویرایش اطلاعات حراجی {{ $listing->title }}</p>
             </div>
             
             <div class="flex items-center gap-4">
-                <div class="relative hidden md:block">
-                    <input type="text" placeholder="جستجو..." class="w-64 px-4 py-2 pr-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl">search</span>
-                </div>
-                
-                <button class="relative p-2 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-lg transition-colors">
-                    <span class="material-symbols-outlined">notifications</span>
-                    <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                </button>
-                
-                <div class="flex items-center gap-3 pr-4 border-r border-gray-200 mr-2">
+                <div class="flex items-center gap-3 pr-4 border-r border-gray-200">
                     <div class="text-left hidden sm:block">
                         <p class="text-sm font-bold text-gray-900">{{ auth()->user()->name }}</p>
                         <p class="text-xs text-gray-500">مدیر فروشگاه</p>
@@ -208,7 +198,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 دسته‌بندی <span class="text-red-500">*</span>
                             </label>
-                            <x-category-selector :selected="old('category_id')" />
+                            <x-category-selector :selected="$listing->category_id" />
                         </div>
 
                         <div>
@@ -216,9 +206,9 @@
                                 وضعیت کالا <span class="text-red-500">*</span>
                             </label>
                             <select name="condition" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
-                                <option value="new" {{ old('condition') === 'new' ? 'selected' : '' }}>نو</option>
-                                <option value="like_new" {{ old('condition') === 'like_new' ? 'selected' : '' }}>در حد نو</option>
-                                <option value="used" {{ old('condition') === 'used' ? 'selected' : '' }}>دست دوم</option>
+                                <option value="new" {{ old('condition', $listing->condition) === 'new' ? 'selected' : '' }}>نو</option>
+                                <option value="like_new" {{ old('condition', $listing->condition) === 'like_new' ? 'selected' : '' }}>در حد نو</option>
+                                <option value="used" {{ old('condition', $listing->condition) === 'used' ? 'selected' : '' }}>دست دوم</option>
                             </select>
                             @error('condition')
                             <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
@@ -232,7 +222,7 @@
                             <span class="material-symbols-outlined text-primary text-2xl">tune</span>
                             <h3 class="text-lg font-bold text-gray-900">مشخصات فنی</h3>
                         </div>
-                        <x-listing-attributes />
+                        <x-listing-attributes :listing="$listing" />
                     </div>
 
                     <!-- Auction Settings Section -->
@@ -247,7 +237,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     قیمت شروع (تومان) <span class="text-red-500">*</span>
                                 </label>
-                                <input type="number" name="starting_price" value="{{ old('starting_price') }}" required min="0"
+                                <input type="number" name="starting_price" value="{{ old('starting_price', $listing->starting_price) }}" required min="0"
                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
                                 @error('starting_price')
                                 <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
@@ -256,7 +246,7 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">قیمت خرید فوری (تومان)</label>
-                                <input type="number" name="buy_now_price" value="{{ old('buy_now_price') }}" min="0"
+                                <input type="number" name="buy_now_price" value="{{ old('buy_now_price', $listing->buy_now_price) }}" min="0"
                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
                                 @error('buy_now_price')
                                 <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
@@ -264,17 +254,8 @@
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ سپرده (تومان)</label>
-                                <input type="number" name="deposit_amount" value="{{ old('deposit_amount', 0) }}" min="0"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
-                                @error('deposit_amount')
-                                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">حداقل افزایش پیشنهاد (تومان)</label>
-                                <input type="number" name="bid_increment" value="{{ old('bid_increment', 10000) }}" min="0"
+                                <input type="number" name="bid_increment" value="{{ old('bid_increment', $listing->bid_increment ?? 10000) }}" min="0"
                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
                                 @error('bid_increment')
                                 <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
@@ -293,7 +274,7 @@
                                 <input type="text" 
                                        name="starts_at" 
                                        id="starts_at" 
-                                       value="{{ old('starts_at') }}" 
+                                       value="{{ old('starts_at', $listing->starts_at ? \App\Services\JalaliDateService::toJalali($listing->starts_at, 'Y/m/d H:i') : '') }}" 
                                        required
                                        class="persian-datepicker-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                                        placeholder="انتخاب تاریخ و زمان"
@@ -311,7 +292,7 @@
                                 <input type="text" 
                                        name="ends_at" 
                                        id="ends_at" 
-                                       value="{{ old('ends_at') }}" 
+                                       value="{{ old('ends_at', $listing->ends_at ? \App\Services\JalaliDateService::toJalali($listing->ends_at, 'Y/m/d H:i') : '') }}" 
                                        {{ $forceDuration ? '' : 'required' }}
                                        class="persian-datepicker-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                                        placeholder="انتخاب تاریخ و زمان"
@@ -334,12 +315,12 @@
                                 </div>
                             </div>
                         </div>
-                        <input type="hidden" name="ends_at" id="ends_at_hidden" value="{{ old('ends_at') }}">
+                        <input type="hidden" name="ends_at" id="ends_at_hidden" value="{{ old('ends_at', $listing->ends_at ? \App\Services\JalaliDateService::toJalali($listing->ends_at, 'Y/m/d H:i') : '') }}">
                         @endif
 
                         <div>
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" name="auto_extend" value="1" {{ old('auto_extend') ? 'checked' : '' }}
+                                <input type="checkbox" name="auto_extend" value="1" {{ old('auto_extend', $listing->auto_extend) ? 'checked' : '' }}
                                        class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary">
                                 <span class="text-sm text-gray-700">تمدید خودکار در صورت پیشنهاد در دقایق پایانی</span>
                             </label>
@@ -360,11 +341,16 @@
                         @if($shippingMethods->count() > 0)
                         <div class="space-y-3" id="shippingMethodsContainer">
                             @foreach($shippingMethods as $method)
+                            @php
+                                $isSelected = $listing->shippingMethods->contains($method->id);
+                                $customCost = $isSelected ? $listing->shippingMethods->find($method->id)->pivot->custom_cost_adjustment : '';
+                            @endphp
                             <div class="border rounded-lg p-4 hover:bg-gray-50 transition-colors" data-method-id="{{ $method->id }}">
                                 <label class="flex items-start gap-3 cursor-pointer">
                                     <input type="checkbox" 
                                            name="shipping_methods[]" 
                                            value="{{ $method->id }}"
+                                           {{ $isSelected ? 'checked' : '' }}
                                            class="w-4 h-4 text-primary rounded focus:ring-primary mt-1 shipping-method-checkbox"
                                            onchange="togglePriceInput(this, {{ $method->id }})">
                                     <div class="flex-1">
@@ -380,16 +366,17 @@
                                             </span>
                                         </div>
                                         
-                                        <div class="price-adjustment-container hidden" id="price-container-{{ $method->id }}">
+                                        <div class="price-adjustment-container {{ $isSelected ? '' : 'hidden' }}" id="price-container-{{ $method->id }}">
                                             <label class="block text-xs text-gray-600 mb-1">قیمت سفارشی برای این محصول (تومان)</label>
                                             <input type="number" 
                                                    name="shipping_costs[{{ $method->id }}]" 
                                                    id="price-input-{{ $method->id }}"
-                                                   value="{{ $method->base_cost }}"
+                                                   value="{{ $customCost ?: '' }}"
                                                    min="0"
                                                    step="1000"
+                                                   {{ $isSelected ? '' : 'disabled' }}
                                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                                                   placeholder="قیمت ارسال برای این محصول">
+                                                   placeholder="قیمت ارسال برای این محصول (اختیاری)">
                                             <p class="text-xs text-gray-500 mt-1">می‌توانید قیمت ارسال را برای این محصول تغییر دهید</p>
                                         </div>
                                     </div>
@@ -451,7 +438,7 @@
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">برچسب‌ها (با کاما جدا کنید)</label>
-                            <input type="text" name="tags" value="{{ old('tags') }}"
+                            <input type="text" name="tags" value="{{ old('tags', is_array($listing->tags) ? implode(', ', $listing->tags) : '') }}"
                                    placeholder="مثال: لپتاپ, گیمینگ, ارزان"
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
                             <p class="text-xs text-gray-500 mt-1">حداکثر 5 برچسب</p>

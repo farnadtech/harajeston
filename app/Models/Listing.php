@@ -131,6 +131,13 @@ class Listing extends Model
         return $this->hasMany(AuctionParticipation::class);
     }
 
+    public function participants(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'auction_participations', 'listing_id', 'user_id')
+            ->withPivot('deposit_paid', 'deposit_returned', 'participated_at')
+            ->withTimestamps();
+    }
+
     public function images(): HasMany
     {
         return $this->hasMany(ListingImage::class)->orderBy('display_order');

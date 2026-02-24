@@ -6,19 +6,19 @@
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {{-- Banner --}}
         <div class="h-48 md:h-64 w-full bg-gradient-to-r from-blue-100 to-indigo-100 relative">
-            @if($store->banner_url)
-                <img src="{{ $store->banner_url }}" alt="بنر فروشگاه" class="w-full h-full object-cover">
+            @if($store->banner_image)
+                <img src="{{ url('storage/' . $store->banner_image) }}" alt="بنر فروشگاه" class="w-full h-full object-cover">
             @endif
             <div class="absolute inset-0 bg-gray-900/10"></div>
         </div>
 
-        <div class="px-6 pb-6 relative">
-            <div class="flex flex-col md:flex-row items-start md:items-end -mt-16 mb-6 gap-6">
+        <div class="px-6 py-6">
+            <div class="flex flex-col md:flex-row items-start gap-6 mb-6">
                 {{-- Logo --}}
-                <div class="w-32 h-32 rounded-2xl bg-white p-2 shadow-lg border border-gray-100 shrink-0 relative z-10">
+                <div class="w-32 h-32 rounded-2xl bg-white p-2 shadow-lg border border-gray-100 shrink-0 relative">
                     <div class="w-full h-full rounded-xl bg-gray-50 flex items-center justify-center border border-gray-100 overflow-hidden">
-                        @if($store->logo_url)
-                            <img src="{{ $store->logo_url }}" alt="{{ $store->store_name }}" class="w-full h-full object-cover">
+                        @if($store->logo_image)
+                            <img src="{{ url('storage/' . $store->logo_image) }}" alt="{{ $store->store_name }}" class="w-full h-full object-cover">
                         @else
                             <span class="material-symbols-outlined text-primary text-5xl">storefront</span>
                         @endif
@@ -29,40 +29,33 @@
                 </div>
 
                 {{-- Store Info --}}
-                <div class="flex-1 w-full md:w-auto md:pt-0">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-4">
+                <div class="flex-1 w-full md:w-auto">
+                    <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <div>
-                            <h1 class="text-2xl font-black text-gray-900 flex items-center gap-2">
+                            <h1 class="text-2xl font-black text-gray-900">
                                 {{ $store->store_name }}
-                                @if($store->is_active)
-                                    <span class="bg-blue-100 text-primary text-xs px-2 py-0.5 rounded border border-blue-200 font-medium">رسمی</span>
-                                @endif
                             </h1>
-                            <div class="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                                <span class="flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-yellow-500 text-lg">star</span>
-                                    <span class="font-bold text-gray-900">
-                                        @if($seller->seller_rating > 0)
-                                            @persian(number_format($seller->seller_rating, 1))
-                                        @else
-                                            جدید
+                            <div class="flex items-center gap-3 mt-2">
+                                @if($seller->seller_rating > 0)
+                                    <span class="flex items-center gap-1 text-sm">
+                                        <span class="material-symbols-outlined text-yellow-500 text-lg">star</span>
+                                        <span class="font-bold text-gray-900">@persian(number_format($seller->seller_rating, 1))</span>
+                                        @if($seller->seller_rating_count > 0)
+                                            <span class="text-xs text-gray-400">(@persian($seller->seller_rating_count) نظر)</span>
                                         @endif
                                     </span>
-                                    @if($seller->seller_rating_count > 0)
-                                        <span class="text-xs text-gray-400">(@persian($seller->seller_rating_count) نظر)</span>
-                                    @endif
-                                </span>
-                                <span class="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                <span>{{ $store->user->name }}</span>
+                                @else
+                                    <span class="bg-blue-50 text-primary text-xs px-2 py-1 rounded-lg font-bold">فروشگاه جدید</span>
+                                @endif
                                 @if($seller->seller_rating >= 4.5)
                                     <span class="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                    <span class="text-green-600 font-medium">پاسخگویی سریع</span>
+                                    <span class="text-green-600 font-medium text-sm">پاسخگویی سریع</span>
                                 @endif
                             </div>
                         </div>
 
                         {{-- Action Buttons --}}
-                        <div class="flex gap-3">
+                        <div class="flex gap-3 flex-wrap">
                             <button onclick="alert('قابلیت دنبال کردن به زودی اضافه خواهد شد')" class="px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-blue-600 transition-colors shadow-lg shadow-primary/20 flex items-center gap-2">
                                 <span class="material-symbols-outlined text-xl">add</span>
                                 دنبال کردن
@@ -135,17 +128,34 @@
         {{-- Filters and Sort --}}
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4 py-4 mt-6">
             <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-2 sm:pb-0">
-                <button @click="filter = 'all'" :class="filter === 'all' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'" class="px-4 py-2 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">همه حراج‌ها</button>
-                <button @click="filter = 'buy_now'" :class="filter === 'buy_now' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'" class="px-4 py-2 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">با خرید فوری</button>
-                <button @click="filter = 'ending'" :class="filter === 'ending' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'" class="px-4 py-2 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">در حال پایان</button>
+                <button 
+                    @click="filter = 'all'" 
+                    :class="filter === 'all' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'" 
+                    class="px-4 py-2 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
+                    همه حراج‌ها
+                </button>
+                <button 
+                    @click="filter = 'buy_now'" 
+                    :class="filter === 'buy_now' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'" 
+                    class="px-4 py-2 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
+                    با خرید فوری
+                </button>
+                <button 
+                    @click="filter = 'ending'" 
+                    :class="filter === 'ending' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'" 
+                    class="px-4 py-2 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
+                    در حال پایان
+                </button>
             </div>
             <div class="flex items-center gap-2 w-full sm:w-auto">
                 <span class="text-sm text-gray-500 whitespace-nowrap">مرتب‌سازی:</span>
-                <select class="form-select block w-full pl-3 pr-10 py-2 text-base border-gray-200 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-lg bg-white">
-                    <option>جدیدترین</option>
-                    <option>زمان باقیمانده (کم به زیاد)</option>
-                    <option>قیمت فعلی (زیاد به کم)</option>
-                    <option>بیشترین پیشنهاد</option>
+                <select 
+                    onchange="window.location.href = '{{ route('stores.show', $store->slug) }}?sort=' + this.value + '{{ request('filter') ? '&filter=' . request('filter') : '' }}'"
+                    class="form-select block w-full pl-3 pr-10 py-2 text-base border-gray-200 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-lg bg-white">
+                    <option value="newest" {{ $sort === 'newest' ? 'selected' : '' }}>جدیدترین</option>
+                    <option value="price_asc" {{ $sort === 'price_asc' ? 'selected' : '' }}>قیمت (کم به زیاد)</option>
+                    <option value="price_desc" {{ $sort === 'price_desc' ? 'selected' : '' }}>قیمت (زیاد به کم)</option>
+                    <option value="ending_soon" {{ $sort === 'ending_soon' ? 'selected' : '' }}>زمان باقیمانده</option>
                 </select>
             </div>
         </div>
@@ -154,9 +164,14 @@
     @if($listings->count() > 0)
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             @foreach($listings as $listing)
+                @php
+                    $hasBuyNow = $listing->hasBuyNowPrice();
+                    $isEnding = $listing->ends_at && $listing->ends_at->diffInHours() < 24;
+                @endphp
                 <div 
                     class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group overflow-hidden flex flex-col"
-                    x-show="filter === 'all' || (filter === 'buy_now' && {{ $listing->hasBuyNowPrice() ? 'true' : 'false' }}) || (filter === 'ending' && {{ $listing->ends_at && $listing->ends_at->diffInHours() < 24 ? 'true' : 'false' }})"
+                    x-show="filter === 'all' || (filter === 'buy_now' && {{ $hasBuyNow ? 'true' : 'false' }}) || (filter === 'ending' && {{ $isEnding ? 'true' : 'false' }})"
+                    style="display: none;"
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100"

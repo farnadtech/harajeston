@@ -24,6 +24,31 @@ class JalaliDateService
      */
     public static function toGregorian(string $jalaliDate): Carbon
     {
+        // Check if date includes time
+        if (preg_match('/^(.+?)\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/', $jalaliDate, $matches)) {
+            $datePart = $matches[1];
+            $hour = $matches[2];
+            $minute = $matches[3];
+            $second = $matches[4] ?? '00';
+            
+            // Parse date part
+            $parts = preg_split('/[-\/]/', $datePart);
+            
+            if (count($parts) !== 3) {
+                throw new \InvalidArgumentException('فرمت تاریخ نامعتبر است. فرمت صحیح: Y/m/d یا Y-m-d');
+            }
+            
+            [$year, $month, $day] = $parts;
+            
+            $jalalian = Jalalian::fromFormat('Y/m/d', "$year/$month/$day");
+            $carbon = $jalalian->toCarbon();
+            
+            // Set time
+            $carbon->setTime((int)$hour, (int)$minute, (int)$second);
+            
+            return $carbon;
+        }
+        
         // Parse Jalali date (format: Y/m/d or Y-m-d)
         $parts = preg_split('/[-\/]/', $jalaliDate);
         

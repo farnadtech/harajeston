@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست کیف پول</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: Tahoma, Arial, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">کیف پول من</h1>
+            <p class="text-gray-600 mt-2">مدیریت موجودی و تراکنش‌های مالی</p>
+        </div>
+
+        <!-- Wallet Balance Card -->
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-8 mb-8 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-blue-100 text-sm mb-2">موجودی کیف پول</p>
+                    <h2 class="text-4xl font-bold mb-1">1,250,000 تومان</h2>
+                    <p class="text-blue-100 text-sm mt-2">
+                        <span class="inline-flex items-center">
+                            <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                            </svg>
+                            مسدود شده: 50,000 تومان
+                        </span>
+                    </p>
+                </div>
+                <div class="text-left">
+                    <svg class="w-20 h-20 text-blue-300 opacity-50" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                        <path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="flex gap-4 mt-6">
+                <button onclick="alert('افزایش موجودی')" 
+                        class="flex-1 bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors">
+                    افزایش موجودی
+                </button>
+                <button onclick="alert('برداشت وجه')" 
+                        class="flex-1 bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-800 transition-colors">
+                    برداشت وجه
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">از تاریخ</label>
+                    <input type="text" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="انتخاب تاریخ">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">تا تاریخ</label>
+                    <input type="text" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="انتخاب تاریخ">
+                </div>
+                
+                <div class="flex items-end gap-2">
+                    <button class="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        فیلتر
+                    </button>
+                    <button class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        پاک کردن
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900">تراکنش‌های اخیر</h3>
+                <a href="#" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                    دانلود گزارش
+                </a>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">تاریخ</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">نوع</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">مبلغ</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">توضیحات</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">موجودی</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">1403/12/04 14:30</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    واریز
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">+500,000 تومان</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">شارژ حساب</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">1,250,000 تومان</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">1403/12/03 10:15</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    برداشت
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-600">-200,000 تومان</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">خرید محصول</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">750,000 تومان</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">1403/12/02 16:45</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    مسدود
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-yellow-600">-50,000 تومان</td>
+                            <td class="px-6 py-4 text-sm text-gray-600">سپرده مزایده</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">950,000 تومان</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('✅ صفحه کیف پول لود شد');
+        console.log('✅ Tailwind CSS لود شد');
+    </script>
+</body>
+</html>

@@ -325,15 +325,8 @@
                 
                 <!-- Left Side: User Actions -->
                 <div class="flex items-center gap-2 sm:gap-4 shrink-0">
-                    <a href="<?php echo e(route('cart.index')); ?>" class="p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors relative">
-                        <span class="material-symbols-outlined">shopping_cart</span>
-                        <?php if(auth()->guard()->check()): ?>
-                            <?php if(auth()->user()->cart && auth()->user()->cart->items->count() > 0): ?>
-                                <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                            <?php endif; ?>
-                        <?php endif; ?>
-                    </a>
                     <?php if(auth()->guard()->check()): ?>
+                        <!-- Notifications Dropdown -->
                         <div class="relative" id="notificationDropdown">
                             <button onclick="toggleNotifications()" class="relative p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors">
                                 <span class="material-symbols-outlined">notifications</span>
@@ -445,8 +438,9 @@
                         
                         // Close dropdown when clicking outside
                         document.addEventListener('click', function(event) {
-                            const dropdown = document.getElementById('notificationDropdown');
-                            if (dropdown && !dropdown.contains(event.target) && notificationsOpen) {
+                            const notifDropdown = document.getElementById('notificationDropdown');
+                            
+                            if (notifDropdown && !notifDropdown.contains(event.target) && notificationsOpen) {
                                 toggleNotifications();
                             }
                         });

@@ -68,4 +68,18 @@ class CartController extends Controller
             ->route('cart.index')
             ->with('success', 'محصول از سبد خرید حذف شد.');
     }
+
+    /**
+     * Get cart data for AJAX/API requests
+     */
+    public function getData()
+    {
+        $cart = $this->cartService->getCartWithTotals(auth()->user());
+        
+        return response()->json([
+            'success' => true,
+            'cart' => $cart,
+            'itemCount' => count($cart['items'] ?? [])
+        ]);
+    }
 }

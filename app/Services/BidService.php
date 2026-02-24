@@ -42,29 +42,70 @@ class BidService
                 ->lockForUpdate()
                 ->first();
             
+            // Prevent seller from bidding on their own auction
+            if ($listing->seller_id === $user->id) {
+                throw new \Exception('شما نمی‌توانید در حراجی خودتان شرکت کنید.');
+            }
+            
             // Validate auction is active
             if ($listing->status !== 'active') {
                 throw new AuctionNotActiveException($listing->id, $listing->status);
             }
             
-            // Validate deposit paid
-            $participation = AuctionParticipation::where('listing_id', $listing->id)
-                ->where('user_id', $user->id)
-                ->where('deposit_status', 'paid')
-                ->first();
+            // Get deposit from site settings
+            $depositSetting = \App\Models\SiteSetting::where('key', 'deposit_type')->first();
+            $depositType = $depositSetting ? $depositSetting->value : 'none';
             
-            if (!$participation) {
-                throw new DepositNotPaidException($listing->id, $user->id);
+            $depositAmount = 0;
+            if ($depositType === 'fixed') {
+                $fixedSetting = \App\Models\SiteSetting::where('key', 'deposit_fixed_amount')->first();
+                $depositAmount = $fixedSetting ? (int)$fixedSetting->value : 0;
+            } elseif ($depositType === 'percentage') {
+                $percentageSetting = \App\Models\SiteSetting::where('key', 'deposit_percentage')->first();
+                $percentage = $percentageSetting ? (float)$percentageSetting->value : 0;
+                $depositAmount = (int)($listing->starting_price * ($percentage / 100));
             }
             
-            // Validate bid amount is higher than current highest
-            if ($listing->current_highest_bid !== null && $amount <= $listing->current_highest_bid) {
-                throw new InvalidBidAmountException($amount, $listing->current_highest_bid + 1);
+            // Get highest bid
+            $highestBid = $listing->bids()->orderBy('amount', 'desc')->first();
+            $increment = $listing->bid_increment ?? 1000;
+            $minimumBid = $highestBid ? $highestBid->amount + $increment : $listing->starting_price;
+            
+            // Validate bid amount is higher than minimum
+            if ($amount < $minimumBid) {
+                throw new InvalidBidAmountException($amount, $minimumBid);
             }
             
-            // Validate bid amount is at least base price
-            if ($amount < $listing->base_price) {
-                throw new InvalidBidAmountException($amount, $listing->base_price);
+            // Check wallet balance and block deposit if needed
+            $wallet = $user->wallet;
+            if (!$wallet) {
+                throw new \Exception('کیف پول شما یافت نشد. لطفا با پشتیبانی تماس بگیرید.');
+            }
+            
+            $balance = $wallet->balance;
+            $requiredBalance = $amount;
+            
+            // Check if user has already bid (deposit already blocked)
+            $userHasBid = $listing->bids()->where('user_id', $user->id)->exists();
+            
+            // Add deposit to required balance if this is first bid
+            if ($depositAmount > 0 && !$userHasBid) {
+                $requiredBalance += $depositAmount;
+            }
+            
+            if ($balance < $requiredBalance) {
+                if ($depositAmount > 0 && !$userHasBid) {
+                    throw new \Exception('موجودی کیف پول شما کافی نیست. مبلغ مورد نیاز: ' . number_format($requiredBalance) . ' تومان (شامل ' . number_format($depositAmount) . ' تومان سپرده)');
+                } else {
+                    throw new \Exception('موجودی کیف پول شما کافی نیست. مبلغ مورد نیاز: ' . number_format($requiredBalance) . ' تومان');
+                }
+            }
+            
+            // Block deposit amount for first bid
+            if ($depositAmount > 0 && !$userHasBid) {
+                $wallet->balance -= $depositAmount;
+                $wallet->frozen += $depositAmount;
+                $wallet->save();
             }
             
             // Create bid

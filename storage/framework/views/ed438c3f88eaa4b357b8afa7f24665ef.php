@@ -90,6 +90,13 @@
                 <span class="material-symbols-outlined <?php echo e(request()->routeIs('stores.edit') ? '' : 'group-hover:text-primary transition-colors'); ?>">store</span>
                 <span>تنظیمات فروشگاه</span>
             </a>
+            
+            <div class="pt-4 mt-4 border-t border-gray-200">
+                <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="<?php echo e(route('home')); ?>">
+                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">home</span>
+                    <span>بازگشت به صفحه اصلی</span>
+                </a>
+            </div>
         </nav>
         
         <div class="p-4 border-t border-gray-100">

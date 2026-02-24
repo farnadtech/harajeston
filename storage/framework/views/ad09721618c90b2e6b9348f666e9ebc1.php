@@ -474,6 +474,38 @@
                     </p>
                 </div>
 
+                <div class="mb-6 border-t pt-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">مالیات شارژ کیف پول</h3>
+                    
+                    <div class="mb-4">
+                        <label for="wallet_charge_tax" class="block text-gray-700 font-bold mb-2">
+                            درصد مالیات شارژ (%)
+                        </label>
+                        <input type="number" 
+                               id="wallet_charge_tax" 
+                               name="wallet_charge_tax" 
+                               value="<?php echo e($walletSettings['charge_tax'] ?? 0); ?>"
+                               class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                               min="0"
+                               max="100"
+                               step="0.1">
+                        <p class="text-sm text-gray-600 mt-2">
+                            این درصد به مبلغ شارژ اضافه می‌شود. مثال: اگر 9% باشد و کاربر 100,000 تومان شارژ کند، باید 109,000 تومان پرداخت کند.
+                        </p>
+                    </div>
+
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined text-blue-600 mt-0.5">info</span>
+                            <div class="text-sm text-blue-800">
+                                <p class="font-bold mb-1">نحوه محاسبه:</p>
+                                <p>مبلغ نهایی = مبلغ شارژ + (مبلغ شارژ × درصد مالیات ÷ 100)</p>
+                                <p class="mt-2">مثال: شارژ 100,000 تومان با مالیات 9% = 100,000 + 9,000 = 109,000 تومان</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
                     ذخیره تنظیمات کیف پول
                 </button>

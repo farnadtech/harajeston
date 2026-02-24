@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="utf-8"/>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="p-8">
+    <div x-data="{ activeTab: 'products', filter: 'all' }">
+        <h1 class="text-2xl mb-4">تست فیلتر</h1>
+        
+        <div class="mb-4">
+            <p>فیلتر فعلی: <span x-text="filter" class="font-bold"></span></p>
+        </div>
+        
+        <div x-show="activeTab === 'products'">
+            <div class="flex gap-2 mb-6">
+                <button 
+                    @click="filter = 'all'" 
+                    :class="filter === 'all' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'" 
+                    class="px-4 py-2 text-sm rounded-lg">
+                    همه
+                </button>
+                <button 
+                    @click="filter = 'buy_now'" 
+                    :class="filter === 'buy_now' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'" 
+                    class="px-4 py-2 text-sm rounded-lg">
+                    خرید فوری
+                </button>
+                <button 
+                    @click="filter = 'ending'" 
+                    :class="filter === 'ending' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'" 
+                    class="px-4 py-2 text-sm rounded-lg">
+                    در حال پایان
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-4">
+                <div 
+                    x-data="{ hasBuyNow: true, isEnding: false }"
+                    x-show="filter === 'all' || (filter === 'buy_now' && hasBuyNow) || (filter === 'ending' && isEnding)"
+                    class="border p-4 rounded">
+                    محصول 1 (با خرید فوری)
+                </div>
+                <div 
+                    x-data="{ hasBuyNow: false, isEnding: true }"
+                    x-show="filter === 'all' || (filter === 'buy_now' && hasBuyNow) || (filter === 'ending' && isEnding)"
+                    class="border p-4 rounded">
+                    محصول 2 (در حال پایان)
+                </div>
+                <div 
+                    x-data="{ hasBuyNow: true, isEnding: true }"
+                    x-show="filter === 'all' || (filter === 'buy_now' && hasBuyNow) || (filter === 'ending' && isEnding)"
+                    class="border p-4 rounded">
+                    محصول 3 (هر دو)
+                </div>
+                <div 
+                    x-data="{ hasBuyNow: false, isEnding: false }"
+                    x-show="filter === 'all' || (filter === 'buy_now' && hasBuyNow) || (filter === 'ending' && isEnding)"
+                    class="border p-4 rounded">
+                    محصول 4 (عادی)
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

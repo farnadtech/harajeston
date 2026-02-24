@@ -1,5 +1,20 @@
+<?php $attributes ??= new \Illuminate\View\ComponentAttributeBag; ?>
+<?php foreach($attributes->onlyProps(['selected' => null, 'name' => 'category_id']) as $__key => $__value) {
+    $$__key = $$__key ?? $__value;
+} ?>
+<?php $attributes = $attributes->exceptProps(['selected' => null, 'name' => 'category_id']); ?>
+<?php foreach (array_filter((['selected' => null, 'name' => 'category_id']), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
+    $$__key = $$__key ?? $__value;
+} ?>
+<?php $__defined_vars = get_defined_vars(); ?>
+<?php foreach ($attributes as $__key => $__value) {
+    if (array_key_exists($__key, $__defined_vars)) unset($$__key);
+} ?>
+<?php unset($__defined_vars); ?>
+
 <?php
     $componentId = 'category-selector-' . uniqid();
+    $selectedCategoryId = old($name, $selected);
 ?>
 
 <div class="category-selector space-y-4" id="<?php echo e($componentId); ?>">
@@ -260,6 +275,69 @@ unset($__errorArgs, $__bag); ?>
     });
     
     console.log('✓ Category selector initialized');
+    
+    // Initialize with selected category (for edit mode)
+    const selectedCategoryId = <?php echo e($selectedCategoryId ?? 'null'); ?>;
+    
+    if (selectedCategoryId) {
+        console.log('→ Initializing with selected category:', selectedCategoryId);
+        
+        // Find the category path
+        function findCategoryPath(catId) {
+            for (const parent of categories) {
+                if (parent.id == catId) {
+                    return { parent: parent.id, child: null, grand: null };
+                }
+                
+                if (parent.children) {
+                    const childrenArray = Array.isArray(parent.children) ? parent.children : Object.values(parent.children);
+                    for (const child of childrenArray) {
+                        if (child.id == catId) {
+                            return { parent: parent.id, child: child.id, grand: null };
+                        }
+                        
+                        if (child.children) {
+                            let grandArray = Array.isArray(child.children) ? child.children : Object.values(child.children);
+                            for (const grand of grandArray) {
+                                if (grand.id == catId) {
+                                    return { parent: parent.id, child: child.id, grand: grand.id };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+        
+        const path = findCategoryPath(selectedCategoryId);
+        
+        if (path) {
+            console.log('→ Found category path:', path);
+            
+            // Set parent
+            if (path.parent) {
+                parentSelect.value = path.parent;
+                parentSelect.dispatchEvent(new Event('change'));
+                
+                // Wait for children to load, then set child
+                if (path.child) {
+                    setTimeout(() => {
+                        childSelect.value = path.child;
+                        childSelect.dispatchEvent(new Event('change'));
+                        
+                        // Wait for grandchildren to load, then set grand
+                        if (path.grand) {
+                            setTimeout(() => {
+                                grandSelect.value = path.grand;
+                                grandSelect.dispatchEvent(new Event('change'));
+                            }, 100);
+                        }
+                    }, 100);
+                }
+            }
+        }
+    }
 })();
 </script>
 <?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/components/category-selector.blade.php ENDPATH**/ ?>

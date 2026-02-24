@@ -227,6 +227,17 @@
                 <?php endif; ?>
             </a>
             
+            <a class="flex items-center gap-3 px-4 py-3 <?php echo e(request()->routeIs('admin.store-name-requests.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50'); ?> rounded-xl font-<?php echo e(request()->routeIs('admin.store-name-requests.*') ? 'bold' : 'medium'); ?> transition-colors group" href="<?php echo e(route('admin.store-name-requests.index')); ?>">
+                <span class="material-symbols-outlined group-hover:text-primary transition-colors">edit_note</span>
+                <span>تغییر نام فروشگاه</span>
+                <?php
+                    $pendingStoreNameCount = \App\Models\Store::whereNotNull('pending_store_name')->count();
+                ?>
+                <?php if($pendingStoreNameCount > 0): ?>
+                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto"><?php echo app(\App\Services\PersianNumberService::class)->toPersian($pendingStoreNameCount); ?></span>
+                <?php endif; ?>
+            </a>
+            
             <a class="flex items-center gap-3 px-4 py-3 <?php echo e(request()->routeIs('admin.orders.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50'); ?> rounded-xl font-<?php echo e(request()->routeIs('admin.orders.*') ? 'bold' : 'medium'); ?> transition-colors group" href="<?php echo e(route('admin.orders.index')); ?>">
                 <span class="material-symbols-outlined group-hover:text-primary transition-colors">shopping_bag</span>
                 <span>سفارشات</span>

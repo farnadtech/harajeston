@@ -4,6 +4,21 @@
 
 <?php $__env->startSection('content'); ?>
 <main class="flex-grow w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- Success/Error Messages -->
+    <?php if(session('success')): ?>
+        <div class="bg-green-50 border-2 border-green-200 rounded-xl p-4 flex items-center gap-3">
+            <span class="material-symbols-outlined text-green-600 text-2xl">check_circle</span>
+            <p class="text-green-800 font-medium"><?php echo e(session('success')); ?></p>
+        </div>
+    <?php endif; ?>
+
+    <?php if(session('error')): ?>
+        <div class="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-center gap-3">
+            <span class="material-symbols-outlined text-red-600 text-2xl">error</span>
+            <p class="text-red-800 font-medium"><?php echo e(session('error')); ?></p>
+        </div>
+    <?php endif; ?>
+
     <!-- بنر تعلیق شده -->
     <?php if($listing->status === 'suspended'): ?>
         <div class="bg-red-50 border-2 border-red-200 rounded-xl p-6">
@@ -193,12 +208,106 @@
                 </div>
             </div>
 
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                <?php if($listing->buy_now_price && $listing->buy_now_price > 0 && $listing->isActive()): ?>
+                    <div class="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200 p-4">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="material-symbols-outlined text-orange-600">shopping_bag</span>
+                            <h4 class="font-bold text-gray-900 text-sm">خرید فوری</h4>
+                        </div>
+                        <div class="mb-3">
+                            <div class="text-2xl font-black text-orange-600 mb-1"><?php echo app(\App\Services\PersianNumberService::class)->formatNumber($listing->buy_now_price, true); ?> <span class="text-sm font-medium">تومان</span></div>
+                            <p class="text-xs text-gray-600">بدون انتظار برنده شوید!</p>
+                        </div>
+                        <?php if(auth()->guard()->check()): ?>
+                            <?php if(auth()->user()->role !== 'admin' && $listing->seller_id !== auth()->id()): ?>
+                                <form action="<?php echo e(route('listings.participate', $listing)); ?>" method="POST">
+                                    <?php echo csrf_field(); ?>
+                                    <input type="hidden" name="buy_now" value="1">
+                                    <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-sm font-bold rounded-lg shadow-md flex items-center justify-center gap-2 transition-all">
+                                        <span class="material-symbols-outlined text-lg">shopping_bag</span>
+                                        <span>خرید فوری</span>
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <a href="<?php echo e(route('login')); ?>" class="block w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-sm font-bold rounded-lg shadow-md flex items-center justify-center gap-2 transition-all">
+                                <span class="material-symbols-outlined text-lg">shopping_bag</span>
+                                <span>خرید فوری</span>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                
+                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="material-symbols-outlined text-primary">storefront</span>
+                        <h4 class="font-bold text-gray-900 text-sm">فروشگاه</h4>
+                    </div>
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                            <?php if($listing->seller->store && $listing->seller->store->logo_path): ?>
+                                <img src="<?php echo e(Storage::url($listing->seller->store->logo_path)); ?>" alt="<?php echo e($listing->seller->store->store_name); ?>" class="w-full h-full object-cover"/>
+                            <?php else: ?>
+                                <span class="material-symbols-outlined text-gray-400 text-2xl">storefront</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h5 class="font-bold text-gray-900 text-sm truncate"><?php echo e($listing->seller->store->store_name ?? $listing->seller->name); ?></h5>
+                            <div class="flex items-center gap-1 mt-1">
+                                <span class="material-symbols-outlined text-yellow-500 text-sm">star</span>
+                                <span class="text-xs font-bold text-gray-700"><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($listing->seller->seller_rating ?? 0, 1)); ?></span>
+                                <span class="text-xs text-gray-400">(<?php echo app(\App\Services\PersianNumberService::class)->toPersian($listing->seller->successful_sales ?? 0); ?> فروش موفق)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <?php if($listing->seller->store): ?>
+                        <a href="<?php echo e(route('stores.show', $listing->seller->store->slug)); ?>" class="block w-full text-center py-2 text-primary text-sm font-bold hover:bg-primary/5 rounded-lg transition-colors border border-primary/20">
+                            مشاهده فروشگاه
+                        </a>
+                    <?php endif; ?>
+                </div>
+
+                
+                <?php if($listing->shippingMethods && $listing->shippingMethods->count() > 0): ?>
+                <div class="bg-blue-50 rounded-xl border border-blue-200 p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="material-symbols-outlined text-blue-600">local_shipping</span>
+                        <h4 class="font-bold text-gray-900 text-sm">روش‌های ارسال</h4>
+                    </div>
+                    <div class="space-y-2">
+                        <?php $__currentLoopData = $listing->shippingMethods; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $method): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <div class="bg-white rounded-lg p-2.5 border border-blue-100">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 min-w-0 flex-1">
+                                    <span class="material-symbols-outlined text-blue-600 text-base flex-shrink-0">local_shipping</span>
+                                    <span class="text-xs font-medium text-gray-900 truncate"><?php echo e($method->name); ?></span>
+                                </div>
+                                <span class="text-xs font-bold text-gray-900 whitespace-nowrap mr-2">
+                                    <?php echo e(\App\Services\PersianNumberService::convertToPersian(number_format($method->base_cost + $method->pivot->custom_cost_adjustment))); ?> تومان
+                                </span>
+                            </div>
+                            <?php if($method->estimated_days): ?>
+                                <p class="text-xs text-gray-500 mt-1 mr-6">
+                                    <?php echo e(\App\Services\PersianNumberService::convertToPersian($method->estimated_days)); ?> روز کاری
+                                </p>
+                            <?php endif; ?>
+                        </div>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+
 
         </div>
 
         <!-- Right Column - Auction Info -->
         <div class="lg:col-span-5">
-            <div class="bg-white rounded-2xl border border-gray-100 shadow-lg p-6 lg:p-8 sticky top-24">
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-lg p-4 lg:p-6 sticky top-24">
                 <!-- Product Title & Meta -->
                 <div class="mb-6">
                     <h1 class="text-2xl lg:text-3xl font-black text-gray-900 mb-3 leading-tight"><?php echo e($listing->title); ?></h1>
@@ -247,7 +356,7 @@ $__split = function ($name, $params = []) {
 };
 [$__name, $__params] = $__split('auction-countdown', ['listing' => $listing]);
 
-$__html = app('livewire')->mount($__name, $__params, 'lOmI8kc', $__slots ?? [], get_defined_vars());
+$__html = app('livewire')->mount($__name, $__params, '9XT7Xsr', $__slots ?? [], get_defined_vars());
 
 echo $__html;
 
@@ -277,7 +386,7 @@ if (isset($__slots)) unset($__slots);
                         </div>
                     <?php endif; ?>
                     
-                    <div class="flex justify-between items-end">
+                    <div class="flex justify-between items-end mb-3">
                         <div>
                             <span class="block text-gray-500 text-sm mb-1">
                                 <?php if($listing->bids->count() > 0): ?>
@@ -302,6 +411,33 @@ if (isset($__slots)) unset($__slots);
                             <span class="font-bold text-gray-800 text-lg"><?php echo app(\App\Services\PersianNumberService::class)->toPersian($listing->bids->count()); ?> نفر</span>
                         </div>
                     </div>
+                    
+                    
+                    <?php
+                        $depositSetting = \App\Models\SiteSetting::where('key', 'deposit_type')->first();
+                        $depositType = $depositSetting ? $depositSetting->value : 'none';
+                        
+                        $displayDepositAmount = 0;
+                        if ($depositType === 'fixed') {
+                            $fixedSetting = \App\Models\SiteSetting::where('key', 'deposit_fixed_amount')->first();
+                            $displayDepositAmount = $fixedSetting ? (int)$fixedSetting->value : 0;
+                        } elseif ($depositType === 'percentage') {
+                            $percentageSetting = \App\Models\SiteSetting::where('key', 'deposit_percentage')->first();
+                            $percentage = $percentageSetting ? (float)$percentageSetting->value : 0;
+                            $displayDepositAmount = (int)($listing->starting_price * ($percentage / 100));
+                        }
+                    ?>
+                    <?php if($displayDepositAmount > 0): ?>
+                        <div class="pt-3 border-t border-gray-200">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600 flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-lg">lock</span>
+                                    سپرده شرکت در مزایده:
+                                </span>
+                                <span class="font-bold text-gray-900"><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($displayDepositAmount)); ?> تومان</span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Bid Form -->
@@ -326,23 +462,234 @@ if (isset($__slots)) unset($__slots);
                                 </p>
                             <?php endif; ?>
                         </div>
+                    <?php elseif(auth()->check() && $listing->seller_id === auth()->id()): ?>
+                        
+                        <div class="p-6 bg-green-50 rounded-xl border-2 border-green-200 text-center">
+                            <span class="material-symbols-outlined text-green-600 text-5xl mb-3">storefront</span>
+                            <p class="text-lg text-green-900 font-bold mb-3">این حراجی متعلق به شماست</p>
+                            <a href="<?php echo e(route('listings.edit', $listing)); ?>" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-colors">
+                                <span class="material-symbols-outlined">edit</span>
+                                ویرایش حراجی
+                            </a>
+                        </div>
                     <?php elseif($listing->isActive()): ?>
-                        <?php
-$__split = function ($name, $params = []) {
-    return [$name, $params];
-};
-[$__name, $__params] = $__split('auction-bidding', ['listing' => $listing]);
+                        
+                        <div class="space-y-4">
+                                <?php if(session('bid_success')): ?>
+                                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                                        <span class="material-symbols-outlined">check_circle</span>
+                                        <span><?php echo e(session('bid_success')); ?></span>
+                                    </div>
+                                <?php endif; ?>
 
-$__html = app('livewire')->mount($__name, $__params, '4L3VkOg', $__slots ?? [], get_defined_vars());
+                                <?php if(session('bid_error')): ?>
+                                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                                        <span class="material-symbols-outlined">error</span>
+                                        <span><?php echo e(session('bid_error')); ?></span>
+                                    </div>
+                                <?php endif; ?>
 
-echo $__html;
+                                <?php
+                                    $highestBid = $listing->bids->sortByDesc('amount')->first();
+                                    $minimumBid = $highestBid 
+                                        ? $highestBid->amount + ($listing->bid_increment ?? 1000)
+                                        : $listing->starting_price;
+                                    $userWallet = auth()->user()->wallet;
+                                    $walletBalance = $userWallet ? $userWallet->balance : 0;
+                                    
+                                    // Get deposit from site settings
+                                    $depositSetting = \App\Models\SiteSetting::where('key', 'deposit_type')->first();
+                                    $depositType = $depositSetting ? $depositSetting->value : 'none';
+                                    
+                                    $depositAmount = 0;
+                                    if ($depositType === 'fixed') {
+                                        $fixedSetting = \App\Models\SiteSetting::where('key', 'deposit_fixed_amount')->first();
+                                        $depositAmount = $fixedSetting ? (int)$fixedSetting->value : 0;
+                                    } elseif ($depositType === 'percentage') {
+                                        $percentageSetting = \App\Models\SiteSetting::where('key', 'deposit_percentage')->first();
+                                        $percentage = $percentageSetting ? (float)$percentageSetting->value : 0;
+                                        $depositAmount = (int)($listing->starting_price * ($percentage / 100));
+                                    }
+                                    
+                                    // Check if user has already placed a bid (deposit already paid)
+                                    $userHasBid = $listing->bids()->where('user_id', auth()->id())->exists();
+                                    
+                                    // Calculate required balance (bid + deposit if first bid)
+                                    $requiredBalance = $minimumBid;
+                                    if (!$userHasBid && $depositAmount > 0) {
+                                        $requiredBalance += $depositAmount;
+                                    }
+                                ?>
 
-unset($__html);
-unset($__name);
-unset($__params);
-unset($__split);
-if (isset($__slots)) unset($__slots);
-?>
+                                <form action="<?php echo e(route('bids.store')); ?>" method="POST" id="bidForm" onsubmit="return validateBid()">
+                                    <?php echo csrf_field(); ?>
+                                    <input type="hidden" name="listing_id" value="<?php echo e($listing->id); ?>">
+                                    
+                                    <label class="block text-sm font-bold text-gray-700 mb-3">پیشنهاد خود را وارد کنید</label>
+                                    
+                                    
+                                    <?php if($depositAmount > 0 && !$userHasBid): ?>
+                                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 text-sm">
+                                            <div class="flex items-center gap-2 text-blue-800">
+                                                <span class="material-symbols-outlined text-lg">info</span>
+                                                <span>سپرده شرکت در مزایده: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($depositAmount)); ?></strong> تومان</span>
+                                            </div>
+                                            <p class="text-xs text-blue-700 mt-1">این مبلغ برای اولین پیشنهاد شما بلوک می‌شود و پس از پایان مزایده بازگردانده می‌شود</p>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    
+                                    <?php if($walletBalance < $requiredBalance): ?>
+                                        <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3 text-sm">
+                                            <div class="flex items-start gap-2 text-orange-800">
+                                                <span class="material-symbols-outlined text-lg">warning</span>
+                                                <div>
+                                                    <p class="font-bold mb-1">موجودی کیف پول شما کافی نیست!</p>
+                                                    <p class="text-xs">موجودی فعلی: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($walletBalance)); ?></strong> تومان</p>
+                                                    <p class="text-xs">حداقل پیشنهاد: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($minimumBid)); ?></strong> تومان</p>
+                                                    <?php if($depositAmount > 0 && !$userHasBid): ?>
+                                                        <p class="text-xs">سپرده مزایده: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($depositAmount)); ?></strong> تومان</p>
+                                                        <p class="text-xs mt-1 font-bold">مجموع مورد نیاز: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($requiredBalance)); ?></strong> تومان</p>
+                                                    <?php else: ?>
+                                                        <p class="text-xs mt-1 font-bold">مورد نیاز: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($requiredBalance)); ?></strong> تومان</p>
+                                                    <?php endif; ?>
+                                                    <a href="<?php echo e(route('wallet.show')); ?>" class="inline-block mt-2 px-3 py-1 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-xs font-bold">
+                                                        شارژ کیف پول
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <div class="relative mb-4">
+                                        <input 
+                                            type="number" 
+                                            name="amount"
+                                            id="bidAmount"
+                                            class="block w-full text-center h-14 px-16 bg-white border-2 border-gray-300 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20 text-xl font-bold transition-all hover:border-gray-400"
+                                            value="<?php echo e($minimumBid); ?>"
+                                            min="<?php echo e($minimumBid); ?>"
+                                            step="1000"
+                                            required
+                                        />
+                                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500 font-medium pointer-events-none">تومان</span>
+                                    </div>
+                                    
+                                    <div id="bidError" class="hidden text-red-500 text-sm mb-3 flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-lg">error</span>
+                                        <span id="bidErrorText"></span>
+                                    </div>
+                                    
+                                    <?php $__errorArgs = ['amount'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> 
+                                        <p class="text-red-500 text-sm mb-3"><?php echo e($message); ?></p>
+                                    <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                                    
+                                    <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar mb-4">
+                                        <button type="button" onclick="incrementBid(50000)" class="whitespace-nowrap px-4 py-2 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 text-sm font-medium text-gray-600 hover:text-primary transition-all">
+                                            + <?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format(50000)); ?>
+                                        </button>
+                                        <button type="button" onclick="incrementBid(100000)" class="whitespace-nowrap px-4 py-2 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 text-sm font-medium text-gray-600 hover:text-primary transition-all">
+                                            + <?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format(100000)); ?>
+                                        </button>
+                                        <button type="button" onclick="incrementBid(200000)" class="whitespace-nowrap px-4 py-2 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 text-sm font-medium text-gray-600 hover:text-primary transition-all">
+                                            + <?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format(200000)); ?>
+                                        </button>
+                                    </div>
+                                    
+                                    <button 
+                                        type="submit"
+                                        id="submitBidBtn"
+                                        class="w-full h-14 bg-primary hover:bg-blue-600 text-white text-lg font-bold rounded-xl shadow-lg shadow-primary/30 flex items-center justify-center gap-2 transition-all transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                                        <?php if($walletBalance < $requiredBalance): ?> disabled <?php endif; ?>
+                                    >
+                                        <span class="material-symbols-outlined">gavel</span>
+                                        <span>ثبت پیشنهاد</span>
+                                    </button>
+                                    
+                                    <p class="text-xs text-center text-gray-500 mt-2">
+                                        با ثبت پیشنهاد، <a class="text-primary hover:underline" href="#">قوانین مزایده</a> را می‌پذیرید.
+                                    </p>
+                                </form>
+
+                                <script>
+                                const minimumBid = <?php echo e($minimumBid); ?>;
+                                const requiredBalance = <?php echo e($requiredBalance); ?>;
+                                const walletBalance = <?php echo e($walletBalance); ?>;
+                                const depositAmount = <?php echo e($depositAmount); ?>;
+                                const hasParticipated = <?php echo e($userHasBid ? 'true' : 'false'); ?>;
+                                
+                                // Persian number conversion
+                                const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                                function toPersianNumber(num) {
+                                    return num.toString().replace(/\d/g, x => persianDigits[parseInt(x)]);
+                                }
+                                
+                                function formatNumber(num) {
+                                    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                                }
+                                
+                                function incrementBid(amount) {
+                                    const input = document.getElementById('bidAmount');
+                                    const currentValue = parseInt(input.value) || minimumBid;
+                                    input.value = currentValue + amount;
+                                    input.focus();
+                                    validateBidAmount();
+                                }
+                                
+                                function validateBidAmount() {
+                                    const input = document.getElementById('bidAmount');
+                                    const errorDiv = document.getElementById('bidError');
+                                    const errorText = document.getElementById('bidErrorText');
+                                    const submitBtn = document.getElementById('submitBidBtn');
+                                    const value = parseInt(input.value) || 0;
+                                    
+                                    if (value < minimumBid) {
+                                        errorDiv.classList.remove('hidden');
+                                        errorText.textContent = 'مبلغ پیشنهاد باید حداقل ' + toPersianNumber(formatNumber(minimumBid)) + ' تومان باشد';
+                                        submitBtn.disabled = true;
+                                        return false;
+                                    }
+                                    
+                                    // Calculate required balance for this bid
+                                    let requiredForThisBid = value;
+                                    if (depositAmount > 0 && !hasParticipated) {
+                                        requiredForThisBid += depositAmount;
+                                    }
+                                    
+                                    if (walletBalance < requiredForThisBid) {
+                                        errorDiv.classList.remove('hidden');
+                                        if (depositAmount > 0 && !hasParticipated) {
+                                            errorText.textContent = 'موجودی کیف پول شما کافی نیست. مبلغ مورد نیاز: ' + toPersianNumber(formatNumber(requiredForThisBid)) + ' تومان (شامل ' + toPersianNumber(formatNumber(depositAmount)) + ' تومان سپرده)';
+                                        } else {
+                                            errorText.textContent = 'موجودی کیف پول شما کافی نیست. مبلغ مورد نیاز: ' + toPersianNumber(formatNumber(requiredForThisBid)) + ' تومان';
+                                        }
+                                        submitBtn.disabled = true;
+                                        return false;
+                                    }
+                                    
+                                    errorDiv.classList.add('hidden');
+                                    submitBtn.disabled = false;
+                                    return true;
+                                }
+                                
+                                function validateBid() {
+                                    return validateBidAmount();
+                                }
+                                
+                                // Update validation on input change
+                                document.getElementById('bidAmount').addEventListener('input', validateBidAmount);
+                                
+                                // Initial validation
+                                validateBidAmount();
+                                </script>
+                        </div>
                     <?php elseif($listing->isPending()): ?>
                         <div class="p-4 bg-blue-50 rounded-xl border border-blue-200 text-center">
                             <span class="material-symbols-outlined text-blue-600 text-4xl mb-2">schedule</span>
@@ -388,66 +735,12 @@ if (isset($__slots)) unset($__slots);
                         </div>
                     <?php endif; ?>
                 <?php endif; ?>
-
-                <!-- Seller Info -->
-                <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <div class="w-12 h-12 rounded-full bg-white border border-gray-200 flex items-center justify-center overflow-hidden">
-                        <?php if($listing->seller->store && $listing->seller->store->logo_path): ?>
-                            <img src="<?php echo e(Storage::url($listing->seller->store->logo_path)); ?>" alt="<?php echo e($listing->seller->store->store_name); ?>" class="w-full h-full object-cover"/>
-                        <?php else: ?>
-                            <span class="material-symbols-outlined text-gray-400 text-3xl">storefront</span>
-                        <?php endif; ?>
-                    </div>
-                    <div class="flex-1">
-                        <h4 class="font-bold text-gray-900 text-sm"><?php echo e($listing->seller->store->store_name ?? $listing->seller->name); ?></h4>
-                        <div class="flex items-center gap-1 mt-1">
-                            <span class="material-symbols-outlined text-yellow-500 text-sm">star</span>
-                            <span class="text-xs font-bold text-gray-700"><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($listing->seller->seller_rating ?? 0, 1)); ?></span>
-                            <span class="text-xs text-gray-400">(<?php echo app(\App\Services\PersianNumberService::class)->toPersian($listing->seller->successful_sales ?? 0); ?> فروش موفق)</span>
-                        </div>
-                    </div>
-                    <?php if($listing->seller->store): ?>
-                        <a href="<?php echo e(route('stores.show', $listing->seller->store->slug)); ?>" class="text-primary text-sm font-bold hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-colors">
-                            مشاهده فروشگاه
-                        </a>
-                    <?php endif; ?>
-                </div>
-
-                <!-- Shipping Methods -->
-                <?php if($listing->shippingMethods && $listing->shippingMethods->count() > 0): ?>
-                <div class="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <h4 class="font-bold text-gray-900 text-sm mb-3 flex items-center gap-2">
-                        <span class="material-symbols-outlined text-blue-600">local_shipping</span>
-                        روش‌های ارسال
-                    </h4>
-                    <div class="space-y-2">
-                        <?php $__currentLoopData = $listing->shippingMethods; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $method): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <div class="flex items-center justify-between bg-white rounded-lg p-3 border border-blue-100">
-                            <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-blue-600 text-[18px]">local_shipping</span>
-                                <div>
-                                    <span class="text-sm font-medium text-gray-900"><?php echo e($method->name); ?></span>
-                                    <?php if($method->estimated_days): ?>
-                                        <span class="text-xs text-gray-500 mr-2">
-                                            (<?php echo e(\App\Services\PersianNumberService::convertToPersian($method->estimated_days)); ?> روز کاری)
-                                        </span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                            <span class="text-sm font-bold text-gray-900">
-                                <?php echo e(\App\Services\PersianNumberService::convertToPersian(number_format($method->base_cost + $method->pivot->custom_cost_adjustment))); ?> تومان
-                            </span>
-                        </div>
-                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                    </div>
-                </div>
-                <?php endif; ?>
             </div>
         </div>
     </div>
 
     <!-- Product Details & Bid History -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
         <!-- Product Details -->
         <div class="lg:col-span-8 space-y-8">
             <!-- Tabs Section -->
@@ -468,9 +761,6 @@ if (isset($__slots)) unset($__slots);
                         <?php if($listing->condition): ?>
                             <ul class="list-disc list-inside space-y-2 marker:text-primary mt-4">
                                 <li>وضعیت کالا: <?php echo e(condition_label($listing->condition)); ?></li>
-                                <?php if($listing->required_deposit > 0): ?>
-                                    <li>سپرده شرکت در مزایده: <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($listing->required_deposit, true); ?> تومان</li>
-                                <?php endif; ?>
                                 <li>زمان شروع: <?php echo e(\Morilog\Jalali\Jalalian::fromCarbon($listing->starts_at)->format('Y/m/d H:i')); ?></li>
                                 <li>زمان پایان: <?php echo e(\Morilog\Jalali\Jalalian::fromCarbon($listing->ends_at)->format('Y/m/d H:i')); ?></li>
                             </ul>

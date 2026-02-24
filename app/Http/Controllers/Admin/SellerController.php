@@ -287,4 +287,43 @@ class SellerController extends Controller
             return back()->with('error', 'خطا: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Show store name change requests
+     */
+    public function storeNameRequests()
+    {
+        $requests = \App\Models\Store::whereNotNull('pending_store_name')
+            ->with('user')
+            ->orderBy('store_name_change_requested_at', 'desc')
+            ->paginate(20);
+
+        return view('admin.store-name-requests.index', compact('requests'));
+    }
+
+    /**
+     * Approve store name change
+     */
+    public function approveStoreName(\App\Models\Store $store)
+    {
+        $storeService = app(\App\Services\StoreService::class);
+        $storeService->approveStoreNameChange($store);
+
+        return redirect()
+            ->back()
+            ->with('success', 'نام فروشگاه با موفقیت تایید شد.');
+    }
+
+    /**
+     * Reject store name change
+     */
+    public function rejectStoreName(\App\Models\Store $store)
+    {
+        $storeService = app(\App\Services\StoreService::class);
+        $storeService->rejectStoreNameChange($store);
+
+        return redirect()
+            ->back()
+            ->with('success', 'درخواست تغییر نام رد شد.');
+    }
 }
