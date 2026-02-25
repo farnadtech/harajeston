@@ -93,7 +93,11 @@
                     <div class="p-3 bg-gray-50 rounded-lg">
                         <p class="text-xs text-gray-500 mb-1">قیمت فعلی</p>
                         <p class="text-sm font-bold text-primary font-mono">
-                            {{ \App\Services\PersianNumberService::convertToPersian(number_format($listing->current_price)) }}
+                            @php
+                                $highestBid = $listing->bids()->orderBy('amount', 'desc')->first();
+                                $currentPrice = $highestBid ? $highestBid->amount : $listing->starting_price;
+                            @endphp
+                            {{ \App\Services\PersianNumberService::convertToPersian(number_format($currentPrice)) }}
                         </p>
                     </div>
                     

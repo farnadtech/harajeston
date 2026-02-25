@@ -24,7 +24,8 @@ return new class extends Migration
                 'transfer_out',
                 'forfeit',
                 'purchase',
-                'refund'
+                'refund',
+                'auction_payment'
             ]);
             $table->decimal('amount', 15, 2);
             $table->decimal('balance_before', 15, 2);

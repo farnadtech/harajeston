@@ -77,12 +77,14 @@ class ImageService
     /**
      * Delete image
      */
-    public function delete(ListingImage $image): bool
+    public function delete(ListingImage $image, bool $skipTimeCheck = false): bool
     {
-        // Check time constraint (can only delete within 24 hours of upload)
-        $twentyFourHoursAgo = now()->subHours(24);
-        if ($image->created_at->lt($twentyFourHoursAgo)) {
-            throw new \InvalidArgumentException('نمی‌توانید تصویر را بعد از 24 ساعت حذف کنید.');
+        // Check time constraint (can only delete within 24 hours of upload) unless skipped
+        if (!$skipTimeCheck) {
+            $twentyFourHoursAgo = now()->subHours(24);
+            if ($image->created_at->lt($twentyFourHoursAgo)) {
+                throw new \InvalidArgumentException('نمی‌توانید تصویر را بعد از 24 ساعت حذف کنید.');
+            }
         }
 
         // Delete files from storage

@@ -379,18 +379,25 @@
                             </span>
                             <div class="flex items-baseline gap-1">
                                 <span class="text-3xl font-black text-primary">
-                                    @if($listing->bids->count() > 0)
-                                        @price($listing->current_price)
-                                    @else
-                                        @price($listing->starting_price)
-                                    @endif
+                                    @php
+                                        $highestBid = $listing->bids()->orderBy('amount', 'desc')->first();
+                                        $currentPrice = $highestBid ? $highestBid->amount : $listing->starting_price;
+                                        $isUserWinning = auth()->check() && $highestBid && $highestBid->user_id === auth()->id();
+                                    @endphp
+                                    @price($currentPrice)
                                 </span>
                                 <span class="text-gray-500 font-medium">تومان</span>
                             </div>
+                            @if($isUserWinning && $listing->status === 'active')
+                                <div class="flex items-center gap-1 mt-2 text-sm text-green-600">
+                                    <span class="material-symbols-outlined text-base">check_circle</span>
+                                    <span class="font-medium">شما در حال حاضر بالاترین پیشنهاد را دارید</span>
+                                </div>
+                            @endif
                         </div>
                         <div class="text-left">
                             <span class="block text-xs text-gray-400 mb-1">تعداد پیشنهادها</span>
-                            <span class="font-bold text-gray-800 text-lg">@persian($listing->bids->count()) نفر</span>
+                            <span class="font-bold text-gray-800 text-lg">@persian($listing->bids->count()) پیشنهاد</span>
                         </div>
                     </div>
                     
@@ -711,6 +718,51 @@
             </div>
         </div>
     </div>
+
+    <!-- بنر برنده شدن -->
+    @if($listing->status === 'ended' && auth()->check() && $listing->current_winner_id === auth()->id())
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-6 shadow-lg mb-6">
+            <div class="flex items-start gap-4">
+                <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-green-600 text-3xl">celebration</span>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-xl font-black text-green-900 mb-2">🎉 تبریک! شما برنده این حراجی شدید!</h3>
+                    @php
+                        $winningBid = $listing->bids()->where('user_id', auth()->id())->orderBy('amount', 'desc')->first();
+                        $totalAmount = $winningBid ? $winningBid->amount : 0;
+                        $depositAmount = $listing->required_deposit;
+                        $remainingAmount = $totalAmount - $depositAmount;
+                    @endphp
+                    <div class="bg-white rounded-lg p-4 mb-4 space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">مبلغ برنده شده:</span>
+                            <span class="font-bold text-gray-900">{{ \App\Services\PersianNumberService::convertToPersian(number_format($totalAmount)) }} تومان</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">سپرده پرداخت شده:</span>
+                            <span class="font-bold text-green-600">{{ \App\Services\PersianNumberService::convertToPersian(number_format($depositAmount)) }} تومان</span>
+                        </div>
+                        <div class="border-t border-gray-200 pt-2 flex justify-between">
+                            <span class="text-gray-900 font-medium">مبلغ باقیمانده:</span>
+                            <span class="font-black text-primary text-lg">{{ \App\Services\PersianNumberService::convertToPersian(number_format($remainingAmount)) }} تومان</span>
+                        </div>
+                    </div>
+                    <p class="text-green-800 text-sm mb-4">
+                        برای تکمیل خرید، مبلغ باقیمانده را از کیف پول خود پرداخت کنید. 
+                        مهلت پرداخت: <span class="font-bold">{{ \App\Services\PersianNumberService::convertToPersian(\App\Services\JalaliDateService::toJalali($listing->finalization_deadline, 'Y/m/d H:i')) }}</span>
+                    </p>
+                    <form action="{{ route('listings.finalize', $listing) }}" method="POST" id="finalizeForm">
+                        @csrf
+                        <button type="button" onclick="showFinalizeModal()" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined">payment</span>
+                            تکمیل خرید و پرداخت
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <!-- Product Details & Bid History -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
@@ -1106,3 +1158,90 @@ document.head.appendChild(style);
 @endsection
 
 
+
+<!-- Finalize Payment Modal -->
+<div id="finalizeModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] hidden items-center justify-center p-4" onclick="if(event.target === this) closeFinalizeModal()">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all" onclick="event.stopPropagation()">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-green-500 to-emerald-500 p-6 text-white">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-3xl">payment</span>
+                </div>
+                <div>
+                    <h3 class="text-xl font-black">تکمیل خرید</h3>
+                    <p class="text-sm text-white/90">پرداخت مبلغ باقیمانده</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6">
+            <div class="bg-gray-50 rounded-xl p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-blue-600 text-2xl flex-shrink-0">info</span>
+                    <div class="text-sm text-gray-700 leading-relaxed">
+                        با تایید این عملیات، مبلغ <span class="font-bold text-primary">{{ \App\Services\PersianNumberService::convertToPersian(number_format($remainingAmount)) }} تومان</span> از کیف پول شما کسر شده و سفارش شما ثبت خواهد شد.
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span class="text-gray-600">مبلغ برنده شده:</span>
+                    <span class="font-bold text-gray-900">{{ \App\Services\PersianNumberService::convertToPersian(number_format($totalAmount)) }} تومان</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span class="text-gray-600">سپرده پرداخت شده:</span>
+                    <span class="font-bold text-green-600">{{ \App\Services\PersianNumberService::convertToPersian(number_format($depositAmount)) }} تومان</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                    <span class="text-gray-900 font-medium">مبلغ باقیمانده:</span>
+                    <span class="font-black text-primary text-xl">{{ \App\Services\PersianNumberService::convertToPersian(number_format($remainingAmount)) }} تومان</span>
+                </div>
+            </div>
+
+            <p class="text-sm text-gray-600 mb-6 text-center">
+                آیا از تکمیل خرید و پرداخت مبلغ باقیمانده اطمینان دارید؟
+            </p>
+
+            <!-- Actions -->
+            <div class="flex gap-3">
+                <button type="button" onclick="closeFinalizeModal()" class="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors">
+                    انصراف
+                </button>
+                <button type="button" onclick="submitFinalizeForm()" class="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    تایید و پرداخت
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showFinalizeModal() {
+    const modal = document.getElementById('finalizeModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeFinalizeModal() {
+    const modal = document.getElementById('finalizeModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.style.overflow = '';
+}
+
+function submitFinalizeForm() {
+    document.getElementById('finalizeForm').submit();
+}
+
+// Close on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeFinalizeModal();
+    }
+});
+</script>

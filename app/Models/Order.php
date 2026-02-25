@@ -23,13 +23,26 @@ class Order extends Model
         'shipping_method_id',
         'shipping_address',
         'tracking_number',
+        'payment_released_at',
     ];
 
     protected $casts = [
         'subtotal' => 'integer',
         'shipping_cost' => 'integer',
         'total' => 'integer',
+        'payment_released_at' => 'datetime',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($order) {
+            if (empty($order->order_number)) {
+                $order->order_number = static::generateOrderNumber();
+            }
+        });
+    }
 
     // Relationships
     public function buyer(): BelongsTo

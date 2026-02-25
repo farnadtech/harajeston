@@ -7,7 +7,7 @@
         {{-- Banner --}}
         <div class="h-48 md:h-64 w-full bg-gradient-to-r from-blue-100 to-indigo-100 relative">
             @if($store->banner_image)
-                <img src="{{ url('storage/' . $store->banner_image) }}" alt="بنر فروشگاه" class="w-full h-full object-cover">
+                <img src="{{ asset('storage/' . $store->banner_image) }}" alt="بنر فروشگاه" class="w-full h-full object-cover">
             @endif
             <div class="absolute inset-0 bg-gray-900/10"></div>
         </div>
@@ -18,7 +18,7 @@
                 <div class="w-32 h-32 rounded-2xl bg-white p-2 shadow-lg border border-gray-100 shrink-0 relative">
                     <div class="w-full h-full rounded-xl bg-gray-50 flex items-center justify-center border border-gray-100 overflow-hidden">
                         @if($store->logo_image)
-                            <img src="{{ url('storage/' . $store->logo_image) }}" alt="{{ $store->store_name }}" class="w-full h-full object-cover">
+                            <img src="{{ asset('storage/' . $store->logo_image) }}" alt="{{ $store->store_name }}" class="w-full h-full object-cover">
                         @else
                             <span class="material-symbols-outlined text-primary text-5xl">storefront</span>
                         @endif

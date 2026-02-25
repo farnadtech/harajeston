@@ -82,13 +82,17 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
+                                        @php
+                                            $highestBid = $listing->bids()->orderBy('amount', 'desc')->first();
+                                            $currentPrice = $highestBid ? $highestBid->amount : $listing->starting_price;
+                                        @endphp
                                         <div class="text-sm font-bold text-gray-900">
-                                            @persian(number_format($listing->current_price))
+                                            @persian(number_format($currentPrice))
                                             <span class="text-xs font-normal text-gray-500">تومان</span>
                                         </div>
-                                        @if($listing->current_price > $listing->starting_price)
+                                        @if($currentPrice > $listing->starting_price)
                                             <div class="text-xs text-green-500 mt-0.5">
-                                                +@persian(number_format((($listing->current_price - $listing->starting_price) / $listing->starting_price) * 100, 0))٪
+                                                +@persian(number_format((($currentPrice - $listing->starting_price) / $listing->starting_price) * 100, 0))٪
                                             </div>
                                         @endif
                                     </td>

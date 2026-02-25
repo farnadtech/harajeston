@@ -34,7 +34,17 @@ class ListingImage extends Model
     // Accessor for full URL
     public function getUrlAttribute(): string
     {
-        return asset('storage/' . $this->file_path);
+        // Use url() helper to generate full URL with APP_URL
+        return url('storage/' . $this->file_path);
+    }
+    
+    // Get image path for use in views
+    public static function getImageUrl(?string $filePath): string
+    {
+        if (!$filePath) {
+            return url('images/no-image.png');
+        }
+        return url('storage/' . $filePath);
     }
 
     // Scope for ordering

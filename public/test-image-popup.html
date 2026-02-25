@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست Popup خطای تصویر</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6">تست Popup خطای تصویر</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-4">
+            <label class="block text-gray-700 font-bold mb-2">انتخاب تصاویر</label>
+            <input type="file" id="imageInput" accept="image/*" multiple class="w-full">
+            <p class="text-xs text-gray-500 mt-1">فرمت‌های مجاز: JPG, PNG, GIF - حداکثر حجم هر تصویر: 2MB</p>
+        </div>
+
+        <button onclick="showErrorPopup('تست عنوان', 'این یک پیام تست است')" class="bg-blue-600 text-white px-6 py-2 rounded-lg">
+            نمایش Popup تست
+        </button>
+    </div>
+
+    <!-- Error Popup Modal -->
+    <div id="errorPopup" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all scale-95 opacity-0" style="transition: all 0.2s ease-out;">
+            <div class="p-6">
+                <div class="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 rounded-full mb-4">
+                    <span class="material-symbols-outlined text-red-600 text-4xl">error</span>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 text-center mb-2" id="errorPopupTitle">خطا</h3>
+                <p class="text-gray-600 text-center mb-6 leading-relaxed" id="errorPopupMessage"></p>
+                <button onclick="closeErrorPopup()" class="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition-colors font-medium shadow-lg hover:shadow-xl">
+                    متوجه شدم
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Error Popup Functions
+        function showErrorPopup(title, message) {
+            const popup = document.getElementById('errorPopup');
+            const titleEl = document.getElementById('errorPopupTitle');
+            const messageEl = document.getElementById('errorPopupMessage');
+            
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            
+            popup.style.display = 'flex';
+            popup.classList.remove('hidden');
+            
+            // Add animation
+            setTimeout(() => {
+                popup.querySelector('.bg-white').style.transform = 'scale(1)';
+                popup.querySelector('.bg-white').style.opacity = '1';
+            }, 10);
+        }
+
+        function closeErrorPopup() {
+            const popup = document.getElementById('errorPopup');
+            popup.querySelector('.bg-white').style.transform = 'scale(0.95)';
+            popup.querySelector('.bg-white').style.opacity = '0';
+            
+            setTimeout(() => {
+                popup.style.display = 'none';
+                popup.classList.add('hidden');
+            }, 200);
+        }
+
+        // Close popup on background click
+        document.getElementById('errorPopup')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeErrorPopup();
+            }
+        });
+
+        // Close popup on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeErrorPopup();
+            }
+        });
+
+        // Image validation
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            
+            if (files.length > 8) {
+                showErrorPopup('تعداد تصاویر بیش از حد مجاز', 'حداکثر 8 تصویر می‌توانید انتخاب کنید.');
+                e.target.value = '';
+                return;
+            }
+            
+            files.forEach((file) => {
+                if (file.size > 2 * 1024 * 1024) {
+                    showErrorPopup('حجم تصویر بیش از حد مجاز', `حجم تصویر "${file.name}" بیش از 2MB است. لطفاً تصویری با حجم کمتر انتخاب کنید.`);
+                    e.target.value = '';
+                    return;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

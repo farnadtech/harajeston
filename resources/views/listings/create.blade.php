@@ -293,6 +293,22 @@
             </a>
         </div>
     </form>
+
+    <!-- Error Popup Modal -->
+    <div id="errorPopup" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all scale-95 opacity-0" style="transition: all 0.2s ease-out;">
+            <div class="p-6">
+                <div class="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 rounded-full mb-4">
+                    <span class="material-symbols-outlined text-red-600 text-4xl">error</span>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 text-center mb-2" id="errorPopupTitle">خطا</h3>
+                <p class="text-gray-600 text-center mb-6 leading-relaxed" id="errorPopupMessage"></p>
+                <button onclick="closeErrorPopup()" class="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition-colors font-medium shadow-lg hover:shadow-xl">
+                    متوجه شدم
+                </button>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -300,6 +316,50 @@
 <script>
 const FORCE_DURATION = {{ $forceDuration ? 'true' : 'false' }};
 const DURATION_DAYS = {{ $durationDays }};
+
+// Error Popup Functions
+function showErrorPopup(title, message) {
+    const popup = document.getElementById('errorPopup');
+    const titleEl = document.getElementById('errorPopupTitle');
+    const messageEl = document.getElementById('errorPopupMessage');
+    
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    
+    popup.style.display = 'flex';
+    popup.classList.remove('hidden');
+    
+    // Add animation
+    setTimeout(() => {
+        popup.querySelector('.bg-white').style.transform = 'scale(1)';
+        popup.querySelector('.bg-white').style.opacity = '1';
+    }, 10);
+}
+
+function closeErrorPopup() {
+    const popup = document.getElementById('errorPopup');
+    popup.querySelector('.bg-white').style.transform = 'scale(0.95)';
+    popup.querySelector('.bg-white').style.opacity = '0';
+    
+    setTimeout(() => {
+        popup.style.display = 'none';
+        popup.classList.add('hidden');
+    }, 200);
+}
+
+// Close popup on background click
+document.getElementById('errorPopup')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeErrorPopup();
+    }
+});
+
+// Close popup on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeErrorPopup();
+    }
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     const startsAtInput = document.getElementById('starts_at');
@@ -359,7 +419,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
     const checkedMethods = document.querySelectorAll('.shipping-method-checkbox:checked');
     if (checkedMethods.length === 0) {
         e.preventDefault();
-        alert('لطفاً حداقل یک روش ارسال را انتخاب کنید.');
+        showErrorPopup('روش ارسال انتخاب نشده', 'لطفاً حداقل یک روش ارسال را انتخاب کنید.');
         document.getElementById('shippingMethodsContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
     }
@@ -380,36 +440,76 @@ document.querySelector('form').addEventListener('submit', function(e) {
     });
 @endif
 
+// Keep track of selected files
+let selectedFiles = [];
+
+function removeImage(index) {
+    selectedFiles.splice(index, 1);
+    
+    // Update input files
+    const input = document.getElementById('images');
+    const dataTransfer = new DataTransfer();
+    selectedFiles.forEach(file => dataTransfer.items.add(file));
+    input.files = dataTransfer.files;
+    
+    // Trigger change event to refresh preview
+    input.dispatchEvent(new Event('change'));
+}
+
 document.getElementById('images').addEventListener('change', function(e) {
-    const files = Array.from(e.target.files);
+    const newFiles = Array.from(e.target.files);
     const previewContainer = document.getElementById('imagePreview');
+    
+    // Add new files to existing ones
+    newFiles.forEach(file => {
+        if (!selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+            selectedFiles.push(file);
+        }
+    });
+    
+    // Check total count
+    if (selectedFiles.length > 8) {
+        showErrorPopup('تعداد تصاویر بیش از حد مجاز', 'حداکثر 8 تصویر می‌توانید انتخاب کنید.');
+        selectedFiles = selectedFiles.slice(0, 8);
+    }
+    
+    // Update input files
+    const dataTransfer = new DataTransfer();
+    selectedFiles.forEach(file => dataTransfer.items.add(file));
+    e.target.files = dataTransfer.files;
+    
+    // Clear and rebuild preview
     previewContainer.innerHTML = '';
-    if (files.length === 0) {
+    
+    if (selectedFiles.length === 0) {
         previewContainer.style.display = 'none';
         return;
     }
-    if (files.length > 8) {
-        alert('حداکثر 8 تصویر می‌توانید انتخاب کنید.');
-        e.target.value = '';
-        return;
-    }
+    
     previewContainer.style.display = 'grid';
-    files.forEach((file, index) => {
+    
+    selectedFiles.forEach((file, index) => {
         if (file.size > 2 * 1024 * 1024) {
-            alert(`حجم تصویر "${file.name}" بیش از 2MB است.`);
+            showErrorPopup('حجم تصویر بیش از حد مجاز', `حجم تصویر "${file.name}" بیش از 2MB است. لطفاً تصویری با حجم کمتر انتخاب کنید.`);
+            // Remove this file
+            selectedFiles.splice(index, 1);
             return;
         }
         const reader = new FileReader();
         reader.onload = function(event) {
             const div = document.createElement('div');
             div.className = 'relative group';
+            const displayNumber = index + 1;
             div.innerHTML = `
                 <img src="${event.target.result}" 
                      class="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
-                     alt="Preview ${index + 1}">
-                <div class="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded">
-                    ${index === 0 ? 'تصویر اصلی' : index + 1}
+                     alt="Preview ${displayNumber}">
+                <div class="absolute top-2 right-2 ${index === 0 ? 'bg-primary' : 'bg-gray-600'} text-white text-xs px-2 py-1 rounded">
+                    ${index === 0 ? 'تصویر اصلی' : displayNumber}
                 </div>
+                <button type="button" onclick="removeImage(${index})" class="absolute top-2 left-2 bg-red-500 text-white w-6 h-6 rounded-full hover:bg-red-600 flex items-center justify-center">
+                    ×
+                </button>
                 <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
                     <span class="text-white opacity-0 group-hover:opacity-100 text-sm">
                         ${(file.size / 1024).toFixed(0)} KB

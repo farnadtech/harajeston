@@ -58,7 +58,13 @@ class NotificationController extends Controller
             return response()->json(['success' => true]);
         }
 
-        return redirect($notification->link ?? route('notifications.index'));
+        // If notification has a link, redirect to it
+        if ($notification->link) {
+            return redirect($notification->link);
+        }
+
+        // Otherwise go back to notifications
+        return redirect()->route('user.notifications.index');
     }
 
     public function markAllAsRead()

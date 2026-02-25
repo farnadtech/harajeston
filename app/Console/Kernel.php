@@ -20,6 +20,9 @@ class Kernel extends ConsoleKernel
         
         // Process finalization timeout every hour
         $schedule->job(new \App\Jobs\ProcessFinalizationTimeout)->hourly();
+        
+        // Release auction payments daily
+        $schedule->command('auction:release-payments')->daily();
     }
 
     /**

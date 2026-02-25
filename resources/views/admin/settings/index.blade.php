@@ -407,6 +407,56 @@
             </form>
         </div>
 
+        <!-- تنظیمات آزادسازی پول حراجی -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات آزادسازی پول حراجی</h2>
+            
+            <form action="{{ route('admin.settings.auction-release.update') }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="mb-6">
+                    <label for="auction_auto_release_days" class="block text-gray-700 font-bold mb-2">
+                        تعداد روز تا آزادسازی خودکار پول
+                    </label>
+                    <input type="number" 
+                           id="auction_auto_release_days" 
+                           name="auction_auto_release_days" 
+                           value="{{ $auctionReleaseSettings['auto_release_days'] ?? 7 }}"
+                           class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           min="1" 
+                           max="90">
+                    <p class="text-sm text-gray-600 mt-2">
+                        بعد از تحویل کالا، پول خریدار به مدت این تعداد روز بلاک می‌ماند. بعد از این مدت، به صورت خودکار کمیسیون کسر شده و مابقی به فروشنده واریز می‌شود.
+                        <br>
+                        <strong>توصیه:</strong> 7 روز برای اطمینان از رضایت خریدار مناسب است.
+                    </p>
+                </div>
+
+                <div class="mb-6">
+                    <label for="auction_finalize_deadline_hours" class="block text-gray-700 font-bold mb-2">
+                        مهلت تکمیل پرداخت حراجی (ساعت)
+                    </label>
+                    <input type="number" 
+                           id="auction_finalize_deadline_hours" 
+                           name="auction_finalize_deadline_hours" 
+                           value="{{ $auctionReleaseSettings['finalize_deadline_hours'] ?? 24 }}"
+                           class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           min="1" 
+                           max="168">
+                    <p class="text-sm text-gray-600 mt-2">
+                        برنده حراجی باید ظرف این مدت، مبلغ باقیمانده را پرداخت کند. در غیر این صورت، سپرده او ضبط می‌شود.
+                        <br>
+                        <strong>توصیه:</strong> 24 ساعت (1 روز) مناسب است.
+                    </p>
+                </div>
+
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    ذخیره تنظیمات آزادسازی پول
+                </button>
+            </form>
+        </div>
+
         <!-- تنظیمات کیف پول -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات کیف پول</h2>

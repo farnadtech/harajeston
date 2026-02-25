@@ -111,12 +111,15 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        // Stats
-        $activeBidsCount = Bid::where('user_id', $user->id)
-            ->whereHas('listing', function ($q) {
-                $q->where('status', 'active');
+        // Get unique active listings where user has bids
+        $activeListingsWithBids = Listing::where('status', 'active')
+            ->whereHas('bids', function($q) use ($user) {
+                $q->where('user_id', $user->id);
             })
-            ->count();
+            ->get();
+
+        // Stats - count unique listings, not total bids
+        $activeBidsCount = $activeListingsWithBids->count();
 
         $wonAuctionsCount = Listing::where('current_winner_id', $user->id)
             ->where('status', 'completed')
@@ -124,17 +127,22 @@ class DashboardController extends Controller
 
         $totalOrdersCount = Order::where('buyer_id', $user->id)->count();
 
-        // My active bids
-        $myActiveBids = Bid::where('user_id', $user->id)
-            ->whereHas('listing', function ($q) {
-                $q->where('status', 'active');
-            })
-            ->with(['listing' => function($q) {
-                $q->with('images');
-            }])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
+        // My active bids - get latest bid per listing
+        $myActiveBids = collect();
+        foreach ($activeListingsWithBids->take(5) as $listing) {
+            $latestBid = $listing->bids()
+                ->where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->first();
+            
+            if ($latestBid) {
+                // Check if user is still winning
+                $highestBid = $listing->bids()->orderBy('amount', 'desc')->first();
+                $latestBid->is_winning = ($highestBid && $highestBid->id === $latestBid->id);
+                $latestBid->listing = $listing->load('images');
+                $myActiveBids->push($latestBid);
+            }
+        }
 
         // Recent orders
         $recentOrders = Order::where('buyer_id', $user->id)

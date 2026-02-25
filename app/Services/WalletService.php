@@ -34,8 +34,10 @@ class WalletService
             // Record transaction
             WalletTransaction::create([
                 'wallet_id' => $wallet->id,
+                'user_id' => $user->id,
                 'type' => 'deposit',
                 'amount' => $amount,
+                'final_amount' => $amount,
                 'balance_before' => $beforeBalance,
                 'balance_after' => $wallet->balance,
                 'frozen_before' => $wallet->frozen,
@@ -93,8 +95,10 @@ class WalletService
             // Record transaction
             WalletTransaction::create([
                 'wallet_id' => $wallet->id,
+                'user_id' => $user->id,
                 'type' => 'withdrawal',
                 'amount' => $amount,
+                'final_amount' => $amount,
                 'balance_before' => $beforeBalance,
                 'balance_after' => $wallet->balance,
                 'frozen_before' => $wallet->frozen,
@@ -136,8 +140,10 @@ class WalletService
             // Record transaction
             WalletTransaction::create([
                 'wallet_id' => $wallet->id,
+                'user_id' => $user->id,
                 'type' => 'freeze_deposit',
                 'amount' => $amount,
+                'final_amount' => $amount,
                 'balance_before' => $beforeBalance,
                 'balance_after' => $wallet->balance,
                 'frozen_before' => $beforeFrozen,
@@ -175,8 +181,10 @@ class WalletService
             // Record transaction
             WalletTransaction::create([
                 'wallet_id' => $wallet->id,
+                'user_id' => $user->id,
                 'type' => 'release_deposit',
                 'amount' => $amount,
+                'final_amount' => $amount,
                 'balance_before' => $beforeBalance,
                 'balance_after' => $wallet->balance,
                 'frozen_before' => $beforeFrozen,
@@ -213,8 +221,10 @@ class WalletService
             // Record transaction
             WalletTransaction::create([
                 'wallet_id' => $wallet->id,
+                'user_id' => $user->id,
                 'type' => 'deduct_frozen',
                 'amount' => $amount,
+                'final_amount' => $amount,
                 'balance_before' => $beforeBalance,
                 'balance_after' => $wallet->balance,
                 'frozen_before' => $beforeFrozen,

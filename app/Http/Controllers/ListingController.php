@@ -248,7 +248,12 @@ class ListingController extends Controller
 
         // Apply status filter
         if ($status !== 'all') {
-            $query->where('status', $status);
+            if ($status === 'completed') {
+                // تمام شده شامل هم ended و هم completed
+                $query->whereIn('status', ['ended', 'completed']);
+            } else {
+                $query->where('status', $status);
+            }
         }
 
         // Get counts for each status
@@ -261,7 +266,7 @@ class ListingController extends Controller
             })->where('status', 'active')->count(),
             'completed' => Listing::whereHas('bids', function($q) use ($user) {
                 $q->where('user_id', $user->id);
-            })->where('status', 'completed')->count(),
+            })->whereIn('status', ['ended', 'completed'])->count(),
         ];
 
         // Get listings with user's bid info
@@ -363,7 +368,25 @@ class ListingController extends Controller
             }
         ]);
 
-        return view('listings.show', compact('listing'));
+        // Calculate amounts for finalization modal
+        $totalAmount = null;
+        $depositAmount = null;
+        $remainingAmount = null;
+        
+        if ($listing->status === 'ended' && auth()->check() && $listing->current_winner_id === auth()->id()) {
+            $winningBid = $listing->bids()
+                ->where('user_id', auth()->id())
+                ->orderBy('amount', 'desc')
+                ->first();
+            
+            if ($winningBid) {
+                $totalAmount = $winningBid->amount;
+                $depositAmount = $listing->required_deposit;
+                $remainingAmount = $totalAmount - $depositAmount;
+            }
+        }
+
+        return view('listings.show', compact('listing', 'totalAmount', 'depositAmount', 'remainingAmount'));
     }
 
     /**
@@ -459,6 +482,23 @@ class ListingController extends Controller
             return redirect()
                 ->route('listings.show', $listing)
                 ->with('error', 'خطا در شرکت در مزایده: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Finalize auction - winner pays and order is created
+     */
+    public function finalize(Request $request, Listing $listing)
+    {
+        try {
+            $auctionService = app(\App\Services\AuctionService::class);
+            $order = $auctionService->finalizeAuction($listing, auth()->user());
+            
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('success', 'خرید با موفقیت تکمیل شد! سفارش شما ثبت گردید.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
     }
 }

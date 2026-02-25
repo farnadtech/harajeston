@@ -22,8 +22,9 @@
         <!-- Notifications List -->
         <div class="divide-y divide-gray-100">
             @forelse($notifications as $notification)
-                <a href="{{ $notification->link ? route('user.notifications.read', $notification->id) : '#' }}"
-                   class="block px-6 py-4 hover:bg-gray-50 transition-colors {{ !$notification->is_read ? 'bg-blue-50/50' : '' }}">
+                <a href="{{ $notification->link ? (auth()->user()->role === 'admin' ? route('admin.notifications.read', $notification->id) : route('user.notifications.read', $notification->id)) : '#' }}"
+                   class="block px-6 py-4 hover:bg-gray-50 transition-colors {{ !$notification->is_read ? 'bg-blue-50/50' : '' }}"
+                   @if(!$notification->link) onclick="event.preventDefault();" style="cursor: default;" @endif>
                     <div class="flex items-start gap-4">
                         <div class="w-12 h-12 rounded-full bg-{{ $notification->color }}-100 flex items-center justify-center flex-shrink-0">
                             <span class="material-symbols-outlined text-{{ $notification->color }}-600 text-2xl">{{ $notification->icon }}</span>
@@ -59,7 +60,8 @@
     <x-slot name="scripts">
         <script>
         function markAllAsRead() {
-            fetch('{{ route('user.notifications.mark-all-read') }}', {
+            const route = '{{ auth()->user()->role === 'admin' ? route('admin.notifications.mark-all-read') : route('user.notifications.mark-all-read') }}';
+            fetch(route, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

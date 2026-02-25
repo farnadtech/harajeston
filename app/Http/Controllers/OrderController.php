@@ -63,4 +63,50 @@ class OrderController extends Controller
             ->route('orders.show', $order)
             ->with('success', 'سفارش با موفقیت لغو شد.');
     }
+
+    /**
+     * Release payment to seller early (buyer only, for auction orders)
+     */
+    public function releasePayment(Order $order)
+    {
+        // Check authorization
+        if ($order->buyer_id !== auth()->id()) {
+            abort(403, 'شما مجاز به انجام این عملیات نیستید.');
+        }
+
+        // Check if order is delivered
+        if ($order->status !== 'delivered') {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'فقط سفارشات تحویل داده شده قابل آزادسازی هستند.');
+        }
+
+        // Check if already released
+        if ($order->payment_released_at) {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'پول این سفارش قبلاً آزاد شده است.');
+        }
+
+        // Check if it's an auction order
+        $isAuctionOrder = $order->items->first()?->listing?->required_deposit > 0;
+        if (!$isAuctionOrder) {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'این سفارش مربوط به حراجی نیست.');
+        }
+
+        try {
+            $auctionService = app(\App\Services\AuctionService::class);
+            $auctionService->releasePaymentToSeller($order);
+
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('success', 'پول فروشنده با موفقیت آزاد شد.');
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'خطا در آزادسازی پول: ' . $e->getMessage());
+        }
+    }
 }

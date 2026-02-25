@@ -31,7 +31,7 @@ class NotificationService
             ),
             'icon' => 'gavel',
             'color' => 'blue',
-            'link' => route('admin.listings.show', $listing->id),
+            'link' => $seller->role === 'admin' ? route('admin.listings.show', $listing) : route('listings.show', $listing),
             'is_read' => false,
         ]);
         
@@ -40,7 +40,30 @@ class NotificationService
             'پیشنهاد %s تومان برای "%s" ثبت شد',
             number_format($bid->amount),
             $listing->title
-        ), 'gavel', 'blue', route('admin.listings.show', $listing->id));
+        ), 'gavel', 'blue', route('admin.listings.show', $listing));
+    }
+    
+    /**
+     * Notify previous highest bidder that they've been outbid
+     */
+    public function notifyOutbid(Bid $newBid, User $previousBidder): void
+    {
+        $listing = $newBid->listing;
+        
+        Notification::create([
+            'user_id' => $previousBidder->id,
+            'type' => 'outbid',
+            'title' => 'پیشنهاد بالاتری ثبت شد',
+            'message' => sprintf(
+                'پیشنهاد %s تومان برای "%s" ثبت شد. پیشنهاد شما دیگر بالاترین پیشنهاد نیست',
+                number_format($newBid->amount),
+                $listing->title
+            ),
+            'icon' => 'trending_up',
+            'color' => 'orange',
+            'link' => route('listings.show', $listing),
+            'is_read' => false,
+        ]);
     }
     
     /**
@@ -96,9 +119,9 @@ class NotificationService
             'type' => 'order',
             'title' => 'سفارش جدید',
             'message' => sprintf(
-                'سفارش #%d به مبلغ %s تومان ثبت شد',
-                $order->id,
-                number_format($order->total_amount)
+                'سفارش #%s به مبلغ %s تومان ثبت شد',
+                $order->order_number,
+                number_format($order->total)
             ),
             'icon' => 'shopping_bag',
             'color' => 'green',
@@ -112,9 +135,9 @@ class NotificationService
             'type' => 'order',
             'title' => 'سفارش شما ثبت شد',
             'message' => sprintf(
-                'سفارش #%d به مبلغ %s تومان با موفقیت ثبت شد',
-                $order->id,
-                number_format($order->total_amount)
+                'سفارش #%s به مبلغ %s تومان با موفقیت ثبت شد',
+                $order->order_number,
+                number_format($order->total)
             ),
             'icon' => 'shopping_bag',
             'color' => 'green',
@@ -133,19 +156,20 @@ class NotificationService
     /**
      * Create a notification for auction won
      */
-    public function notifyAuctionWon(Listing $listing, User $winner): void
+    public function notifyAuctionWon(Listing $listing, User $winner, int $winningAmount): void
     {
         Notification::create([
             'user_id' => $winner->id,
             'type' => 'auction_won',
-            'title' => 'برنده مزایده شدید!',
+            'title' => 'برنده مزایده شدید! 🎉',
             'message' => sprintf(
-                'شما برنده مزایده "%s" شدید. لطفا برای نهایی‌سازی خرید اقدام کنید',
-                $listing->title
+                'تبریک! شما برنده مزایده "%s" با مبلغ %s تومان شدید. برای تکمیل خرید و پرداخت مبلغ باقیمانده، به صفحه مزایده مراجعه کنید.',
+                $listing->title,
+                number_format($winningAmount)
             ),
             'icon' => 'celebration',
             'color' => 'green',
-            'link' => route('listings.show', $listing->id),
+            'link' => route('listings.show', $listing->slug),
             'is_read' => false,
         ]);
     }

@@ -28,6 +28,7 @@ class PaymentGatewayService
         // ایجاد تراکنش
         $transaction = WalletTransaction::create([
             'wallet_id' => $user->wallet->id,
+            'user_id' => $user->id,
             'type' => 'deposit',
             'amount' => $amount,
             'tax_amount' => $taxAmount,

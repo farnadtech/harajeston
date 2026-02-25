@@ -395,18 +395,18 @@
                                 @endif
                             </p>
                             <p class="text-xl font-black text-primary mt-1">
-                                @if($listing->bids->count() > 0)
-                                    {{ \App\Services\PersianNumberService::convertToPersian(number_format($listing->current_price)) }}
-                                @else
-                                    {{ \App\Services\PersianNumberService::convertToPersian(number_format($listing->starting_price)) }}
-                                @endif
+                                @php
+                                    $highestBid = $listing->bids()->orderBy('amount', 'desc')->first();
+                                    $currentPrice = $highestBid ? $highestBid->amount : $listing->starting_price;
+                                @endphp
+                                {{ \App\Services\PersianNumberService::convertToPersian(number_format($currentPrice)) }}
                                 <span class="text-xs font-normal text-gray-400">تومان</span>
                             </p>
                         </div>
                         <div class="text-left">
                             <p class="text-xs text-gray-500">تعداد پیشنهادها</p>
                             <p class="text-lg font-bold text-gray-900 mt-1">
-                                {{ \App\Services\PersianNumberService::convertToPersian($listing->bids->count()) }} نفر
+                                {{ \App\Services\PersianNumberService::convertToPersian($listing->bids->count()) }} پیشنهاد
                             </p>
                         </div>
                     </div>

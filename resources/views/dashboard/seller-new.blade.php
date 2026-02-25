@@ -178,7 +178,7 @@
                                 <div class="flex items-center gap-3">
                                     @if($listing->images->count() > 0)
                                         <div class="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
-                                            <img alt="{{ $listing->title }}" class="w-full h-full object-cover" src="{{ Storage::url($listing->images->first()->image_path) }}"/>
+                                            <img alt="{{ $listing->title }}" class="w-full h-full object-cover" src="{{ $listing->images->first()->url }}"/>
                                         </div>
                                     @else
                                         <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">

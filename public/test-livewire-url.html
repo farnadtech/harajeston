@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Livewire URL</title>
+</head>
+<body>
+    <h1>Testing Livewire JS URL</h1>
+    <p>Check console for results</p>
+    
+    <script>
+        // Test different possible URLs
+        const urls = [
+            '/haraj/public/livewire/livewire.js',
+            'http://localhost/haraj/public/livewire/livewire.js',
+            '/livewire/livewire.js'
+        ];
+        
+        urls.forEach(url => {
+            fetch(url)
+                .then(response => {
+                    console.log(`${url}: ${response.status} ${response.statusText}`);
+                })
+                .catch(error => {
+                    console.error(`${url}: ERROR - ${error.message}`);
+                });
+        });
+    </script>
+</body>
+</html>

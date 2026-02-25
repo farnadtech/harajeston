@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست انتخاب چند تصویر</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow p-6">
+        <h1 class="text-2xl font-bold mb-6">تست انتخاب چند تصویر</h1>
+        
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2">انتخاب تصاویر (با multiple)</label>
+            <input type="file" 
+                   id="multipleImages" 
+                   multiple 
+                   accept="image/*"
+                   class="w-full border rounded p-2">
+            <p class="text-sm text-gray-600 mt-1">باید بتوانید چند تصویر انتخاب کنید</p>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2">انتخاب تصاویر (بدون multiple)</label>
+            <input type="file" 
+                   id="singleImage" 
+                   accept="image/*"
+                   class="w-full border rounded p-2">
+            <p class="text-sm text-gray-600 mt-1">فقط یک تصویر میتوانید انتخاب کنید</p>
+        </div>
+
+        <div id="result" class="mt-6 p-4 bg-gray-50 rounded"></div>
+    </div>
+
+    <script>
+        document.getElementById('multipleImages').addEventListener('change', function(e) {
+            const files = e.target.files;
+            document.getElementById('result').innerHTML = `
+                <h3 class="font-bold mb-2">تصاویر انتخاب شده (multiple):</h3>
+                <p>تعداد: ${files.length}</p>
+                <ul class="list-disc list-inside">
+                    ${Array.from(files).map(f => `<li>${f.name} (${(f.size / 1024).toFixed(2)} KB)</li>`).join('')}
+                </ul>
+            `;
+        });
+
+        document.getElementById('singleImage').addEventListener('change', function(e) {
+            const files = e.target.files;
+            document.getElementById('result').innerHTML = `
+                <h3 class="font-bold mb-2">تصویر انتخاب شده (single):</h3>
+                <p>تعداد: ${files.length}</p>
+                <ul class="list-disc list-inside">
+                    ${Array.from(files).map(f => `<li>${f.name} (${(f.size / 1024).toFixed(2)} KB)</li>`).join('')}
+                </ul>
+            `;
+        });
+    </script>
+</body>
+</html>

@@ -130,6 +130,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/listings', [ListingController::class, 'store'])->name('listings.store');
     Route::put('/listings/{listing}', [ListingController::class, 'update'])->name('listings.update');
     Route::post('/listings/{listing}/participate', [ListingController::class, 'participate'])->name('listings.participate');
+    Route::post('/listings/{listing}/finalize', [ListingController::class, 'finalize'])->name('listings.finalize');
 });
 
 // Listings show route - MUST come AFTER /listings/create to avoid conflicts
@@ -164,6 +165,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     Route::put('/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
+    Route::post('/orders/{order}/release-payment', [OrderController::class, 'releasePayment'])->name('orders.releasePayment');
     
     // Seller Reviews
     Route::get('/orders/{order}/review', [\App\Http\Controllers\SellerReviewController::class, 'create'])->name('seller-reviews.create');
@@ -172,7 +174,7 @@ Route::middleware('auth')->group(function () {
     // User Notifications (non-admin)
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('user.notifications.index');
     Route::get('/notifications/recent', [\App\Http\Controllers\NotificationController::class, 'getRecent'])->name('user.notifications.recent');
-    Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('user.notifications.read');
+    Route::get('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('user.notifications.read');
     Route::post('/notifications/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('user.notifications.mark-all-read');
     
     // Admin Routes
@@ -188,6 +190,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/wallet', [SettingsController::class, 'updateWallet'])->name('admin.settings.wallet.update');
         Route::put('/settings/loser-fee', [SettingsController::class, 'updateLoserFee'])->name('admin.settings.loser-fee.update');
         Route::put('/settings/forfeit', [SettingsController::class, 'updateForfeit'])->name('admin.settings.forfeit.update');
+        Route::put('/settings/auction-release', [SettingsController::class, 'updateAuctionRelease'])->name('admin.settings.auction-release.update');
         Route::put('/settings/listing', [SettingsController::class, 'updateListing'])->name('admin.settings.listing.update');
 
         // Payment Gateways
@@ -270,7 +273,7 @@ Route::middleware('auth')->group(function () {
         // Notifications
         Route::get('/notifications', [\App\Http\Controllers\Admin\NotificationController::class, 'index'])->name('admin.notifications.index');
         Route::get('/notifications/recent', [\App\Http\Controllers\Admin\NotificationController::class, 'getRecent'])->name('admin.notifications.recent');
-        Route::post('/notifications/{id}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'markAsRead'])->name('admin.notifications.read');
+        Route::get('/notifications/read/{id}', [\App\Http\Controllers\Admin\NotificationController::class, 'markAsRead'])->name('admin.notifications.read');
         Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Admin\NotificationController::class, 'markAllAsRead'])->name('admin.notifications.mark-all-read');
         
         // Comments & Questions Management

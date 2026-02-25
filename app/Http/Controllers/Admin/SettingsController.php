@@ -40,13 +40,18 @@ class SettingsController extends Controller
         $forfeitSettings = [
             'to_site_percentage' => SiteSetting::get('forfeit_to_site_percentage', 100),
         ];
+        
+        $auctionReleaseSettings = [
+            'auto_release_days' => SiteSetting::get('auction_auto_release_days', 7),
+            'finalize_deadline_hours' => SiteSetting::get('auction_finalize_deadline_hours', 24),
+        ];
 
         $listingSettings = [
             'require_approval' => SiteSetting::get('require_listing_approval', true),
             'default_show_before_start' => SiteSetting::get('default_show_before_start', false),
         ];
 
-        return view('admin.settings.index', compact('depositSettings', 'commissionSettings', 'sellerSettings', 'auctionDurationSettings', 'walletSettings', 'loserFeeSettings', 'forfeitSettings', 'listingSettings'));
+        return view('admin.settings.index', compact('depositSettings', 'commissionSettings', 'sellerSettings', 'auctionDurationSettings', 'walletSettings', 'loserFeeSettings', 'forfeitSettings', 'auctionReleaseSettings', 'listingSettings'));
     }
 
     /**
@@ -191,5 +196,23 @@ class SettingsController extends Controller
 
         return redirect()->route('admin.settings.index')
             ->with('success', 'تنظیمات آگهی‌ها با موفقیت به‌روزرسانی شد.');
+    }
+
+    /**
+     * به‌روزرسانی تنظیمات آزادسازی پول حراجی
+     */
+    public function updateAuctionRelease(Request $request)
+    {
+        $request->validate([
+            'auction_auto_release_days' => 'required|integer|min:1|max:90',
+            'auction_finalize_deadline_hours' => 'required|integer|min:1|max:168',
+        ]);
+
+        SiteSetting::set('auction_auto_release_days', $request->auction_auto_release_days);
+        SiteSetting::set('auction_finalize_deadline_hours', $request->auction_finalize_deadline_hours);
+
+        return redirect()
+            ->route('admin.settings.index')
+            ->with('success', 'تنظیمات آزادسازی پول با موفقیت به‌روزرسانی شد.');
     }
 }

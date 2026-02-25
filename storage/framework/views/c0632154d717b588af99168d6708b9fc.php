@@ -507,9 +507,33 @@ unset($__errorArgs, $__bag); ?>
                         
                         <p class="text-sm text-gray-600 mb-4">حداکثر 8 تصویر می‌توانید آپلود کنید. اولین تصویر به عنوان تصویر اصلی نمایش داده می‌شود.</p>
                         
+                        <!-- عکس‌های فعلی -->
+                        <?php if($listing->images && $listing->images->count() > 0): ?>
+                        <div class="mb-6">
+                            <h4 class="text-sm font-medium text-gray-700 mb-3">تصاویر فعلی (برای انتخاب تصویر اصلی روی عکس کلیک کنید)</h4>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <?php $__currentLoopData = $listing->images; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $image): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <div class="relative group cursor-pointer" id="existing-image-<?php echo e($image->id); ?>" onclick="setMainImage(<?php echo e($image->id); ?>, 'existing')">
+                                    <img src="<?php echo e($image->url); ?>" alt="تصویر محصول" class="w-full h-32 object-cover rounded-lg border-2 <?php echo e($loop->first ? 'border-primary' : 'border-gray-200'); ?> hover:border-primary/50 transition-all">
+                                    <button type="button" 
+                                            onclick="event.stopPropagation(); showDeleteModal(<?php echo e($image->id); ?>)"
+                                            class="absolute top-2 left-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10">
+                                        <span class="material-symbols-outlined text-sm">delete</span>
+                                    </button>
+                                    <?php if($loop->first): ?>
+                                    <span class="absolute bottom-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded-full main-badge-<?php echo e($image->id); ?>">تصویر اصلی</span>
+                                    <?php else: ?>
+                                    <span class="absolute bottom-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded-full main-badge-<?php echo e($image->id); ?> hidden">تصویر اصلی</span>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">انتخاب تصاویر</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">افزودن تصاویر جدید</label>
                                 <input type="file" 
                                        name="images[]" 
                                        id="images" 
@@ -545,8 +569,12 @@ endif;
 unset($__errorArgs, $__bag); ?>
                             </div>
 
-                            <div id="imagePreview" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4" style="display: none;"></div>
+                            <div id="imagePreview" class="grid grid-cols-2 md:grid-cols-4 gap-4" style="display: none;"></div>
                         </div>
+                        
+                        <!-- Hidden inputs -->
+                        <input type="hidden" name="deleted_images" id="deleted_images" value="">
+                        <input type="hidden" name="main_image_id" id="main_image_id" value="<?php echo e($listing->images->first()->id ?? ''); ?>">
                     </div>
 
                     <!-- Tags Section -->
@@ -558,7 +586,7 @@ unset($__errorArgs, $__bag); ?>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">برچسب‌ها (با کاما جدا کنید)</label>
-                            <input type="text" name="tags" value="<?php echo e(old('tags', is_array($listing->tags) ? implode(', ', $listing->tags) : '')); ?>"
+                            <input type="text" name="tags" value="<?php echo e(old('tags', is_array($listing->tags) ? implode(', ', $listing->tags) : ($listing->tags ?? ''))); ?>"
                                    placeholder="مثال: لپتاپ, گیمینگ, ارزان"
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
                             <p class="text-xs text-gray-500 mt-1">حداکثر 5 برچسب</p>
@@ -589,6 +617,37 @@ unset($__errorArgs, $__bag); ?>
             </div>
         </div>
     </main>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="closeDeleteModal()">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-red-600 text-2xl">delete</span>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">حذف تصویر</h3>
+                    <p class="text-sm text-gray-600">این عملیات قابل بازگشت نیست</p>
+                </div>
+            </div>
+            
+            <p class="text-gray-700 mb-6">آیا از حذف این تصویر اطمینان دارید؟</p>
+            
+            <div class="flex gap-3">
+                <button type="button" 
+                        onclick="confirmDelete()"
+                        class="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-lg">delete</span>
+                    <span>بله، حذف شود</span>
+                </button>
+                <button type="button" 
+                        onclick="closeDeleteModal()"
+                        class="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors">
+                    انصراف
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Alpine.js (بدون defer) -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -666,12 +725,49 @@ function togglePriceInput(checkbox, methodId) {
     }
 }
 
+// Error Popup Functions
+function showErrorPopup(title, message) {
+    const popup = document.getElementById('errorPopup');
+    const titleEl = document.getElementById('errorPopupTitle');
+    const messageEl = document.getElementById('errorPopupMessage');
+    
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    
+    popup.style.display = 'flex';
+    popup.classList.remove('hidden');
+    
+    // Add animation
+    setTimeout(() => {
+        popup.querySelector('.bg-white').style.transform = 'scale(1)';
+        popup.querySelector('.bg-white').style.opacity = '1';
+    }, 10);
+}
+
+function closeErrorPopup() {
+    const popup = document.getElementById('errorPopup');
+    popup.querySelector('.bg-white').style.transform = 'scale(0.95)';
+    popup.querySelector('.bg-white').style.opacity = '0';
+    
+    setTimeout(() => {
+        popup.style.display = 'none';
+        popup.classList.add('hidden');
+    }, 200);
+}
+
+// Close popup on background click
+document.getElementById('errorPopup')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeErrorPopup();
+    }
+});
+
 // Form submission validation
 document.querySelector('form').addEventListener('submit', function(e) {
     const checkedMethods = document.querySelectorAll('.shipping-method-checkbox:checked');
     if (checkedMethods.length === 0) {
         e.preventDefault();
-        alert('لطفاً حداقل یک روش ارسال را انتخاب کنید.');
+        showErrorPopup('روش ارسال انتخاب نشده', 'لطفاً حداقل یک روش ارسال را انتخاب کنید.');
         document.getElementById('shippingMethodsContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
     }
@@ -707,7 +803,7 @@ document.getElementById('images').addEventListener('change', function(e) {
     }
     
     if (files.length > 8) {
-        alert('حداکثر 8 تصویر می‌توانید انتخاب کنید.');
+        showErrorPopup('تعداد تصاویر بیش از حد مجاز', 'حداکثر 8 تصویر می‌توانید انتخاب کنید.');
         e.target.value = '';
         return;
     }
@@ -716,7 +812,7 @@ document.getElementById('images').addEventListener('change', function(e) {
     
     files.forEach((file, index) => {
         if (file.size > 2 * 1024 * 1024) {
-            alert(`حجم تصویر "${file.name}" بیش از 2MB است.`);
+            showErrorPopup('حجم تصویر بیش از حد مجاز', `حجم تصویر "${file.name}" بیش از 2MB است. لطفاً تصویری با حجم کمتر انتخاب کنید.`);
             return;
         }
         
@@ -728,8 +824,8 @@ document.getElementById('images').addEventListener('change', function(e) {
                 <img src="${event.target.result}" 
                      class="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
                      alt="Preview ${index + 1}">
-                <div class="absolute top-2 right-2 bg-primary text-white text-xs px-2 py-1 rounded">
-                    ${index === 0 ? 'تصویر اصلی' : index + 1}
+                <div class="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
+                    جدید
                 </div>
                 <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
                     <span class="text-white opacity-0 group-hover:opacity-100 text-sm">
@@ -743,6 +839,134 @@ document.getElementById('images').addEventListener('change', function(e) {
     });
 });
     </script>
+    
+    <script>
+    // Array to track deleted image IDs
+    let deletedImages = [];
+    let imageToDelete = null;
+    let mainImageId = <?php echo e($listing->images->first()->id ?? 'null'); ?>;
+    
+    // Set main image
+    function setMainImage(imageId, type) {
+        // Update hidden input
+        mainImageId = imageId;
+        document.getElementById('main_image_id').value = imageId;
+        
+        // Remove all main badges
+        document.querySelectorAll('[class*="main-badge-"]').forEach(badge => {
+            badge.classList.add('hidden');
+        });
+        
+        // Remove all border highlights
+        document.querySelectorAll('[id^="existing-image-"]').forEach(img => {
+            img.querySelector('img').classList.remove('border-primary');
+            img.querySelector('img').classList.add('border-gray-200');
+        });
+        
+        // Show badge for selected image
+        const badge = document.querySelector('.main-badge-' + imageId);
+        if (badge) {
+            badge.classList.remove('hidden');
+        }
+        
+        // Highlight selected image
+        const imgContainer = document.getElementById('existing-image-' + imageId);
+        if (imgContainer) {
+            imgContainer.querySelector('img').classList.add('border-primary');
+            imgContainer.querySelector('img').classList.remove('border-gray-200');
+        }
+        
+        console.log('Main image set to:', imageId);
+    }
+    
+    // Show delete modal
+    function showDeleteModal(imageId) {
+        imageToDelete = imageId;
+        const modal = document.getElementById('deleteModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+    
+    // Close delete modal
+    function closeDeleteModal() {
+        const modal = document.getElementById('deleteModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        imageToDelete = null;
+    }
+    
+    // Confirm delete
+    function confirmDelete() {
+        if (imageToDelete) {
+            // Add to deleted array
+            deletedImages.push(imageToDelete);
+            document.getElementById('deleted_images').value = deletedImages.join(',');
+            
+            // If deleting main image, set first remaining as main
+            if (imageToDelete == mainImageId) {
+                const remainingImages = document.querySelectorAll('[id^="existing-image-"]:not([style*="display: none"])');
+                if (remainingImages.length > 1) {
+                    // Find first image that's not being deleted
+                    for (let img of remainingImages) {
+                        const imgId = img.id.replace('existing-image-', '');
+                        if (imgId != imageToDelete) {
+                            setMainImage(imgId, 'existing');
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Hide the image container with animation
+            const imageElement = document.getElementById('existing-image-' + imageToDelete);
+            if (imageElement) {
+                imageElement.style.opacity = '0';
+                imageElement.style.transform = 'scale(0.8)';
+                imageElement.style.transition = 'all 0.3s ease';
+                setTimeout(() => {
+                    imageElement.style.display = 'none';
+                }, 300);
+            }
+            
+            console.log('Image ' + imageToDelete + ' marked for deletion');
+            console.log('Deleted images:', deletedImages);
+        }
+        
+        closeDeleteModal();
+    }
+    
+    // Debug: Log form data before submit
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const deletedInput = document.getElementById('deleted_images');
+        const mainImageInput = document.getElementById('main_image_id');
+        console.log('Form submitting with deleted_images:', deletedInput.value);
+        console.log('Form submitting with main_image_id:', mainImageInput.value);
+    });
+    
+    // Close modal on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeDeleteModal();
+            closeErrorPopup();
+        }
+    });
+    </script>
+
+    <!-- Error Popup Modal -->
+    <div id="errorPopup" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all scale-95 opacity-0" style="transition: all 0.2s ease-out;">
+            <div class="p-6">
+                <div class="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 rounded-full mb-4">
+                    <span class="material-symbols-outlined text-red-600 text-4xl">error</span>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 text-center mb-2" id="errorPopupTitle">خطا</h3>
+                <p class="text-gray-600 text-center mb-6 leading-relaxed" id="errorPopupMessage"></p>
+                <button onclick="closeErrorPopup()" class="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition-colors font-medium shadow-lg hover:shadow-xl">
+                    متوجه شدم
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
 <?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/listings/edit.blade.php ENDPATH**/ ?>

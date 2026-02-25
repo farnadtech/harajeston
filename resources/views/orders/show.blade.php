@@ -221,6 +221,43 @@
                     </div>
                 @endif
 
+                @php
+                    // Check if this is an auction order and can be released early
+                    $isAuctionOrder = $order->items->first()?->listing?->required_deposit > 0;
+                    $canReleaseEarly = $order->buyer_id === auth()->id() 
+                        && $order->status === 'delivered' 
+                        && $isAuctionOrder
+                        && !$order->payment_released_at;
+                @endphp
+
+                @if($canReleaseEarly)
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">آزادسازی پول فروشنده</h2>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-info-circle text-blue-600 text-xl ml-3 mt-1"></i>
+                                <div class="text-sm text-gray-700">
+                                    <p class="mb-2">
+                                        اگر کالا را دریافت کرده‌اید و از کیفیت آن راضی هستید، می‌توانید پول فروشنده را زودتر آزاد کنید.
+                                    </p>
+                                    <p class="text-xs text-gray-600">
+                                        با آزادسازی، کمیسیون کسر شده و مابقی به فروشنده واریز می‌شود.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <form action="{{ route('orders.releasePayment', $order) }}" method="POST" 
+                              onsubmit="return confirm('آیا از آزادسازی پول فروشنده اطمینان دارید؟ این عملیات قابل بازگشت نیست.')">
+                            @csrf
+                            @method('POST')
+                            <button type="submit" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                <i class="fas fa-check-circle ml-2"></i>
+                                آزادسازی پول فروشنده
+                            </button>
+                        </form>
+                    </div>
+                @endif
+
                 @if($order->seller_id === auth()->id() && in_array($order->status, ['pending', 'processing']))
                     <div class="bg-white rounded-lg shadow-sm p-6">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">به‌روزرسانی وضعیت</h2>

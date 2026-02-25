@@ -159,6 +159,19 @@ class ListingService
             }
         }
 
+        // Handle deleted images
+        if (isset($data['deleted_images']) && !empty($data['deleted_images'])) {
+            $deletedIds = explode(',', $data['deleted_images']);
+            $imageService = app(ImageService::class);
+            
+            foreach ($deletedIds as $imageId) {
+                $image = $listing->images()->find($imageId);
+                if ($image) {
+                    $imageService->delete($image, true); // Skip time check for edit
+                }
+            }
+        }
+
         // Handle new images (existing images are kept unless deleted separately)
         if (isset($data['images']) && is_array($data['images'])) {
             $imageService = app(ImageService::class);
@@ -166,6 +179,24 @@ class ListingService
             
             foreach ($data['images'] as $index => $image) {
                 $imageService->upload($listing, $image, $currentImageCount + $index);
+            }
+        }
+
+        // Update main image (reorder display_order)
+        if (isset($data['main_image_id']) && !empty($data['main_image_id'])) {
+            $mainImage = $listing->images()->find($data['main_image_id']);
+            if ($mainImage) {
+                // Set main image to display_order 0
+                $mainImage->update(['display_order' => 0]);
+                
+                // Update other images to have display_order > 0
+                $listing->images()
+                    ->where('id', '!=', $data['main_image_id'])
+                    ->orderBy('display_order')
+                    ->get()
+                    ->each(function ($image, $index) {
+                        $image->update(['display_order' => $index + 1]);
+                    });
             }
         }
 

@@ -30,6 +30,8 @@ class UpdateListingRequest extends FormRequest
             'shipping_costs.*' => 'nullable|numeric|min:0',
             'images' => 'nullable|array|max:8',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+            'deleted_images' => 'nullable|string',
+            'main_image_id' => 'nullable|integer',
             'tags' => 'nullable',
             'attributes' => 'nullable|array',
             'attributes.*' => 'nullable|string',

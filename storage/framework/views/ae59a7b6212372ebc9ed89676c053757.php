@@ -49,13 +49,15 @@
                             $statusColors = [
                                 'active' => 'bg-green-500',
                                 'pending' => 'bg-yellow-500',
+                                'ended' => 'bg-gray-500',
                                 'completed' => 'bg-blue-500',
                                 'cancelled' => 'bg-red-500',
                             ];
                             $statusLabels = [
                                 'active' => 'فعال',
                                 'pending' => 'در انتظار',
-                                'completed' => 'تمام شده',
+                                'ended' => 'تمام شده',
+                                'completed' => 'تکمیل شده',
                                 'cancelled' => 'لغو شده',
                             ];
                         ?>
@@ -65,7 +67,7 @@
                         </span>
 
                         <!-- Winner Badge -->
-                        <?php if($listing->status === 'completed' && $listing->current_winner_id === auth()->id()): ?>
+                        <?php if(in_array($listing->status, ['ended', 'completed']) && $listing->current_winner_id === auth()->id()): ?>
                             <span class="absolute top-3 left-3 px-3 py-1 bg-yellow-500 text-white text-xs font-bold rounded-full flex items-center gap-1">
                                 <span class="material-symbols-outlined text-sm">emoji_events</span>
                                 برنده
@@ -84,23 +86,38 @@
 
                         <!-- My Bid Info -->
                         <?php if($listing->my_bid): ?>
-                            <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3">
+                            <?php
+                                $currentHighest = $listing->current_highest_bid ?? $listing->starting_price;
+                                $isWinning = $listing->my_bid->amount >= $currentHighest;
+                            ?>
+                            <div class="bg-<?php echo e($isWinning ? 'green' : 'orange'); ?>-50 border border-<?php echo e($isWinning ? 'green' : 'orange'); ?>-200 rounded-xl p-3 mb-3">
                                 <div class="flex items-center justify-between mb-1">
                                     <span class="text-xs text-gray-600">پیشنهاد من:</span>
-                                    <span class="text-sm font-bold text-blue-600"><?php echo app(\App\Services\PersianNumberService::class)->formatNumber($listing->my_bid->amount, true); ?> تومان</span>
+                                    <span class="text-sm font-bold text-<?php echo e($isWinning ? 'green' : 'orange'); ?>-600"><?php echo app(\App\Services\PersianNumberService::class)->formatNumber($listing->my_bid->amount, true); ?> تومان</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="text-xs text-gray-600">بالاترین پیشنهاد:</span>
-                                    <span class="text-sm font-bold text-gray-900"><?php echo app(\App\Services\PersianNumberService::class)->formatNumber($listing->current_price, true); ?> تومان</span>
+                                    <span class="text-sm font-bold text-gray-900"><?php echo app(\App\Services\PersianNumberService::class)->formatNumber($currentHighest, true); ?> تومان</span>
                                 </div>
+                                <?php if($isWinning): ?>
+                                    <div class="flex items-center gap-1 mt-2 text-xs text-green-600">
+                                        <span class="material-symbols-outlined text-sm">check_circle</span>
+                                        <span>شما در حال حاضر برنده هستید</span>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="flex items-center gap-1 mt-2 text-xs text-orange-600">
+                                        <span class="material-symbols-outlined text-sm">info</span>
+                                        <span>پیشنهاد بالاتری ثبت شده است</span>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
 
                         <!-- Price & Bids -->
                         <div class="flex items-center justify-between mb-3">
                             <div>
-                                <p class="text-xs text-gray-500">قیمت فعلی</p>
-                                <p class="text-lg font-bold text-primary"><?php echo app(\App\Services\PersianNumberService::class)->formatNumber($listing->current_price, true); ?> تومان</p>
+                                <p class="text-xs text-gray-500">بالاترین پیشنهاد</p>
+                                <p class="text-lg font-bold text-primary"><?php echo app(\App\Services\PersianNumberService::class)->formatNumber($listing->current_highest_bid ?? $listing->starting_price, true); ?> تومان</p>
                             </div>
                             <div class="text-left">
                                 <p class="text-xs text-gray-500">تعداد پیشنهادات</p>
@@ -143,7 +160,7 @@
                                     <span class="font-bold text-gray-900"><?php echo e($timeRemaining); ?></span>
                                 </div>
                             </div>
-                        <?php elseif($listing->status === 'completed'): ?>
+                        <?php elseif(in_array($listing->status, ['ended', 'completed'])): ?>
                             <div class="bg-gray-50 rounded-xl p-3 mb-3">
                                 <div class="flex items-center gap-2 text-sm">
                                     <span class="material-symbols-outlined text-gray-500">check_circle</span>

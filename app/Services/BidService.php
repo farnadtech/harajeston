@@ -120,11 +120,15 @@ class BidService
             $listing->highest_bidder_id = $user->id;
             $listing->save();
             
-            // Send notification
+            // Send notification to seller
             $this->notificationService->notifyNewBid($bid);
             
+            // Notify previous highest bidder if exists
+            if ($highestBid && $highestBid->user_id !== $user->id) {
+                $this->notificationService->notifyOutbid($bid, $highestBid->user);
+            }
+            
             // TODO: Broadcast BidPlaced event for real-time updates
-            // TODO: Send notification to previous highest bidder (outbid)
             
             return $bid;
         });
