@@ -60,7 +60,7 @@
                 <div>
                     <p class="text-sm text-gray-500">در انتظار تایید</p>
                     <p class="text-2xl font-bold text-gray-900 mt-1">
-                        <?php echo e(\App\Services\PersianNumberService::convertToPersian(\App\Models\Listing::whereIn('status', ['draft', 'pending'])->count())); ?>
+                        <?php echo e(\App\Services\PersianNumberService::convertToPersian(\App\Models\Listing::where('status', 'pending')->whereNull('approved_at')->count())); ?>
 
                     </p>
                 </div>
@@ -112,7 +112,7 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">وضعیت</label>
                 <select name="status" class="w-full border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary">
                     <option value="">همه</option>
-                    <option value="draft" <?php echo e(request('status') === 'draft' ? 'selected' : ''); ?>>پیش‌نویس (نیاز به تایید)</option>
+                    <option value="needs_approval" <?php echo e(request('status') === 'needs_approval' ? 'selected' : ''); ?>>نیاز به تایید</option>
                     <option value="pending" <?php echo e(request('status') === 'pending' ? 'selected' : ''); ?>>در انتظار شروع</option>
                     <option value="active" <?php echo e(request('status') === 'active' ? 'selected' : ''); ?>>فعال</option>
                     <option value="completed" <?php echo e(request('status') === 'completed' ? 'selected' : ''); ?>>تکمیل شده</option>
@@ -152,6 +152,7 @@
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">نوع</th>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">فروشنده</th>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">وضعیت</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">تغییرات</th>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">قیمت</th>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">تاریخ</th>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">عملیات</th>
@@ -193,8 +194,8 @@
                             </a>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <?php if($listing->status === 'draft'): ?>
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">نیاز به تایید</span>
+                            <?php if($listing->status === 'pending' && !$listing->approved_at): ?>
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">منتظر تایید ادمین</span>
                             <?php elseif($listing->status === 'active'): ?>
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">فعال</span>
                             <?php elseif($listing->status === 'pending'): ?>
@@ -213,6 +214,22 @@
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">ناموفق</span>
                             <?php else: ?>
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">نامشخص</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <?php
+                                $pendingChangesCount = $listing->pendingChanges ? $listing->pendingChanges->where('status', 'pending')->count() : 0;
+                            ?>
+                            <?php if($pendingChangesCount > 0): ?>
+                                <a href="<?php echo e(route('admin.listings.manage', $listing)); ?>" 
+                                   class="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium hover:bg-orange-200 transition-colors"
+                                   title="مشاهده تغییرات">
+                                    <span class="material-symbols-outlined text-[16px]">pending_actions</span>
+                                    <?php echo e(\App\Services\PersianNumberService::convertToPersian($pendingChangesCount)); ?>
+
+                                </a>
+                            <?php else: ?>
+                                <span class="text-gray-400 text-xs">-</span>
                             <?php endif; ?>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
@@ -237,7 +254,7 @@
                                 </a>
                                 
                                 
-                                <?php if($listing->status === 'draft'): ?>
+                                <?php if($listing->status === 'pending' && !$listing->approved_at): ?>
                                     <button onclick="approveListing('<?php echo e($listing->slug); ?>')" 
                                             class="text-green-600 hover:text-green-800" 
                                             title="تایید و انتشار">

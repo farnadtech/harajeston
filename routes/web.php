@@ -255,6 +255,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('/listings/{listing}/images/{image}', [AdminListingController::class, 'deleteImage'])->name('admin.listings.images.delete');
         Route::post('/listings/{listing}/images/{image}/set-main', [AdminListingController::class, 'setMainImage'])->name('admin.listings.images.set-main');
         
+        // Pending Changes Management
+        Route::post('/listings/{listing}/pending-changes/{change}/approve', [AdminListingController::class, 'approvePendingChanges'])->name('admin.listings.pending-changes.approve');
+        Route::post('/listings/{listing}/pending-changes/{change}/reject', [AdminListingController::class, 'rejectPendingChanges'])->name('admin.listings.pending-changes.reject');
+        
         // Bid Management
         Route::post('/bids/{bid}/cancel', [\App\Http\Controllers\Admin\BidController::class, 'cancel'])->name('admin.bids.cancel');
         

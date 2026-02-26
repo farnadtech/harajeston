@@ -510,6 +510,33 @@
         </div>
     </div>
     
+    <!-- Prompt Modal (for text input) -->
+    <div id="promptModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl transform transition-all">
+            <div class="p-6">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-blue-600 text-3xl">edit_note</span>
+                    </div>
+                    <h3 id="promptTitle" class="text-xl font-bold text-gray-900"></h3>
+                </div>
+                <p id="promptMessage" class="text-gray-600 mb-4 leading-relaxed"></p>
+                <textarea id="promptInput" 
+                          rows="3"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent mb-4"
+                          placeholder="متن خود را وارد کنید..."></textarea>
+                <div class="flex gap-3">
+                    <button id="promptCancel" class="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors">
+                        انصراف
+                    </button>
+                    <button id="promptOk" class="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 font-medium transition-colors">
+                        تایید
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script>
         function toggleSidebar() {
             // Mobile sidebar toggle functionality
@@ -587,6 +614,58 @@
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.classList.add('hidden');
+                }
+            });
+        }
+        
+        // Prompt Modal System (for text input)
+        function showPromptModal(title, message, okText = 'تایید', cancelText = 'انصراف', onConfirm = null) {
+            const modal = document.getElementById('promptModal');
+            const titleEl = document.getElementById('promptTitle');
+            const messageEl = document.getElementById('promptMessage');
+            const inputEl = document.getElementById('promptInput');
+            const okBtn = document.getElementById('promptOk');
+            const cancelBtn = document.getElementById('promptCancel');
+            
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            okBtn.textContent = okText;
+            cancelBtn.textContent = cancelText;
+            inputEl.value = '';
+            
+            modal.classList.remove('hidden');
+            inputEl.focus();
+            
+            // Remove old event listeners
+            const newOkBtn = okBtn.cloneNode(true);
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            
+            // Add new event listeners
+            newOkBtn.addEventListener('click', () => {
+                const value = inputEl.value.trim();
+                modal.classList.add('hidden');
+                if (onConfirm) onConfirm(value);
+            });
+            
+            newCancelBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+            
+            // Close on outside click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                }
+            });
+            
+            // Submit on Enter key
+            inputEl.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const value = inputEl.value.trim();
+                    modal.classList.add('hidden');
+                    if (onConfirm) onConfirm(value);
                 }
             });
         }

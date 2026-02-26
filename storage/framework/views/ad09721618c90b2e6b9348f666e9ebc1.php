@@ -175,7 +175,7 @@
                         <div>
                             <span class="font-bold text-gray-700">نیاز به تایید دستی آگهی‌ها</span>
                             <p class="text-sm text-gray-600 mt-1">
-                                اگر فعال باشد، تمام آگهی‌های جدید باید توسط ادمین تایید شوند تا منتشر شوند. در غیر این صورت، آگهی‌ها بلافاصله پس از ثبت منتشر می‌شوند.
+                                اگر فعال باشد، تمام آگهی‌های جدید و ویرایش شده باید توسط ادمین تایید شوند تا منتشر شوند. در غیر این صورت، آگهی‌ها بلافاصله پس از ثبت منتشر می‌شوند.
                             </p>
                         </div>
                     </label>
@@ -196,6 +196,32 @@
                             </p>
                         </div>
                     </label>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block font-bold text-gray-700 mb-2">
+                        گام افزایش پیشنهاد پیش‌فرض (تومان)
+                    </label>
+                    <input type="number" 
+                           name="default_bid_increment" 
+                           value="<?php echo e(old('default_bid_increment', $listingSettings['default_bid_increment'] ?? 10000)); ?>"
+                           min="1000"
+                           step="1000"
+                           required
+                           class="w-full md:w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="text-sm text-gray-600 mt-1">
+                        این مقدار برای تمام آگهی‌های جدید به عنوان حداقل افزایش پیشنهاد استفاده می‌شود.
+                    </p>
+                    <?php $__errorArgs = ['default_bid_increment'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                    <p class="text-red-600 text-sm mt-1"><?php echo e($message); ?></p>
+                    <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
                 </div>
 
                 <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">

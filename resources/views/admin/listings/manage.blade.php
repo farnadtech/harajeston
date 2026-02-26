@@ -37,8 +37,18 @@
                         فعال
                     </span>
                 @elseif($listing->status === 'pending')
+                    @php
+                        $startsAt = \Carbon\Carbon::parse($listing->starts_at);
+                        $isApproved = !is_null($listing->approved_at);
+                    @endphp
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-                        در انتظار تایید
+                        @if(!$isApproved)
+                            منتظر تایید ادمین
+                        @elseif($startsAt->isFuture())
+                            در انتظار شروع
+                        @else
+                            منتظر تایید
+                        @endif
                     </span>
                 @elseif($listing->status === 'completed' || $listing->status === 'ended')
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
@@ -66,7 +76,24 @@
                 ویرایش جزئیات
             </button>
             
-            @if($listing->status === 'active')
+            @if($listing->status === 'pending')
+            @if(is_null($listing->approved_at))
+            <button onclick="confirmApprove()" class="px-4 py-2 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-2 text-sm font-medium transition-colors">
+                <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                تایید و انتشار
+            </button>
+            
+            <button onclick="confirmReject()" class="px-4 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg hover:bg-red-100 flex items-center gap-2 text-sm font-medium transition-colors">
+                <span class="material-symbols-outlined text-[18px]">cancel</span>
+                رد کردن
+            </button>
+            @else
+            <span class="px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg flex items-center gap-2 text-sm font-medium">
+                <span class="material-symbols-outlined text-[18px]">schedule</span>
+                تایید شده - در انتظار شروع
+            </span>
+            @endif
+            @elseif($listing->status === 'active')
             <button onclick="confirmEndEarly()" class="px-4 py-2 bg-orange-50 border border-orange-200 text-orange-700 rounded-lg hover:bg-orange-100 flex items-center gap-2 text-sm font-medium transition-colors">
                 <span class="material-symbols-outlined text-[18px]">timer_off</span>
                 پایان زودتر
@@ -84,6 +111,301 @@
             @endif
         </div>
     </div>
+
+    @if($listing->pendingChanges && $listing->pendingChanges->count() > 0)
+    <!-- Pending Changes Alert -->
+    <div class="bg-orange-50 border-r-4 border-orange-500 rounded-2xl p-6 mb-6">
+        <div class="flex items-start gap-4">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-orange-600 text-2xl">pending_actions</span>
+                </div>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-lg font-bold text-orange-900 mb-2">تغییرات در انتظار تایید</h3>
+                <p class="text-sm text-orange-700 mb-4">
+                    فروشنده تغییراتی در این آگهی ایجاد کرده که نیاز به بررسی و تایید شما دارد.
+                </p>
+                
+                @foreach($listing->pendingChanges as $change)
+                <div class="bg-white rounded-xl border border-orange-200 p-4 mb-3">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-orange-600">edit_note</span>
+                            <span class="font-bold text-gray-900">تغییرات ثبت شده در {{ \App\Services\JalaliDateService::toJalali($change->created_at) }}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="approvePendingChange({{ $change->id }})" 
+                                    class="px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-1 text-sm font-medium transition-colors">
+                                <span class="material-symbols-outlined text-[16px]">check</span>
+                                تایید
+                            </button>
+                            <button onclick="rejectPendingChange({{ $change->id }})" 
+                                    class="px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center gap-1 text-sm font-medium transition-colors">
+                                <span class="material-symbols-outlined text-[16px]">close</span>
+                                رد
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2 text-sm">
+                        @php
+                            $changes = $change->changes;
+                            
+                            // تعریف نام فارسی فیلدها
+                            $fieldLabels = [
+                                'title' => 'عنوان',
+                                'description' => 'توضیحات',
+                                'category_id' => 'دسته‌بندی',
+                                'condition' => 'وضعیت کالا',
+                                'tags' => 'برچسب‌ها',
+                                'starting_price' => 'قیمت شروع',
+                                'buy_now_price' => 'قیمت خرید فوری',
+                                'starts_at' => 'زمان شروع',
+                                'ends_at' => 'زمان پایان',
+                                'auto_extend' => 'تمدید خودکار',
+                                'main_image_id' => 'تصویر اصلی',
+                            ];
+                        @endphp
+                        
+                        @foreach($changes as $field => $newValue)
+                            @if(!in_array($field, ['attributes', 'shipping_methods', 'shipping_costs', 'deleted_images', 'images']))
+                                @php
+                                    $oldValue = $listing->$field ?? null;
+                                    
+                                    // ذخیره مقادیر اصلی برای استفاده در فرمت کردن
+                                    $oldValueOriginal = $oldValue;
+                                    $newValueOriginal = $newValue;
+                                    
+                                    // مقایسه دقیق برای تاریخ‌ها
+                                    if (in_array($field, ['starts_at', 'ends_at'])) {
+                                        $oldValueTimestamp = $oldValue ? \Carbon\Carbon::parse($oldValue)->timestamp : null;
+                                        $newValueTimestamp = $newValue ? \Carbon\Carbon::parse($newValue)->timestamp : null;
+                                        $hasChanged = $oldValueTimestamp != $newValueTimestamp;
+                                    } elseif (is_array($oldValue) || is_array($newValue)) {
+                                        // مقایسه آرایه‌ها
+                                        $hasChanged = json_encode($oldValue) != json_encode($newValue);
+                                    } else {
+                                        $hasChanged = $oldValue != $newValue;
+                                    }
+                                    
+                                    if (!$hasChanged) continue;
+                                    
+                                    // فرمت کردن مقادیر برای نمایش
+                                    $oldValueFormatted = $oldValue;
+                                    $newValueFormatted = $newValue;
+                                    
+                                    // فرمت کردن تاریخ‌ها - استفاده از مقادیر اصلی
+                                    if (in_array($field, ['starts_at', 'ends_at'])) {
+                                        if ($oldValueOriginal) {
+                                            $oldValueFormatted = \App\Services\JalaliDateService::toJalali($oldValueOriginal);
+                                        }
+                                        if ($newValueOriginal) {
+                                            $newValueFormatted = \App\Services\JalaliDateService::toJalali($newValueOriginal);
+                                        }
+                                    }
+                                    // فرمت کردن قیمت‌ها
+                                    elseif (in_array($field, ['starting_price', 'buy_now_price'])) {
+                                        $oldValueFormatted = number_format($oldValue) . ' تومان';
+                                        $newValueFormatted = number_format($newValue) . ' تومان';
+                                    }
+                                    // فرمت کردن boolean
+                                    elseif ($field === 'auto_extend') {
+                                        $oldValueFormatted = $oldValue ? 'فعال' : 'غیرفعال';
+                                        $newValueFormatted = $newValue ? 'فعال' : 'غیرفعال';
+                                    }
+                                    // فرمت کردن آرایه images
+                                    elseif ($field === 'images') {
+                                        $oldValueFormatted = is_array($oldValue) ? count($oldValue) . ' تصویر' : '-';
+                                        $newValueFormatted = is_array($newValue) ? count($newValue) . ' تصویر' : '-';
+                                    }
+                                    // تبدیل آرایه‌های باقیمونده به رشته
+                                    else {
+                                        if (is_array($oldValue)) {
+                                            $oldValueFormatted = empty($oldValue) ? '-' : implode(', ', array_map(function($v) {
+                                                return is_scalar($v) ? $v : json_encode($v);
+                                            }, $oldValue));
+                                        } else {
+                                            $oldValueFormatted = $oldValue ?? '-';
+                                        }
+                                        
+                                        if (is_array($newValue)) {
+                                            $newValueFormatted = empty($newValue) ? '-' : implode(', ', array_map(function($v) {
+                                                return is_scalar($v) ? $v : json_encode($v);
+                                            }, $newValue));
+                                        } else {
+                                            $newValueFormatted = $newValue ?? '-';
+                                        }
+                                    }
+                                @endphp
+                                
+                                @php
+                                    // تبدیل نهایی به رشته برای اطمینان
+                                    $oldValueFormatted = is_string($oldValueFormatted) ? $oldValueFormatted : (string)$oldValueFormatted;
+                                    $newValueFormatted = is_string($newValueFormatted) ? $newValueFormatted : (string)$newValueFormatted;
+                                @endphp
+                                
+                                <div class="flex gap-4 py-2 border-b border-gray-100 last:border-0">
+                                    <div class="w-32 font-medium text-gray-600">
+                                        {{ $fieldLabels[$field] ?? $field }}:
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="text-red-600 line-through mb-1">
+                                            @if($field === 'category_id')
+                                                {{ \App\Models\Category::find($oldValue)->name ?? 'بدون دسته' }}
+                                            @elseif($field === 'condition')
+                                                {{ condition_label($oldValue) }}
+                                            @elseif($field === 'description')
+                                                {{ \Str::limit($oldValueFormatted, 100) }}
+                                            @elseif($field === 'main_image_id')
+                                                @php
+                                                    $oldImage = \App\Models\ListingImage::find($oldValue);
+                                                @endphp
+                                                @if($oldImage)
+                                                    <div class="flex items-center gap-2">
+                                                        <img src="{{ url('storage/' . $oldImage->file_path) }}" class="w-16 h-16 object-cover rounded-lg border">
+                                                        <span class="text-xs text-gray-500">تصویر قبلی</span>
+                                                    </div>
+                                                @else
+                                                    تصویر #{{ $oldValue }}
+                                                @endif
+                                            @else
+                                                {{ $oldValueFormatted ?? '-' }}
+                                            @endif
+                                        </div>
+                                        <div class="text-green-600 font-medium">
+                                            @if($field === 'category_id')
+                                                {{ \App\Models\Category::find($newValue)->name ?? 'بدون دسته' }}
+                                            @elseif($field === 'condition')
+                                                {{ condition_label($newValue) }}
+                                            @elseif($field === 'description')
+                                                {{ \Str::limit($newValueFormatted, 100) }}
+                                            @elseif($field === 'main_image_id')
+                                                @php
+                                                    $newImage = \App\Models\ListingImage::find($newValue);
+                                                @endphp
+                                                @if($newImage)
+                                                    <div class="flex items-center gap-2">
+                                                        <img src="{{ url('storage/' . $newImage->file_path) }}" class="w-16 h-16 object-cover rounded-lg border border-green-500">
+                                                        <span class="text-xs text-gray-500">تصویر جدید</span>
+                                                    </div>
+                                                @else
+                                                    تصویر #{{ $newValue }}
+                                                @endif
+                                            @else
+                                                {{ $newValueFormatted ?? '-' }}
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+                        @endforeach
+                        
+                        @if(isset($changes['shipping_methods']))
+                        <div class="flex gap-4 py-2 border-b border-gray-100 last:border-0">
+                            <div class="w-32 font-medium text-gray-600">روش‌های ارسال:</div>
+                            <div class="flex-1">
+                                @php
+                                    $oldMethods = $listing->shippingMethods->pluck('id')->toArray();
+                                    $newMethods = is_array($changes['shipping_methods']) ? array_keys($changes['shipping_methods']) : [];
+                                    sort($oldMethods);
+                                    sort($newMethods);
+                                    $methodsChanged = $oldMethods != $newMethods;
+                                @endphp
+                                
+                                @if($methodsChanged)
+                                    <div class="text-red-600 line-through mb-1">
+                                        @foreach($listing->shippingMethods as $method)
+                                            <span class="inline-block px-2 py-1 bg-gray-100 rounded text-xs ml-1 mb-1">{{ $method->name }}</span>
+                                        @endforeach
+                                    </div>
+                                    <div class="text-green-600 font-medium">
+                                        @foreach($newMethods as $methodId)
+                                            @php
+                                                $method = \App\Models\ShippingMethod::find($methodId);
+                                            @endphp
+                                            @if($method)
+                                                <span class="inline-block px-2 py-1 bg-green-100 rounded text-xs ml-1 mb-1">{{ $method->name }}</span>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                        @endif
+                        
+                        @if(isset($changes['attributes']))
+                        <div class="flex gap-4 py-2 border-b border-gray-100">
+                            <div class="w-32 font-medium text-gray-600">مشخصات فنی:</div>
+                            <div class="flex-1">
+                                <div class="space-y-2">
+                                    @foreach($changes['attributes'] as $attrId => $newAttrValue)
+                                        @php
+                                            $attribute = \App\Models\CategoryAttribute::find($attrId);
+                                            $oldAttrValue = $listing->attributeValues()->where('category_attribute_id', $attrId)->first();
+                                        @endphp
+                                        @if($attribute)
+                                            <div class="text-sm">
+                                                <span class="font-medium text-gray-700">{{ $attribute->name }}:</span>
+                                                @if($oldAttrValue)
+                                                    <span class="text-red-600 line-through mx-2">{{ $oldAttrValue->value }}</span>
+                                                @endif
+                                                <span class="text-green-600 font-medium">{{ $newAttrValue }}</span>
+                                            </div>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+                        
+                        @if(isset($changes['images']))
+                        <div class="flex gap-4 py-2 border-b border-gray-100">
+                            <div class="w-32 font-medium text-gray-600">تصاویر:</div>
+                            <div class="flex-1 space-y-3">
+                                @if($listing->images->count() > 0)
+                                <div>
+                                    <div class="text-xs text-gray-500 mb-2">تصاویر قبلی:</div>
+                                    <div class="grid grid-cols-4 gap-2">
+                                        @foreach($listing->images as $oldImage)
+                                            <div class="relative group">
+                                                <img src="{{ url('storage/' . $oldImage->file_path) }}" 
+                                                     class="w-full h-24 object-cover rounded-lg border opacity-50">
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                @endif
+                                
+                                <div>
+                                    <div class="text-xs text-green-600 font-medium mb-2">تصاویر جدید ({{ count($changes['images']) }} تصویر):</div>
+                                    <div class="grid grid-cols-4 gap-2">
+                                        @foreach($changes['images'] as $imageData)
+                                            @php
+                                                $image = \App\Models\ListingImage::find($imageData['id'] ?? null);
+                                            @endphp
+                                            @if($image)
+                                                <div class="relative group">
+                                                    <img src="{{ url('storage/' . $image->file_path) }}" 
+                                                         class="w-full h-24 object-cover rounded-lg border-2 border-green-500">
+                                                    <div class="absolute top-1 right-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded">
+                                                        جدید
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         <!-- Main Content -->
@@ -1064,6 +1386,94 @@ function confirmActivate() {
     );
 }
 
+function confirmApprove() {
+    showConfirmModal(
+        'تایید آگهی',
+        'آیا از تایید و انتشار این آگهی اطمینان دارید؟',
+        'تایید و انتشار',
+        'انصراف',
+        () => {
+            fetch(`{{ route('admin.listings.approve', $listing) }}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('آگهی با موفقیت تایید شد', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showNotification(data.message || 'خطا در تایید آگهی', 'error');
+                }
+            })
+            .catch(error => handleFetchError(error, 'خطا در تایید آگهی'));
+        }
+    );
+}
+
+function confirmReject() {
+    // Create a custom modal for rejection reason
+    const modalHtml = `
+        <div id="rejectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: flex;">
+            <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">رد کردن آگهی</h3>
+                <p class="text-sm text-gray-600 mb-4">لطفاً دلیل رد کردن را وارد کنید:</p>
+                <textarea id="rejectReason" class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500" rows="4" placeholder="دلیل رد..."></textarea>
+                <div class="flex gap-3 mt-6">
+                    <button onclick="submitReject()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium">
+                        رد کردن
+                    </button>
+                    <button onclick="closeRejectModal()" class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium">
+                        انصراف
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.getElementById('rejectReason').focus();
+}
+
+function closeRejectModal() {
+    const modal = document.getElementById('rejectModal');
+    if (modal) modal.remove();
+}
+
+function submitReject() {
+    const reason = document.getElementById('rejectReason').value.trim();
+    
+    if (!reason) {
+        showNotification('لطفاً دلیل رد کردن را وارد کنید', 'error');
+        return;
+    }
+    
+    closeRejectModal();
+    
+    fetch(`{{ route('admin.listings.reject', $listing) }}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ reason: reason })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('آگهی رد شد', 'success');
+            setTimeout(() => window.location.href = '{{ route("admin.listings.index") }}', 1500);
+        } else {
+            showNotification(data.message || 'خطا در رد کردن آگهی', 'error');
+        }
+    })
+    .catch(error => handleFetchError(error, 'خطا در رد کردن آگهی'));
+}
+
 // Modal Management
 function openEditModal() {
     document.getElementById('editModal').classList.remove('hidden');
@@ -1156,6 +1566,70 @@ setInterval(() => {
         }
     });
 }, 30000);
+
+// Pending Changes Functions
+function approvePendingChange(changeId) {
+    showConfirmModal(
+        'تایید تغییرات',
+        'آیا از تایید و اعمال این تغییرات اطمینان دارید؟',
+        'تایید و اعمال',
+        'انصراف',
+        () => {
+            fetch(`{{ route('admin.listings.pending-changes.approve', ['listing' => $listing->id, 'change' => '__CHANGE_ID__']) }}`.replace('__CHANGE_ID__', changeId), {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('تغییرات با موفقیت تایید و اعمال شد', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showNotification(data.message || 'خطا در تایید تغییرات', 'error');
+                }
+            })
+            .catch(error => handleFetchError(error, 'خطا در تایید تغییرات'));
+        }
+    );
+}
+
+function rejectPendingChange(changeId) {
+    showPromptModal(
+        'رد تغییرات',
+        'لطفاً دلیل رد تغییرات را وارد کنید:',
+        'رد تغییرات',
+        'انصراف',
+        (reason) => {
+            if (!reason || reason.trim() === '') {
+                showNotification('لطفاً دلیل رد را وارد کنید', 'error');
+                return;
+            }
+            
+            fetch(`{{ route('admin.listings.pending-changes.reject', ['listing' => $listing->id, 'change' => '__CHANGE_ID__']) }}`.replace('__CHANGE_ID__', changeId), {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ reason: reason })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('تغییرات رد شد', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showNotification(data.message || 'خطا در رد تغییرات', 'error');
+                }
+            })
+            .catch(error => handleFetchError(error, 'خطا در رد تغییرات'));
+        }
+    );
+}
 
 function updateBidsContainer(bids) {
     // Update bids container with new data

@@ -159,6 +159,40 @@
                     </div>
                 @endif
 
+                @php
+                    $hasActiveBids = $listing->hasActiveBids();
+                    $hasPendingChanges = $listing->hasPendingChanges();
+                @endphp
+
+                @if($hasActiveBids)
+                    <div class="bg-yellow-50 border-r-4 border-yellow-500 rounded-2xl p-6 mb-6">
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined text-yellow-600 text-2xl">warning</span>
+                            <div class="flex-1">
+                                <h3 class="text-sm font-bold text-yellow-800 mb-2">محدودیت ویرایش</h3>
+                                <p class="text-sm text-yellow-700">
+                                    این آگهی دارای پیشنهاد فعال است. فقط توضیحات و روش‌های ارسال قابل ویرایش هستند.
+                                    سایر فیلدها غیرفعال شده‌اند.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                @if($hasPendingChanges)
+                    <div class="bg-blue-50 border-r-4 border-blue-500 rounded-2xl p-6 mb-6">
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined text-blue-600 text-2xl">pending</span>
+                            <div class="flex-1">
+                                <h3 class="text-sm font-bold text-blue-800 mb-2">تغییرات در انتظار تایید</h3>
+                                <p class="text-sm text-blue-700">
+                                    این آگهی دارای تغییرات در انتظار تایید ادمین است. تغییرات جدید پس از تایید تغییرات قبلی قابل ثبت خواهند بود.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 <form action="{{ route('listings.update', $listing) }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                     @csrf
                     @method('PUT')
@@ -175,8 +209,12 @@
                                 عنوان حراجی <span class="text-red-500">*</span>
                             </label>
                             <input type="text" name="title" value="{{ old('title', $listing->title) }}" required
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                   {{ $hasActiveBids ? 'disabled' : '' }}
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors {{ $hasActiveBids ? 'bg-gray-100 cursor-not-allowed' : '' }}"
                                    placeholder="مثال: گوشی آیفون ۱۳ پرو مکس">
+                            @if($hasActiveBids)
+                                <input type="hidden" name="title" value="{{ $listing->title }}">
+                            @endif
                             @error('title')
                             <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                             @enderror
@@ -198,18 +236,28 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 دسته‌بندی <span class="text-red-500">*</span>
                             </label>
-                            <x-category-selector :selected="$listing->category_id" />
+                            @if($hasActiveBids)
+                                <input type="text" value="{{ $listing->category ? $listing->category->name : 'بدون دسته' }}" disabled
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed">
+                                <input type="hidden" name="category_id" value="{{ $listing->category_id }}">
+                            @else
+                                <x-category-selector :selected="$listing->category_id" />
+                            @endif
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 وضعیت کالا <span class="text-red-500">*</span>
                             </label>
-                            <select name="condition" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
+                            <select name="condition" required {{ $hasActiveBids ? 'disabled' : '' }}
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors {{ $hasActiveBids ? 'bg-gray-100 cursor-not-allowed' : '' }}">
                                 <option value="new" {{ old('condition', $listing->condition) === 'new' ? 'selected' : '' }}>نو</option>
                                 <option value="like_new" {{ old('condition', $listing->condition) === 'like_new' ? 'selected' : '' }}>در حد نو</option>
                                 <option value="used" {{ old('condition', $listing->condition) === 'used' ? 'selected' : '' }}>دست دوم</option>
                             </select>
+                            @if($hasActiveBids)
+                                <input type="hidden" name="condition" value="{{ $listing->condition }}">
+                            @endif
                             @error('condition')
                             <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                             @enderror
@@ -217,6 +265,7 @@
                     </div>
 
                     <!-- Attributes Section -->
+                    @if(!$hasActiveBids)
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                         <div class="flex items-center gap-3 pb-4 border-b border-gray-100 mb-6">
                             <span class="material-symbols-outlined text-primary text-2xl">tune</span>
@@ -224,8 +273,10 @@
                         </div>
                         <x-listing-attributes :listing="$listing" />
                     </div>
+                    @endif
 
                     <!-- Auction Settings Section -->
+                    @if(!$hasActiveBids)
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
                         <div class="flex items-center gap-3 pb-4 border-b border-gray-100">
                             <span class="material-symbols-outlined text-primary text-2xl">gavel</span>
@@ -249,15 +300,6 @@
                                 <input type="number" name="buy_now_price" value="{{ old('buy_now_price', $listing->buy_now_price) }}" min="0"
                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
                                 @error('buy_now_price')
-                                <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-                                @enderror
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">حداقل افزایش پیشنهاد (تومان)</label>
-                                <input type="number" name="bid_increment" value="{{ old('bid_increment', $listing->bid_increment ?? 10000) }}" min="0"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
-                                @error('bid_increment')
                                 <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
@@ -326,6 +368,7 @@
                             </label>
                         </div>
                     </div>
+                    @endif
 
                     <!-- Shipping Methods Section -->
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">

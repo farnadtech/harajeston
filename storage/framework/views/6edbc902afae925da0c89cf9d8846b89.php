@@ -21,6 +21,12 @@
                 تعلیق شده
             </span>
         </div>
+    <?php elseif($listing->status === 'pending' && !$listing->approved_at): ?>
+        <div class="absolute top-3 right-3 z-10">
+            <span class="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-full shadow-lg">
+                منتظر تایید ادمین
+            </span>
+        </div>
     <?php elseif($listing->status === 'pending' && $listing->starts_at && $listing->starts_at->isFuture()): ?>
         <?php
             $now = \Carbon\Carbon::now();
@@ -145,6 +151,10 @@
         <?php if($listing->status === 'suspended'): ?>
             <button disabled class="block w-full py-2.5 bg-red-100 text-red-700 text-sm font-bold rounded-lg cursor-not-allowed text-center border border-red-300">
                 این آگهی تعلیق شده است
+            </button>
+        <?php elseif($listing->status === 'pending' && !$listing->approved_at): ?>
+            <button disabled class="block w-full py-2.5 bg-orange-100 text-orange-700 text-sm font-bold rounded-lg cursor-not-allowed text-center border border-orange-300">
+                منتظر تایید ادمین
             </button>
         <?php elseif($listing->status === 'pending'): ?>
             <button disabled class="block w-full py-2.5 bg-gray-300 text-gray-600 text-sm font-bold rounded-lg cursor-not-allowed text-center">

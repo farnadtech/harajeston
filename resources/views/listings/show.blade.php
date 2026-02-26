@@ -36,6 +36,14 @@
                         @endif
                     </p>
                 </div>
+                @auth
+                    @if(auth()->id() === $listing->seller_id)
+                        <a href="{{ route('listings.edit', $listing) }}" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined">edit</span>
+                            ویرایش و ارسال مجدد
+                        </a>
+                    @endif
+                @endauth
             </div>
         </div>
     @endif

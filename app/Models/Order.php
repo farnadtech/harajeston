@@ -75,6 +75,22 @@ class Order extends Model
         return $orderNumber;
     }
 
+    // Get Persian status label
+    public function getStatusLabelAttribute(): string
+    {
+        return match($this->status) {
+            'pending' => 'در انتظار پرداخت',
+            'paid' => 'پرداخت شده',
+            'processing' => 'در حال پردازش',
+            'shipped' => 'ارسال شده',
+            'delivered' => 'تحویل داده شده',
+            'completed' => 'تکمیل شده',
+            'cancelled' => 'لغو شده',
+            'refunded' => 'بازگشت وجه',
+            default => $this->status,
+        };
+    }
+
     // Status transition methods
     public function canBeCancelled(): bool
     {

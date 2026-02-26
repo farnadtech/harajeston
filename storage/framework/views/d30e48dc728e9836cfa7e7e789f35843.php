@@ -35,6 +35,14 @@
                         <?php endif; ?>
                     </p>
                 </div>
+                <?php if(auth()->guard()->check()): ?>
+                    <?php if(auth()->id() === $listing->seller_id): ?>
+                        <a href="<?php echo e(route('listings.edit', $listing)); ?>" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined">edit</span>
+                            ویرایش و ارسال مجدد
+                        </a>
+                    <?php endif; ?>
+                <?php endif; ?>
             </div>
         </div>
     <?php endif; ?>
@@ -354,7 +362,7 @@ $__split = function ($name, $params = []) {
 };
 [$__name, $__params] = $__split('auction-countdown', ['listing' => $listing]);
 
-$__html = app('livewire')->mount($__name, $__params, '9Yqco1U', $__slots ?? [], get_defined_vars());
+$__html = app('livewire')->mount($__name, $__params, 'cSrXUQh', $__slots ?? [], get_defined_vars());
 
 echo $__html;
 

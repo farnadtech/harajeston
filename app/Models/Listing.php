@@ -44,6 +44,8 @@ class Listing extends Model
         'status',
         'suspension_reason',
         'rejection_reason',
+        'approved_at',
+        'approved_by',
         'auto_extend',
         'show_before_start',
         'views',
@@ -170,6 +172,16 @@ class Listing extends Model
         return $this->hasMany(ListingComment::class);
     }
 
+    public function pendingChanges(): HasMany
+    {
+        return $this->hasMany(ListingPendingChange::class);
+    }
+
+    public function hasPendingChanges(): bool
+    {
+        return $this->pendingChanges()->where('status', 'pending')->exists();
+    }
+
     // Helper methods
     public function isActive(): bool
     {
@@ -273,5 +285,13 @@ class Listing extends Model
     {
         return $query->whereNotNull('buy_now_price')
             ->where('buy_now_price', '>', 0);
+    }
+
+    /**
+     * Check if listing has active bids
+     */
+    public function hasActiveBids(): bool
+    {
+        return $this->bids()->exists();
     }
 }

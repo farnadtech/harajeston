@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست آپلود و حذف تصاویر</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: Tahoma, Arial; }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
+        <h1 class="text-2xl font-bold mb-6 text-blue-600">تست سیستم آپلود و حذف تصاویر</h1>
+        
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                انتخاب تصاویر (حداکثر 8 عکس)
+            </label>
+            <input type="file" id="images" accept="image/*" multiple class="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-50 file:text-blue-700
+                hover:file:bg-blue-100
+            "/>
+        </div>
+
+        <div id="imagePreview" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4" style="display: none;"></div>
+
+        <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h3 class="font-bold mb-2">راهنما:</h3>
+            <ul class="text-sm space-y-1">
+                <li>✓ می‌توانید چندین عکس را یکجا انتخاب کنید</li>
+                <li>✓ می‌توانید دوباره عکس اضافه کنید (تا سقف 8 عکس)</li>
+                <li>✓ برای حذف هر عکس، روی دکمه × کلیک کنید</li>
+                <li>✓ عکس اول به عنوان تصویر اصلی در نظر گرفته می‌شود</li>
+            </ul>
+        </div>
+
+        <div id="status" class="mt-4 p-4 rounded-lg hidden"></div>
+    </div>
+
+    <script>
+        // Keep track of selected files
+        let selectedFiles = [];
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `mt-4 p-4 rounded-lg ${type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
+            statusDiv.textContent = message;
+            statusDiv.classList.remove('hidden');
+        }
+
+        function removeImage(index) {
+            console.log('Removing image at index:', index);
+            selectedFiles.splice(index, 1);
+            
+            // Update input files
+            const input = document.getElementById('images');
+            const dataTransfer = new DataTransfer();
+            selectedFiles.forEach(file => dataTransfer.items.add(file));
+            input.files = dataTransfer.files;
+            
+            showStatus(`عکس حذف شد. تعداد باقیمانده: ${selectedFiles.length}`, 'info');
+            
+            // Rebuild preview
+            rebuildPreview();
+        }
+
+        function rebuildPreview() {
+            const previewContainer = document.getElementById('imagePreview');
+            previewContainer.innerHTML = '';
+            
+            if (selectedFiles.length === 0) {
+                previewContainer.style.display = 'none';
+                return;
+            }
+            
+            previewContainer.style.display = 'grid';
+            
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const div = document.createElement('div');
+                    div.className = 'relative group';
+                    const displayNumber = index + 1;
+                    div.innerHTML = `
+                        <img src="${event.target.result}" 
+                             class="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                             alt="Preview ${displayNumber}">
+                        <div class="absolute top-2 right-2 ${index === 0 ? 'bg-blue-600' : 'bg-gray-600'} text-white text-xs px-2 py-1 rounded">
+                            ${index === 0 ? 'تصویر اصلی' : displayNumber}
+                        </div>
+                        <button type="button" onclick="removeImage(${index})" class="absolute top-2 left-2 bg-red-500 text-white w-6 h-6 rounded-full hover:bg-red-600 flex items-center justify-center">
+                            ×
+                        </button>
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
+                            <span class="text-white opacity-0 group-hover:opacity-100 text-sm">
+                                ${(file.size / 1024).toFixed(0)} KB
+                            </span>
+                        </div>
+                    `;
+                    previewContainer.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        document.getElementById('images').addEventListener('change', function(e) {
+            const newFiles = Array.from(e.target.files);
+            
+            console.log('New files selected:', newFiles.length);
+            console.log('Current files:', selectedFiles.length);
+            
+            // Add new files to existing ones
+            newFiles.forEach(file => {
+                if (!selectedFiles.find(f => f.name === file.name && f.size === file.size)) {
+                    selectedFiles.push(file);
+                }
+            });
+            
+            console.log('Total files after merge:', selectedFiles.length);
+            
+            // Check total count
+            if (selectedFiles.length > 8) {
+                showStatus('تعداد تصاویر بیش از حد مجاز! حداکثر 8 تصویر می‌توانید انتخاب کنید.', 'error');
+                selectedFiles = selectedFiles.slice(0, 8);
+            } else {
+                showStatus(`${selectedFiles.length} تصویر انتخاب شده`, 'info');
+            }
+            
+            // Update input files
+            const dataTransfer = new DataTransfer();
+            selectedFiles.forEach(file => dataTransfer.items.add(file));
+            e.target.files = dataTransfer.files;
+            
+            // Check file sizes and rebuild preview
+            selectedFiles = selectedFiles.filter(file => {
+                if (file.size > 2 * 1024 * 1024) {
+                    showStatus(`حجم تصویر "${file.name}" بیش از 2MB است!`, 'error');
+                    return false;
+                }
+                return true;
+            });
+            
+            rebuildPreview();
+        });
+    </script>
+</body>
+</html>

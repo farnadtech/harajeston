@@ -46,8 +46,9 @@ class SettingsController extends Controller
         ];
 
         $listingSettings = [
-            'require_approval' => SiteSetting::get('require_listing_approval', true),
+            'require_approval' => SiteSetting::get('require_listing_approval', false),
             'default_show_before_start' => SiteSetting::get('default_show_before_start', false),
+            'default_bid_increment' => SiteSetting::get('default_bid_increment', 10000),
         ];
 
         return view('admin.settings.index', compact('depositSettings', 'commissionSettings', 'sellerSettings', 'auctionDurationSettings', 'walletSettings', 'loserFeeSettings', 'forfeitSettings', 'auctionReleaseSettings', 'listingSettings'));
@@ -187,11 +188,30 @@ class SettingsController extends Controller
      */
     public function updateListing(Request $request)
     {
+        $validated = $request->validate([
+            'default_bid_increment' => 'required|integer|min:1000',
+        ]);
+
         $requireApproval = $request->has('require_listing_approval');
         $defaultShowBeforeStart = $request->has('default_show_before_start');
         
+        // دریافت مقدار قبلی برای مقایسه
+        $oldBidIncrement = SiteSetting::get('default_bid_increment', 10000);
+        $newBidIncrement = $validated['default_bid_increment'];
+        
         SiteSetting::set('require_listing_approval', $requireApproval, 'boolean');
         SiteSetting::set('default_show_before_start', $defaultShowBeforeStart, 'boolean');
+        SiteSetting::set('default_bid_increment', $newBidIncrement, 'integer');
+
+        // اگر گام افزایش تغییر کرده، همه آگهی‌ها رو آپدیت کن
+        if ($oldBidIncrement != $newBidIncrement) {
+            $updatedCount = \App\Models\Listing::query()->update([
+                'bid_increment' => $newBidIncrement
+            ]);
+            
+            return redirect()->route('admin.settings.index')
+                ->with('success', "تنظیمات آگهی‌ها با موفقیت به‌روزرسانی شد. گام افزایش برای {$updatedCount} آگهی اعمال شد.");
+        }
 
         return redirect()->route('admin.settings.index')
             ->with('success', 'تنظیمات آگهی‌ها با موفقیت به‌روزرسانی شد.');

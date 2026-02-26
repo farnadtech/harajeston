@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Listing;
 use App\Services\AuctionService;
 use App\Services\WalletService;
+use Illuminate\Http\Request;
 
 class ListingController extends Controller
 {
@@ -21,7 +22,9 @@ class ListingController extends Controller
      */
     public function index()
     {
-        $query = Listing::with('seller', 'images');
+        $query = Listing::with(['seller', 'images', 'pendingChanges' => function($query) {
+            $query->where('status', 'pending');
+        }]);
 
         // Search
         if (request()->filled('search')) {
@@ -39,7 +42,13 @@ class ListingController extends Controller
 
         // Filter by status
         if (request()->filled('status')) {
-            $query->where('status', request('status'));
+            $status = request('status');
+            if ($status === 'needs_approval') {
+                // نیاز به تایید: pending با approved_at خالی
+                $query->where('status', 'pending')->whereNull('approved_at');
+            } else {
+                $query->where('status', $status);
+            }
         }
 
         // Filter by seller
@@ -315,7 +324,10 @@ class ListingController extends Controller
             'store.user',
             'images',
             'bids.user',
-            'participations.user'
+            'participations.user',
+            'pendingChanges' => function($query) {
+                $query->where('status', 'pending')->latest();
+            }
         ]);
 
         $activityLogs = \App\Models\AdminActionLog::where('listing_id', $listing->id)
@@ -461,23 +473,29 @@ class ListingController extends Controller
     public function approve(Listing $listing)
     {
         try {
-            if ($listing->status !== 'draft') {
+            // SIMPLIFIED: Only pending listings can be approved
+            if ($listing->status !== 'pending') {
                 if (request()->expectsJson()) {
-                    return response()->json(['success' => false, 'message' => 'فقط آگهی‌های در حالت پیش‌نویس قابل تایید هستند.']);
+                    return response()->json(['success' => false, 'message' => 'فقط آگهی‌های در انتظار تایید قابل تایید هستند.']);
                 }
-                return back()->with('error', 'فقط آگهی‌های در حالت پیش‌نویس قابل تایید هستند.');
+                return back()->with('error', 'فقط آگهی‌های در انتظار تایید قابل تایید هستند.');
             }
 
-            // تعیین وضعیت جدید بر اساس نوع آگهی
-            $newStatus = $listing->type === 'auction' ? 'pending' : 'active';
+            // Determine new status based on start time
+            $startsAt = \Carbon\Carbon::parse($listing->starts_at);
+            $newStatus = $startsAt->isFuture() ? 'pending' : 'active';
             
-            $listing->update(['status' => $newStatus]);
+            $listing->update([
+                'status' => $newStatus,
+                'approved_at' => now(),
+                'approved_by' => auth()->id()
+            ]);
 
             \App\Models\AdminActionLog::create([
                 'listing_id' => $listing->id,
                 'admin_id' => auth()->id(),
                 'action' => 'approve',
-                'description' => 'آگهی تایید و منتشر شد',
+                'description' => 'آگهی تایید شد',
                 'icon' => 'check_circle'
             ]);
 
@@ -489,10 +507,10 @@ class ListingController extends Controller
             }
 
             if (request()->expectsJson()) {
-                return response()->json(['success' => true, 'message' => 'آگهی با موفقیت تایید و منتشر شد.']);
+                return response()->json(['success' => true, 'message' => 'آگهی با موفقیت تایید شد.']);
             }
 
-            return back()->with('success', 'آگهی با موفقیت تایید و منتشر شد.');
+            return back()->with('success', 'آگهی با موفقیت تایید شد.');
         } catch (\Exception $e) {
             if (request()->expectsJson()) {
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -501,24 +519,21 @@ class ListingController extends Controller
         }
     }
 
-    /**
-     * رد آگهی
-     */
-    public function reject(Listing $listing)
+    public function reject(Request $request, Listing $listing)
     {
         try {
-            if ($listing->status !== 'draft') {
-                if (request()->expectsJson()) {
-                    return response()->json(['success' => false, 'message' => 'فقط آگهی‌های در حالت پیش‌نویس قابل رد هستند.']);
+            if ($listing->status !== 'pending') {
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => 'فقط آگهی‌های در انتظار تایید قابل رد هستند.']);
                 }
-                return back()->with('error', 'فقط آگهی‌های در حالت پیش‌نویس قابل رد هستند.');
+                return back()->with('error', 'فقط آگهی‌های در انتظار تایید قابل رد هستند.');
             }
 
-            $reason = request()->input('reason', 'آگهی شما توسط مدیریت رد شد.');
+            $reason = $request->input('reason', 'بدون دلیل');
             
             $listing->update([
                 'status' => 'rejected',
-                'rejection_reason' => $reason,
+                'rejection_reason' => $reason
             ]);
 
             \App\Models\AdminActionLog::create([
@@ -536,13 +551,13 @@ class ListingController extends Controller
                 // Ignore notification errors
             }
 
-            if (request()->expectsJson()) {
+            if ($request->expectsJson()) {
                 return response()->json(['success' => true, 'message' => 'آگهی رد شد.']);
             }
 
-            return back()->with('success', 'آگهی رد شد.');
+            return redirect()->route('admin.listings.index')->with('success', 'آگهی رد شد.');
         } catch (\Exception $e) {
-            if (request()->expectsJson()) {
+            if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
             }
             return back()->with('error', $e->getMessage());
@@ -775,6 +790,123 @@ class ListingController extends Controller
                     request()->merge([$field => $gregorianDate]);
                 }
             }
+        }
+    }
+
+    /**
+     * تایید تغییرات pending
+     */
+    public function approvePendingChanges(Request $request, $listingId, $changeId)
+    {
+        try {
+            $listing = Listing::findOrFail($listingId);
+            $pendingChange = \App\Models\ListingPendingChange::findOrFail($changeId);
+            
+            if ($pendingChange->listing_id !== $listing->id) {
+                return response()->json(['success' => false, 'message' => 'تغییرات متعلق به این آگهی نیست.'], 400);
+            }
+            
+            if ($pendingChange->status !== 'pending') {
+                return response()->json(['success' => false, 'message' => 'این تغییرات قبلاً بررسی شده است.'], 400);
+            }
+            
+            // اعمال تغییرات به آگهی
+            $changes = $pendingChange->changes;
+            $listing->update($changes);
+            
+            // به‌روزرسانی ویژگی‌ها اگر موجود باشد
+            if (isset($changes['attributes']) && is_array($changes['attributes'])) {
+                $listing->attributeValues()->delete();
+                foreach ($changes['attributes'] as $attributeId => $value) {
+                    if (!empty($value)) {
+                        $listing->attributeValues()->create([
+                            'category_attribute_id' => $attributeId,
+                            'value' => $value,
+                        ]);
+                    }
+                }
+            }
+            
+            // به‌روزرسانی روش‌های ارسال اگر موجود باشد
+            if (isset($changes['shipping_methods']) && is_array($changes['shipping_methods'])) {
+                $listing->shippingMethods()->sync($changes['shipping_methods']);
+            }
+            
+            // تغییر وضعیت pending change به approved
+            $pendingChange->update([
+                'status' => 'approved',
+                'approved_at' => now(),
+                'approved_by' => auth()->id(),
+            ]);
+            
+            // ثبت لاگ
+            \App\Models\AdminActionLog::create([
+                'listing_id' => $listing->id,
+                'admin_id' => auth()->id(),
+                'action' => 'approve_changes',
+                'description' => 'تغییرات pending تایید و اعمال شد',
+                'icon' => 'check_circle'
+            ]);
+            
+            // ارسال نوتیفیکیشن به فروشنده
+            try {
+                $listing->seller->notify(new \App\Notifications\ListingChangesApprovedNotification($listing));
+            } catch (\Exception $e) {
+                // Ignore notification errors
+            }
+            
+            return response()->json(['success' => true, 'message' => 'تغییرات با موفقیت تایید و اعمال شد.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+    
+    /**
+     * رد تغییرات pending
+     */
+    public function rejectPendingChanges(Request $request, $listingId, $changeId)
+    {
+        try {
+            $listing = Listing::findOrFail($listingId);
+            $pendingChange = \App\Models\ListingPendingChange::findOrFail($changeId);
+            
+            if ($pendingChange->listing_id !== $listing->id) {
+                return response()->json(['success' => false, 'message' => 'تغییرات متعلق به این آگهی نیست.'], 400);
+            }
+            
+            if ($pendingChange->status !== 'pending') {
+                return response()->json(['success' => false, 'message' => 'این تغییرات قبلاً بررسی شده است.'], 400);
+            }
+            
+            $reason = $request->input('reason', 'بدون دلیل');
+            
+            // تغییر وضعیت pending change به rejected
+            $pendingChange->update([
+                'status' => 'rejected',
+                'rejection_reason' => $reason,
+                'approved_at' => now(),
+                'approved_by' => auth()->id(),
+            ]);
+            
+            // ثبت لاگ
+            \App\Models\AdminActionLog::create([
+                'listing_id' => $listing->id,
+                'admin_id' => auth()->id(),
+                'action' => 'reject_changes',
+                'description' => 'تغییرات pending رد شد: ' . $reason,
+                'icon' => 'cancel'
+            ]);
+            
+            // ارسال نوتیفیکیشن به فروشنده
+            try {
+                $listing->seller->notify(new \App\Notifications\ListingChangesRejectedNotification($listing, $reason));
+            } catch (\Exception $e) {
+                // Ignore notification errors
+            }
+            
+            return response()->json(['success' => true, 'message' => 'تغییرات رد شد.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 }

@@ -20,9 +20,10 @@ class ProcessAuctionStarting implements ShouldQueue
      */
     public function handle(): void
     {
-        // Query auctions with status='pending' and starts_at <= now
+        // Query auctions with status='pending', starts_at <= now, AND approved_at is not null
         $auctions = Listing::where('status', 'pending')
             ->where('starts_at', '<=', now())
+            ->whereNotNull('approved_at')
             ->get();
 
         Log::info('ProcessAuctionStarting: Found ' . $auctions->count() . ' auctions to start');

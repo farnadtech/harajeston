@@ -1,5 +1,3 @@
-
-
 <?php $__env->startSection('title', 'صفحه اصلی'); ?>
 
 <?php $__env->startSection('content'); ?>

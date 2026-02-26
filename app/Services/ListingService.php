@@ -30,14 +30,14 @@ class ListingService
         // Check if listing requires admin approval
         $requiresApproval = \App\Models\SiteSetting::get('require_listing_approval', false);
         
-        // Determine initial status
+        // Determine initial status - SIMPLIFIED WORKFLOW
         $startsAt = Carbon::parse($data['starts_at']);
         
         if (isset($data['seller_id'])) {
             // Admin is creating, use provided status or default to pending
             $status = $data['status'] ?? 'pending';
         } elseif ($requiresApproval) {
-            // Seller is creating and approval is required
+            // Seller is creating and approval is required - always pending
             $status = 'pending';
         } else {
             // No approval required, set based on start time
@@ -55,7 +55,7 @@ class ListingService
             'current_price' => $data['starting_price'],
             'buy_now_price' => $data['buy_now_price'] ?? null,
             'deposit_amount' => $data['deposit_amount'] ?? 0,
-            'bid_increment' => $data['bid_increment'] ?? 10000,
+            'bid_increment' => \App\Models\SiteSetting::get('default_bid_increment', 10000),
             'starts_at' => $startsAt,
             'ends_at' => Carbon::parse($data['ends_at']),
             'auto_extend' => $data['auto_extend'] ?? false,
@@ -102,9 +102,84 @@ class ListingService
      */
     public function updateListing(Listing $listing, array $data): Listing
     {
+        // Check if listing requires approval
+        $requiresApproval = \App\Models\SiteSetting::get('require_listing_approval', false);
+        
+        // Check if listing has active bids
+        $hasActiveBids = $listing->hasActiveBids();
+        
+        // If listing is active and has bids, only allow description and shipping changes
+        if ($listing->status === 'active' && $hasActiveBids) {
+            // Only update description and shipping methods
+            $listing->update([
+                'description' => $data['description'] ?? $listing->description,
+            ]);
+            
+            // Update shipping methods
+            if (isset($data['shipping_methods']) && is_array($data['shipping_methods'])) {
+                $listing->shippingMethods()->detach();
+                
+                foreach ($data['shipping_methods'] as $methodId) {
+                    $customCost = $data['shipping_costs'][$methodId] ?? null;
+                    if ($customCost === null || $customCost === '') {
+                        $customCost = 0;
+                    }
+                    $listing->shippingMethods()->attach($methodId, [
+                        'custom_cost_adjustment' => $customCost
+                    ]);
+                }
+            }
+            
+            return $listing->fresh();
+        }
+        
+        // If listing is active/pending and approval is required, save as pending changes
+        if (($listing->status === 'active' || $listing->status === 'pending') && $requiresApproval && !auth()->user()->isAdmin()) {
+            // Handle new images first (upload them)
+            $uploadedImages = [];
+            if (isset($data['images']) && is_array($data['images'])) {
+                $imageService = app(ImageService::class);
+                $currentImageCount = $listing->images()->count();
+                
+                foreach ($data['images'] as $index => $image) {
+                    $uploadedImage = $imageService->upload($listing, $image, $currentImageCount + $index);
+                    $uploadedImages[] = [
+                        'id' => $uploadedImage->id,
+                        'file_path' => $uploadedImage->file_path,
+                        'file_name' => $uploadedImage->file_name,
+                    ];
+                }
+            }
+            
+            // Replace file uploads with image info in data
+            if (!empty($uploadedImages)) {
+                $data['images'] = $uploadedImages;
+            } else {
+                unset($data['images']);
+            }
+            
+            // Save changes to pending_changes table
+            \App\Models\ListingPendingChange::create([
+                'listing_id' => $listing->id,
+                'changes' => $data,
+                'status' => 'pending',
+            ]);
+            
+            // Don't update the listing itself
+            return $listing;
+        }
+
         // Validate auction times
         if (isset($data['starts_at']) && isset($data['ends_at'])) {
             $this->validateAuctionTimes($data['starts_at'], $data['ends_at']);
+        }
+
+        // Determine new status
+        $newStatus = $listing->status;
+        
+        // If suspended, require re-approval
+        if ($listing->status === 'suspended') {
+            $newStatus = 'pending';
         }
 
         // Update basic fields
@@ -116,19 +191,17 @@ class ListingService
             'starting_price' => $data['starting_price'] ?? $listing->starting_price,
             'buy_now_price' => $data['buy_now_price'] ?? $listing->buy_now_price,
             'deposit_amount' => $data['deposit_amount'] ?? $listing->deposit_amount,
-            'bid_increment' => $data['bid_increment'] ?? $listing->bid_increment,
             'starts_at' => isset($data['starts_at']) ? Carbon::parse($data['starts_at']) : $listing->starts_at,
             'ends_at' => isset($data['ends_at']) ? Carbon::parse($data['ends_at']) : $listing->ends_at,
             'auto_extend' => $data['auto_extend'] ?? $listing->auto_extend,
             'tags' => isset($data['tags']) ? (is_array($data['tags']) ? $data['tags'] : $this->processTagsToArray($data['tags'])) : $listing->tags,
+            'status' => $newStatus,
         ]);
 
         // Update attributes
         if (isset($data['attributes']) && is_array($data['attributes'])) {
-            // Delete old attributes
             $listing->attributeValues()->delete();
             
-            // Add new attributes
             foreach ($data['attributes'] as $attributeId => $value) {
                 if (!empty($value)) {
                     $listing->attributeValues()->create([
@@ -141,14 +214,11 @@ class ListingService
 
         // Update shipping methods
         if (isset($data['shipping_methods']) && is_array($data['shipping_methods'])) {
-            // Detach all old shipping methods
             $listing->shippingMethods()->detach();
             
-            // Attach new shipping methods
             foreach ($data['shipping_methods'] as $methodId) {
                 $customCost = $data['shipping_costs'][$methodId] ?? null;
                 
-                // If no custom cost provided, use 0 (will use base cost in display)
                 if ($customCost === null || $customCost === '') {
                     $customCost = 0;
                 }
@@ -167,12 +237,12 @@ class ListingService
             foreach ($deletedIds as $imageId) {
                 $image = $listing->images()->find($imageId);
                 if ($image) {
-                    $imageService->delete($image, true); // Skip time check for edit
+                    $imageService->delete($image, true);
                 }
             }
         }
 
-        // Handle new images (existing images are kept unless deleted separately)
+        // Handle new images
         if (isset($data['images']) && is_array($data['images'])) {
             $imageService = app(ImageService::class);
             $currentImageCount = $listing->images()->count();
@@ -182,14 +252,12 @@ class ListingService
             }
         }
 
-        // Update main image (reorder display_order)
+        // Update main image
         if (isset($data['main_image_id']) && !empty($data['main_image_id'])) {
             $mainImage = $listing->images()->find($data['main_image_id']);
             if ($mainImage) {
-                // Set main image to display_order 0
                 $mainImage->update(['display_order' => 0]);
                 
-                // Update other images to have display_order > 0
                 $listing->images()
                     ->where('id', '!=', $data['main_image_id'])
                     ->orderBy('display_order')

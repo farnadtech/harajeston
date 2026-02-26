@@ -318,9 +318,15 @@ class ListingController extends Controller
             $request->validated()
         );
 
+        $requiresApproval = \App\Models\SiteSetting::get('require_listing_approval', false);
+        
+        $message = $requiresApproval 
+            ? 'آگهی با موفقیت ایجاد شد و برای تایید ادمین ارسال گردید.'
+            : 'آگهی با موفقیت ایجاد شد.';
+
         return redirect()
             ->route('listings.show', $listing)
-            ->with('success', 'آگهی با موفقیت ایجاد شد.');
+            ->with('success', $message);
     }
 
     /**
@@ -407,7 +413,11 @@ class ListingController extends Controller
         // Force reload attributeValues
         $listing->load('attributeValues');
 
-        return view('listings.edit', compact('listing'));
+        // Get site settings for auction duration
+        $forceDuration = \App\Models\SiteSetting::get('force_auction_duration', false);
+        $durationDays = \App\Models\SiteSetting::get('auction_duration_days', 7);
+
+        return view('listings.edit', compact('listing', 'forceDuration', 'durationDays'));
     }
 
     /**
@@ -417,11 +427,27 @@ class ListingController extends Controller
     {
         $this->authorize('update', $listing);
 
+        $requiresApproval = \App\Models\SiteSetting::get('require_listing_approval', false);
+        $hasActiveBids = $listing->hasActiveBids();
+        $wasSuspended = $listing->status === 'suspended';
+        $wasActive = $listing->status === 'active';
+        
         $this->listingService->updateListing($listing, $request->validated());
+
+        // Determine message based on what happened
+        if ($wasActive && $hasActiveBids) {
+            $message = 'فقط توضیحات و روش‌های ارسال به‌روزرسانی شدند. سایر فیلدها به دلیل وجود پیشنهاد فعال قابل تغییر نیستند.';
+        } elseif ($requiresApproval && !auth()->user()->isAdmin() && ($wasActive || $listing->status === 'pending')) {
+            $message = 'تغییرات شما ثبت شد و برای تایید ادمین ارسال گردید. آگهی فعلی بدون تغییر باقی می‌ماند تا ادمین تغییرات را تایید کند.';
+        } elseif ($wasSuspended) {
+            $message = 'آگهی با موفقیت به‌روزرسانی شد و برای تایید مجدد ارسال گردید.';
+        } else {
+            $message = 'آگهی با موفقیت به‌روزرسانی شد.';
+        }
 
         return redirect()
             ->route('listings.show', $listing)
-            ->with('success', 'آگهی با موفقیت به‌روزرسانی شد.');
+            ->with('success', $message);
     }
 
     /**
