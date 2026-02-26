@@ -28,13 +28,29 @@ class StoreController extends Controller
         // Load seller with rating
         $seller = $store->user;
 
-        // Get sort parameter
+        // Get sort and tab parameters
         $sort = request('sort', 'newest');
+        $tab = request('tab', 'active');
 
         // همه محصولات حراج هستند
-        $query = $store->listings()
-            ->where('status', 'active')
-            ->with('images');
+        $query = $store->listings()->with('images');
+
+        // Filter by tab
+        switch ($tab) {
+            case 'ended':
+                // حراج‌های تمام شده
+                $query->where('status', 'completed');
+                break;
+            case 'upcoming':
+                // حراج‌های آینده
+                $query->where('status', 'pending');
+                break;
+            case 'active':
+            default:
+                // حراج‌های فعال
+                $query->where('status', 'active');
+                break;
+        }
 
         // Apply sorting
         switch ($sort) {
@@ -47,13 +63,16 @@ class StoreController extends Controller
             case 'ending_soon':
                 $query->orderBy('ends_at', 'asc');
                 break;
+            case 'starting_soon':
+                $query->orderBy('starts_at', 'asc');
+                break;
             case 'newest':
             default:
                 $query->orderBy('created_at', 'desc');
                 break;
         }
 
-        $listings = $query->paginate(20)->appends(['sort' => $sort]);
+        $listings = $query->paginate(20)->appends(['sort' => $sort, 'tab' => $tab]);
 
         // Load approved reviews
         $reviews = $seller->sellerReviews()
@@ -69,12 +88,12 @@ class StoreController extends Controller
             ->groupBy('rating')
             ->pluck('count', 'rating');
 
-        // Calculate stats
+        // Calculate stats - فروش‌های موفق شامل سفارشات تحویل داده شده و تکمیل شده
         $completedSales = \App\Models\Order::where('seller_id', $seller->id)
-            ->where('status', 'completed')
+            ->whereIn('status', ['delivered', 'completed'])
             ->count();
 
-        return view('stores.show', compact('store', 'listings', 'seller', 'reviews', 'completedSales', 'ratingCounts', 'sort'));
+        return view('stores.show', compact('store', 'listings', 'seller', 'reviews', 'completedSales', 'ratingCounts', 'sort', 'tab'));
     }
 
     /**
