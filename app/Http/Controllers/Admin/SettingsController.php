@@ -42,7 +42,6 @@ class SettingsController extends Controller
         ];
         
         $auctionReleaseSettings = [
-            'auto_release_days' => SiteSetting::get('auction_auto_release_days', 7),
             'finalize_deadline_hours' => SiteSetting::get('auction_finalize_deadline_hours', 24),
         ];
 
@@ -204,15 +203,45 @@ class SettingsController extends Controller
     public function updateAuctionRelease(Request $request)
     {
         $request->validate([
-            'auction_auto_release_days' => 'required|integer|min:1|max:90',
             'auction_finalize_deadline_hours' => 'required|integer|min:1|max:168',
         ]);
 
-        SiteSetting::set('auction_auto_release_days', $request->auction_auto_release_days);
         SiteSetting::set('auction_finalize_deadline_hours', $request->auction_finalize_deadline_hours);
 
         return redirect()
             ->route('admin.settings.index')
-            ->with('success', 'تنظیمات آزادسازی پول با موفقیت به‌روزرسانی شد.');
+            ->with('success', 'تنظیمات زمان‌بندی حراجی با موفقیت به‌روزرسانی شد.');
+    }
+
+    /**
+     * به‌روزرسانی تنظیمات جریمه لغو سفارش
+     */
+    public function updateCancellationPenalty(Request $request)
+    {
+        $validated = $request->validate([
+            'order_cancellation_penalty_type' => 'required|in:percentage,fixed',
+            'order_cancellation_penalty_value' => 'required|numeric|min:0',
+        ]);
+
+        SiteSetting::set('order_cancellation_penalty_type', $validated['order_cancellation_penalty_type']);
+        SiteSetting::set('order_cancellation_penalty_value', $validated['order_cancellation_penalty_value'], 'decimal');
+
+        return redirect()->route('admin.settings.index')
+            ->with('success', 'تنظیمات جریمه لغو سفارش با موفقیت به‌روزرسانی شد.');
+    }
+
+    /**
+     * به‌روزرسانی تنظیمات مهلت تست کالا
+     */
+    public function updateTestPeriod(Request $request)
+    {
+        $validated = $request->validate([
+            'order_test_period_days' => 'required|integer|min:1|max:30',
+        ]);
+
+        SiteSetting::set('order_test_period_days', $validated['order_test_period_days'], 'integer');
+
+        return redirect()->route('admin.settings.index')
+            ->with('success', 'تنظیمات مهلت تست کالا با موفقیت به‌روزرسانی شد.');
     }
 }

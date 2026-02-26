@@ -199,8 +199,20 @@ class OrderService
         $order->status = $newStatus;
         $order->save();
         
-        // Send notification to buyer
-        $order->buyer->notify(new \App\Notifications\OrderStatusUpdatedNotification($order, $oldStatus));
+        // If order is marked as delivered and payment not yet released, release it immediately
+        if ($newStatus === 'delivered' && !$order->payment_released_at) {
+            try {
+                $auctionService = app(\App\Services\AuctionService::class);
+                $auctionService->releasePaymentToSeller($order);
+            } catch (\Exception $e) {
+                // Log error but don't fail the status update
+                \Log::error("Failed to release payment for order #{$order->order_number}: " . $e->getMessage());
+            }
+        }
+        
+        // Send notification using NotificationService
+        $notificationService = app(\App\Services\NotificationService::class);
+        $notificationService->notifyOrderStatusUpdated($order, $oldStatus, $newStatus);
         
         return $order->fresh();
     }
@@ -282,5 +294,168 @@ class OrderService
         } while (Order::where('order_number', $orderNumber)->exists());
         
         return $orderNumber;
+    }
+
+    /**
+     * Confirm order preparation by seller (processing -> ready to ship)
+     */
+    public function confirmOrderPreparation(Order $order, User $seller): Order
+    {
+        if ($order->seller_id !== $seller->id) {
+            throw new \InvalidArgumentException('فقط فروشنده می‌تواند تهیه اقلام را تایید کند.');
+        }
+
+        if ($order->status !== 'processing') {
+            throw new InvalidOrderStatusException($order->status, 'ready');
+        }
+
+        return $this->updateOrderStatus($order, 'shipped');
+    }
+
+    /**
+     * Add tracking number and mark as shipped
+     */
+    public function addTrackingNumber(Order $order, string $trackingNumber, User $seller): Order
+    {
+        if ($order->seller_id !== $seller->id) {
+            throw new \InvalidArgumentException('فقط فروشنده می‌تواند کد رهگیری را ثبت کند.');
+        }
+
+        if ($order->status !== 'processing') {
+            throw new InvalidOrderStatusException($order->status, 'shipped');
+        }
+
+        $order->tracking_number = $trackingNumber;
+        $order->status = 'shipped';
+        $order->shipped_at = now();
+        $order->save();
+
+        // Send notification
+        $notificationService = app(\App\Services\NotificationService::class);
+        $notificationService->notifyOrderShipped($order);
+
+        return $order->fresh();
+    }
+
+    /**
+     * Cancel order with penalty (for processing status)
+     */
+    public function cancelOrderWithPenalty(Order $order, User $user, string $cancelledBy): Order
+    {
+        if ($order->status !== 'processing') {
+            throw new InvalidOrderStatusException($order->status, 'cancelled');
+        }
+
+        if ($cancelledBy === 'seller' && $order->seller_id !== $user->id) {
+            throw new \InvalidArgumentException('فقط فروشنده می‌تواند سفارش را لغو کند.');
+        }
+
+        if ($cancelledBy === 'buyer' && $order->buyer_id !== $user->id) {
+            throw new \InvalidArgumentException('فقط خریدار می‌تواند سفارش را لغو کند.');
+        }
+
+        return DB::transaction(function () use ($order, $user, $cancelledBy) {
+            // Get penalty settings
+            $penaltyType = \App\Models\SiteSetting::get('order_cancellation_penalty_type', 'percentage'); // 'percentage' or 'fixed'
+            $penaltyValue = (float) \App\Models\SiteSetting::get('order_cancellation_penalty_value', 10);
+
+            // Calculate penalty
+            if ($penaltyType === 'percentage') {
+                $penalty = ($order->total * $penaltyValue) / 100;
+            } else {
+                $penalty = $penaltyValue;
+            }
+
+            // Deduct penalty from canceller's wallet
+            $wallet = $user->wallet;
+            if ($wallet->balance < $penalty) {
+                throw new \App\Exceptions\Wallet\InsufficientBalanceException(
+                    $user->id,
+                    $penalty,
+                    $wallet->balance
+                );
+            }
+
+            // Deduct penalty from user
+            $wallet->balance -= $penalty;
+            $wallet->save();
+
+            \App\Models\WalletTransaction::create([
+                'wallet_id' => $wallet->id,
+                'user_id' => $user->id,
+                'type' => 'order_cancellation_penalty',
+                'amount' => -$penalty,
+                'final_amount' => -$penalty,
+                'balance_before' => $wallet->balance + $penalty,
+                'balance_after' => $wallet->balance,
+                'frozen_before' => $wallet->frozen,
+                'frozen_after' => $wallet->frozen,
+                'reference_type' => Order::class,
+                'reference_id' => $order->id,
+                'status' => 'completed',
+                'description' => sprintf('جریمه لغو سفارش #%s', $order->order_number),
+            ]);
+
+            // Add penalty to admin wallet (site revenue)
+            $adminUser = User::where('role', 'admin')->first();
+            if ($adminUser && $adminUser->wallet) {
+                $adminWallet = $adminUser->wallet;
+                $adminWallet->balance += $penalty;
+                $adminWallet->save();
+
+                \App\Models\WalletTransaction::create([
+                    'wallet_id' => $adminWallet->id,
+                    'user_id' => $adminUser->id,
+                    'type' => 'order_cancellation_penalty_revenue',
+                    'amount' => $penalty,
+                    'final_amount' => $penalty,
+                    'balance_before' => $adminWallet->balance - $penalty,
+                    'balance_after' => $adminWallet->balance,
+                    'frozen_before' => $adminWallet->frozen,
+                    'frozen_after' => $adminWallet->frozen,
+                    'reference_type' => Order::class,
+                    'reference_id' => $order->id,
+                    'status' => 'completed',
+                    'description' => sprintf('درآمد جریمه لغو سفارش #%s', $order->order_number),
+                ]);
+            }
+
+            // Unfreeze buyer's money and refund
+            $buyerWallet = $order->buyer->wallet;
+            $frozenAmount = $order->total;
+            
+            $buyerWallet->frozen -= $frozenAmount;
+            $buyerWallet->balance += $frozenAmount;
+            $buyerWallet->save();
+
+            \App\Models\WalletTransaction::create([
+                'wallet_id' => $buyerWallet->id,
+                'user_id' => $order->buyer_id,
+                'type' => 'unfreeze_refund',
+                'amount' => $frozenAmount,
+                'final_amount' => $frozenAmount,
+                'balance_before' => $buyerWallet->balance - $frozenAmount,
+                'balance_after' => $buyerWallet->balance,
+                'frozen_before' => $buyerWallet->frozen + $frozenAmount,
+                'frozen_after' => $buyerWallet->frozen,
+                'reference_type' => Order::class,
+                'reference_id' => $order->id,
+                'status' => 'completed',
+                'description' => sprintf('بازگشت وجه سفارش لغو شده #%s', $order->order_number),
+            ]);
+
+            // Update order
+            $order->status = 'cancelled';
+            $order->cancelled_by = $cancelledBy;
+            $order->cancelled_at = now();
+            $order->cancellation_penalty = $penalty;
+            $order->save();
+
+            // Send notifications
+            $notificationService = app(\App\Services\NotificationService::class);
+            $notificationService->notifyOrderCancelled($order, $cancelledBy, $penalty);
+
+            return $order->fresh();
+        });
     }
 }

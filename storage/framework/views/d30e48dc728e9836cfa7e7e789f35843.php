@@ -354,7 +354,7 @@ $__split = function ($name, $params = []) {
 };
 [$__name, $__params] = $__split('auction-countdown', ['listing' => $listing]);
 
-$__html = app('livewire')->mount($__name, $__params, 'cyLUEc3', $__slots ?? [], get_defined_vars());
+$__html = app('livewire')->mount($__name, $__params, '9Yqco1U', $__slots ?? [], get_defined_vars());
 
 echo $__html;
 
@@ -756,8 +756,19 @@ unset($__errorArgs, $__bag); ?>
                     <?php
                         $winningBid = $listing->bids()->where('user_id', auth()->id())->orderBy('amount', 'desc')->first();
                         $totalAmount = $winningBid ? $winningBid->amount : 0;
-                        $depositAmount = $listing->required_deposit;
+                        
+                        // دریافت مبلغ واقعی سپرده از تراکنش freeze_deposit
+                        $freezeTransaction = \App\Models\WalletTransaction::where('user_id', auth()->id())
+                            ->where('reference_type', 'App\Models\Listing')
+                            ->where('reference_id', $listing->id)
+                            ->where('type', 'freeze_deposit')
+                            ->first();
+                        
+                        $depositAmount = $freezeTransaction ? $freezeTransaction->amount : 0;
                         $remainingAmount = $totalAmount - $depositAmount;
+                        
+                        // مهلت پرداخت از تنظیمات
+                        $deadlineHours = (int) \App\Models\SiteSetting::get('auction_payment_deadline_hours', 24);
                     ?>
                     <div class="bg-white rounded-lg p-4 mb-4 space-y-2">
                         <div class="flex justify-between text-sm">
@@ -774,16 +785,14 @@ unset($__errorArgs, $__bag); ?>
                         </div>
                     </div>
                     <p class="text-green-800 text-sm mb-4">
-                        برای تکمیل خرید، مبلغ باقیمانده را از کیف پول خود پرداخت کنید. 
+                        برای تکمیل خرید، آدرس و روش ارسال خود را انتخاب کنید.
                         مهلت پرداخت: <span class="font-bold"><?php echo e(\App\Services\PersianNumberService::convertToPersian(\App\Services\JalaliDateService::toJalali($listing->finalization_deadline, 'Y/m/d H:i'))); ?></span>
+                        (<?php echo e(\App\Services\PersianNumberService::convertToPersian($deadlineHours)); ?> ساعت)
                     </p>
-                    <form action="<?php echo e(route('listings.finalize', $listing)); ?>" method="POST" id="finalizeForm">
-                        <?php echo csrf_field(); ?>
-                        <button type="button" onclick="showFinalizeModal()" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-colors flex items-center gap-2">
-                            <span class="material-symbols-outlined">payment</span>
-                            تکمیل خرید و پرداخت
-                        </button>
-                    </form>
+                    <a href="<?php echo e(route('checkout.auction', $listing)); ?>" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-colors">
+                        <span class="material-symbols-outlined">shopping_cart_checkout</span>
+                        ادامه خرید و انتخاب آدرس
+                    </a>
                 </div>
             </div>
         </div>

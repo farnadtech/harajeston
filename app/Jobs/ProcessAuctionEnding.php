@@ -28,8 +28,10 @@ class ProcessAuctionEnding implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(AuctionService $auctionService): void
+    public function handle(): void
     {
+        $auctionService = app(AuctionService::class);
+        
         // Query auctions with status='active' and ends_at <= now
         $auctions = Listing::where('status', 'active')
             ->where('ends_at', '<=', now())

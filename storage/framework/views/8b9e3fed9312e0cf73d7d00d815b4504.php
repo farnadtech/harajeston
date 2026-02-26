@@ -1,9 +1,16 @@
+<?php if (isset($component)) { $__componentOriginal895f6ef515592ffd4805667c75b9d7a7 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal895f6ef515592ffd4805667c75b9d7a7 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.dashboard-layout','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? (array) $attributes->getIterator() : [])); ?>
+<?php $component->withName('dashboard-layout'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag && $constructor = (new ReflectionClass(Illuminate\View\AnonymousComponent::class))->getConstructor()): ?>
+<?php $attributes = $attributes->except(collect($constructor->getParameters())->map->getName()->all()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+     <?php $__env->slot('title', null, []); ?> جزئیات سفارش #<?php echo e($order->order_number); ?> <?php $__env->endSlot(); ?>
+     <?php $__env->slot('pageTitle', null, []); ?> جزئیات سفارش #<?php echo e($order->order_number); ?> <?php $__env->endSlot(); ?>
 
-
-<?php $__env->startSection('title', 'جزئیات سفارش #' . $order->order_number); ?>
-
-<?php $__env->startSection('content'); ?>
-<div class="container mx-auto px-4 py-8">
     <div class="max-w-5xl mx-auto">
         <!-- Back Button -->
         <div class="mb-6">
@@ -38,7 +45,7 @@
                     $statusConfig = [
                         'pending' => ['text' => 'در انتظار پردازش', 'class' => 'bg-yellow-100 text-yellow-800'],
                         'processing' => ['text' => 'در حال پردازش', 'class' => 'bg-blue-100 text-blue-800'],
-                        'shipped' => ['text' => 'ارسال شده', 'class' => 'bg-purple-100 text-purple-800'],
+                        'shipped' => ['text' => 'در حال ارسال', 'class' => 'bg-purple-100 text-purple-800'],
                         'delivered' => ['text' => 'تحویل داده شده', 'class' => 'bg-green-100 text-green-800'],
                         'cancelled' => ['text' => 'لغو شده', 'class' => 'bg-red-100 text-red-800'],
                     ];
@@ -140,10 +147,20 @@
                             <i class="fas fa-truck ml-2 text-blue-600"></i>
                             اطلاعات ارسال
                         </h2>
-                        <div class="flex items-center justify-between">
+                        
+                        <!-- Shipping Method -->
+                        <?php if($order->shippingMethod): ?>
+                        <div class="mb-4 pb-4 border-b border-blue-200">
+                            <p class="text-sm text-gray-600 mb-1">روش ارسال</p>
+                            <p class="text-lg font-semibold text-gray-900"><?php echo e($order->shippingMethod->name); ?></p>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <!-- Tracking Number -->
+                        <div class="flex items-center justify-between mb-4">
                             <div>
                                 <p class="text-sm text-gray-600 mb-1">کد رهگیری مرسوله</p>
-                                <p class="text-lg font-mono font-semibold text-gray-800"><?php echo e($order->tracking_number); ?></p>
+                                <p class="text-xl font-bold text-gray-900"><?php echo e($order->tracking_number); ?></p>
                             </div>
                             <button onclick="navigator.clipboard.writeText('<?php echo e($order->tracking_number); ?>')" 
                                     class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
@@ -151,6 +168,55 @@
                                 کپی
                             </button>
                         </div>
+
+                        <?php if($order->buyer_id === auth()->id() && $order->status === 'shipped'): ?>
+                            <?php
+                                $testDays = (int) \App\Models\SiteSetting::get('order_test_period_days', 7);
+                                $shippedDate = $order->shipped_at ? \Carbon\Carbon::parse($order->shipped_at) : $order->updated_at;
+                                $deadlineDate = $shippedDate->copy()->addDays($testDays);
+                                $deadlineTimestamp = $deadlineDate->timestamp;
+                            ?>
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+                                <div class="flex items-start gap-3">
+                                    <i class="fas fa-clock text-yellow-600 text-xl mt-1"></i>
+                                    <div class="text-sm text-gray-700 w-full">
+                                        <p class="font-bold mb-2">مهلت تست و بررسی کالا:</p>
+                                        <p class="mb-3">
+                                            از الان تا <strong><?php echo e(\App\Services\PersianNumberService::convertToPersian($testDays)); ?> روز</strong> وقت دارید کالا را دریافت و تست کنید.
+                                        </p>
+                                        
+                                        <!-- Countdown Timer -->
+                                        <div class="bg-white rounded-lg p-4 mb-3" id="countdown-timer" data-deadline="<?php echo e($deadlineTimestamp); ?>">
+                                            <div class="flex items-center justify-center gap-2 text-2xl font-bold" dir="ltr">
+                                                <div class="text-center">
+                                                    <div class="bg-blue-600 text-white rounded-lg px-3 py-2 min-w-[60px]" id="days">00</div>
+                                                    <div class="text-xs text-gray-600 mt-1">روز</div>
+                                                </div>
+                                                <div class="text-gray-400">:</div>
+                                                <div class="text-center">
+                                                    <div class="bg-blue-600 text-white rounded-lg px-3 py-2 min-w-[60px]" id="hours">00</div>
+                                                    <div class="text-xs text-gray-600 mt-1">ساعت</div>
+                                                </div>
+                                                <div class="text-gray-400">:</div>
+                                                <div class="text-center">
+                                                    <div class="bg-blue-600 text-white rounded-lg px-3 py-2 min-w-[60px]" id="minutes">00</div>
+                                                    <div class="text-xs text-gray-600 mt-1">دقیقه</div>
+                                                </div>
+                                                <div class="text-gray-400">:</div>
+                                                <div class="text-center">
+                                                    <div class="bg-blue-600 text-white rounded-lg px-3 py-2 min-w-[60px]" id="seconds">00</div>
+                                                    <div class="text-xs text-gray-600 mt-1">ثانیه</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <p class="text-xs text-gray-600">
+                                            اگر مشکلی با کالا دارید، حتماً قبل از پایان مهلت اعلام کنید. در غیر این صورت پول به فروشنده واریز می‌شود.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -205,40 +271,158 @@
                     <?php endif; ?>
                 </div>
 
-                <!-- Actions -->
-                <?php if($order->buyer_id === auth()->id() && $order->canBeCancelled()): ?>
+                <?php
+                    // Check if this is an auction order and can be released early
+                    $isAuctionOrder = $order->items->first()?->listing?->required_deposit > 0;
+                    $canReleaseEarly = $order->buyer_id === auth()->id() 
+                        && $order->status === 'delivered' 
+                        && $isAuctionOrder
+                        && !$order->payment_released_at;
+                ?>
+
+                <?php if($canReleaseEarly): ?>
                     <div class="bg-white rounded-lg shadow-sm p-6">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-4">عملیات</h2>
-                        <form action="<?php echo e(route('orders.cancel', $order)); ?>" method="POST" 
-                              onsubmit="return confirm('آیا از لغو این سفارش اطمینان دارید؟')">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">آزادسازی پول فروشنده</h2>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                            <div class="flex items-start">
+                                <i class="fas fa-info-circle text-blue-600 text-xl ml-3 mt-1"></i>
+                                <div class="text-sm text-gray-700">
+                                    <p class="mb-2">
+                                        اگر کالا را دریافت کرده‌اید و از کیفیت آن راضی هستید، می‌توانید پول فروشنده را زودتر آزاد کنید.
+                                    </p>
+                                    <p class="text-xs text-gray-600">
+                                        با آزادسازی، کمیسیون کسر شده و مابقی به فروشنده واریز می‌شود.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <form action="<?php echo e(route('orders.releasePayment', $order)); ?>" method="POST" id="releasePaymentForm">
                             <?php echo csrf_field(); ?>
                             <?php echo method_field('POST'); ?>
-                            <button type="submit" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-                                <i class="fas fa-times-circle ml-2"></i>
-                                لغو سفارش
+                            <button type="button" onclick="showReleasePaymentModal()" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                <i class="fas fa-check-circle ml-2"></i>
+                                آزادسازی پول فروشنده
                             </button>
                         </form>
-                        <p class="text-xs text-gray-500 mt-2 text-center">
-                            امکان لغو تا 1 ساعت پس از ثبت سفارش
-                        </p>
+                    </div>
+                <?php endif; ?>
+                
+                <!-- Buyer confirm delivery -->
+                <?php if($order->buyer_id === auth()->id() && $order->status === 'shipped'): ?>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">تایید دریافت کالا</h2>
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-box-open text-green-600 text-xl mt-1"></i>
+                                <div class="text-sm text-gray-700">
+                                    <p class="mb-2">
+                                        آیا کالا را دریافت کرده‌اید؟ با تایید دریافت، پول به فروشنده واریز می‌شود.
+                                    </p>
+                                    <p class="text-xs text-gray-600">
+                                        لطفاً قبل از تایید، از سلامت و کیفیت کالا اطمینان حاصل کنید.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <form action="<?php echo e(route('orders.updateStatus', $order)); ?>" method="POST" id="confirmDeliveryForm">
+                            <?php echo csrf_field(); ?>
+                            <?php echo method_field('PUT'); ?>
+                            <input type="hidden" name="status" value="delivered">
+                            <button type="button" onclick="showConfirmDeliveryModal()" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                <i class="fas fa-check-circle ml-2"></i>
+                                تایید دریافت کالا
+                            </button>
+                        </form>
                     </div>
                 <?php endif; ?>
 
-                <?php if($order->seller_id === auth()->id() && in_array($order->status, ['pending', 'processing'])): ?>
+                <?php if($order->seller_id === auth()->id() && $order->status === 'processing'): ?>
                     <div class="bg-white rounded-lg shadow-sm p-6">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-4">به‌روزرسانی وضعیت</h2>
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">ارسال سفارش</h2>
+                        
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-info-circle text-blue-600 text-xl mt-1"></i>
+                                <div class="text-sm text-gray-700">
+                                    <p class="mb-2">
+                                        پس از تهیه کامل اقلام، کد رهگیری مرسوله را وارد کنید تا سفارش به مرحله ارسال برود.
+                                    </p>
+                                    <p class="text-xs text-gray-600">
+                                        در صورت لغو سفارش، جریمه لغو از کیف پول شما کسر خواهد شد.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form action="<?php echo e(route('orders.addTracking', $order)); ?>" method="POST" class="mb-3">
+                            <?php echo csrf_field(); ?>
+                            <div class="mb-3">
+                                <label for="tracking_number" class="block text-sm font-medium text-gray-700 mb-2">
+                                    کد رهگیری مرسوله
+                                </label>
+                                <input type="text" 
+                                       id="tracking_number" 
+                                       name="tracking_number" 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                       placeholder="کد رهگیری پست یا باربری را وارد کنید"
+                                       required>
+                                <?php $__errorArgs = ['tracking_number'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                                    <p class="text-red-600 text-sm mt-1"><?php echo e($message); ?></p>
+                                <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                            </div>
+                            <button type="submit" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                <i class="fas fa-shipping-fast ml-2"></i>
+                                ثبت کد رهگیری و ارسال سفارش
+                            </button>
+                        </form>
+
+                        <button type="button" onclick="showCancelOrderModal('seller')" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                            <i class="fas fa-times-circle ml-2"></i>
+                            لغو سفارش
+                        </button>
+                    </div>
+                <?php endif; ?>
+
+                <?php if($order->buyer_id === auth()->id() && $order->status === 'processing'): ?>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">لغو سفارش</h2>
+                        
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-exclamation-triangle text-yellow-600 text-xl mt-1"></i>
+                                <div class="text-sm text-gray-700">
+                                    <p class="mb-2">
+                                        در صورت لغو سفارش، جریمه لغو از کیف پول شما کسر خواهد شد.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="showCancelOrderModal('buyer')" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                            <i class="fas fa-times-circle ml-2"></i>
+                            لغو سفارش
+                        </button>
+                    </div>
+                <?php endif; ?>
+
+                <?php if($order->seller_id === auth()->id() && $order->status === 'pending'): ?>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">تغییر وضعیت سفارش</h2>
+                        <p class="text-sm text-gray-600 mb-4">سفارش در انتظار پردازش است. می‌توانید آن را به مرحله پردازش ببرید.</p>
                         <form action="<?php echo e(route('orders.updateStatus', $order)); ?>" method="POST">
                             <?php echo csrf_field(); ?>
                             <?php echo method_field('PUT'); ?>
-                            <select name="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                <option value="pending" <?php echo e($order->status === 'pending' ? 'selected' : ''); ?>>در انتظار پردازش</option>
-                                <option value="processing" <?php echo e($order->status === 'processing' ? 'selected' : ''); ?>>در حال پردازش</option>
-                                <option value="shipped" <?php echo e($order->status === 'shipped' ? 'selected' : ''); ?>>ارسال شده</option>
-                                <option value="delivered" <?php echo e($order->status === 'delivered' ? 'selected' : ''); ?>>تحویل داده شده</option>
-                            </select>
+                            <input type="hidden" name="status" value="processing">
                             <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                                <i class="fas fa-save ml-2"></i>
-                                ذخیره تغییرات
+                                <i class="fas fa-arrow-left ml-2"></i>
+                                انتقال به مرحله پردازش
                             </button>
                         </form>
                     </div>
@@ -247,6 +431,250 @@
         </div>
     </div>
 </div>
-<?php $__env->stopSection(); ?>
 
-<?php echo $__env->make('layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/orders/show.blade.php ENDPATH**/ ?>
+<!-- Confirm Delivery Modal -->
+<div id="confirmDeliveryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-box-open text-green-600 text-3xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">تایید دریافت کالا</h3>
+            <p class="text-gray-600">آیا کالا را دریافت کرده‌اید و از کیفیت آن راضی هستید؟</p>
+        </div>
+        
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div class="flex items-start gap-2">
+                <i class="fas fa-exclamation-triangle text-yellow-600 mt-1"></i>
+                <div class="text-sm text-yellow-800">
+                    <p class="font-bold mb-1">توجه:</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>با تایید، پول به فروشنده واریز می‌شود</li>
+                        <li>این عملیات قابل بازگشت نیست</li>
+                        <li>لطفاً از سلامت کالا اطمینان حاصل کنید</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex gap-3">
+            <button type="button" onclick="closeConfirmDeliveryModal()" 
+                    class="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-bold">
+                انصراف
+            </button>
+            <button type="button" onclick="submitConfirmDelivery()" 
+                    class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold">
+                تایید دریافت
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Release Payment Modal -->
+<div id="releasePaymentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-money-bill-wave text-green-600 text-3xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">آزادسازی پول فروشنده</h3>
+            <p class="text-gray-600">آیا از آزادسازی پول فروشنده اطمینان دارید؟</p>
+        </div>
+        
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div class="flex items-start gap-2">
+                <i class="fas fa-exclamation-circle text-red-600 mt-1"></i>
+                <div class="text-sm text-red-800">
+                    <p class="font-bold mb-2">هشدار مهم:</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>این عملیات قابل بازگشت نیست</li>
+                        <li>پول بلافاصله به فروشنده واریز می‌شود</li>
+                        <li>کمیسیون سایت کسر خواهد شد</li>
+                        <li>فقط در صورت رضایت کامل اقدام کنید</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex gap-3">
+            <button type="button" onclick="closeReleasePaymentModal()" 
+                    class="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-bold">
+                انصراف
+            </button>
+            <button type="button" onclick="submitReleasePayment()" 
+                    class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold">
+                تایید آزادسازی
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Order Modal -->
+<div id="cancelOrderModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-times-circle text-red-600 text-3xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">لغو سفارش</h3>
+            <p class="text-gray-600">آیا مطمئن هستید که می‌خواهید این سفارش را لغو کنید؟</p>
+        </div>
+        
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-triangle text-yellow-600 mt-1"></i>
+                <div class="text-sm text-gray-700">
+                    <p class="font-bold mb-2">توجه:</p>
+                    <p class="mb-2">با لغو سفارش، جریمه زیر از کیف پول شما کسر خواهد شد:</p>
+                    <p class="text-lg font-bold text-red-600" id="penaltyAmount">محاسبه...</p>
+                </div>
+            </div>
+        </div>
+        
+        <form id="cancelOrderForm" action="<?php echo e(route('orders.cancelWithPenalty', $order)); ?>" method="POST">
+            <?php echo csrf_field(); ?>
+            <div class="flex gap-3">
+                <button type="button" onclick="closeCancelOrderModal()" 
+                        class="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-bold">
+                    انصراف
+                </button>
+                <button type="submit" 
+                        class="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-bold">
+                    تایید لغو
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function showConfirmDeliveryModal() {
+    document.getElementById('confirmDeliveryModal').classList.remove('hidden');
+}
+
+function closeConfirmDeliveryModal() {
+    document.getElementById('confirmDeliveryModal').classList.add('hidden');
+}
+
+function submitConfirmDelivery() {
+    document.getElementById('confirmDeliveryForm').submit();
+}
+
+function showReleasePaymentModal() {
+    document.getElementById('releasePaymentModal').classList.remove('hidden');
+}
+
+function closeReleasePaymentModal() {
+    document.getElementById('releasePaymentModal').classList.add('hidden');
+}
+
+function submitReleasePayment() {
+    document.getElementById('releasePaymentForm').submit();
+}
+
+// Close modals on outside click
+document.getElementById('confirmDeliveryModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeConfirmDeliveryModal();
+    }
+});
+
+document.getElementById('releasePaymentModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeReleasePaymentModal();
+    }
+});
+
+document.getElementById('cancelOrderModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeCancelOrderModal();
+    }
+});
+
+function showCancelOrderModal(userType) {
+    // Calculate penalty
+    const orderTotal = <?php echo e($order->total); ?>;
+    const penaltyType = '<?php echo e(\App\Models\SiteSetting::get("order_cancellation_penalty_type", "percentage")); ?>';
+    const penaltyValue = <?php echo e(\App\Models\SiteSetting::get('order_cancellation_penalty_value', 10)); ?>;
+    
+    let penalty = 0;
+    if (penaltyType === 'percentage') {
+        penalty = (orderTotal * penaltyValue) / 100;
+    } else {
+        penalty = penaltyValue;
+    }
+    
+    // Format penalty with Persian numbers
+    const penaltyFormatted = new Intl.NumberFormat('fa-IR').format(penalty) + ' تومان';
+    document.getElementById('penaltyAmount').textContent = penaltyFormatted;
+    
+    document.getElementById('cancelOrderModal').classList.remove('hidden');
+}
+
+function closeCancelOrderModal() {
+    document.getElementById('cancelOrderModal').classList.add('hidden');
+}
+
+// Countdown Timer for Test Period
+const countdownElement = document.getElementById('countdown-timer');
+if (countdownElement) {
+    const deadline = parseInt(countdownElement.dataset.deadline) * 1000; // Convert to milliseconds
+    
+    function updateCountdown() {
+        const now = new Date().getTime();
+        const distance = deadline - now;
+        
+        if (distance < 0) {
+            document.getElementById('days').textContent = '۰۰';
+            document.getElementById('hours').textContent = '۰۰';
+            document.getElementById('minutes').textContent = '۰۰';
+            document.getElementById('seconds').textContent = '۰۰';
+            
+            // Change colors to red when expired
+            document.querySelectorAll('#countdown-timer .bg-blue-600').forEach(el => {
+                el.classList.remove('bg-blue-600');
+                el.classList.add('bg-red-600');
+            });
+            return;
+        }
+        
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        // Convert to Persian numbers
+        const persianNumbers = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        function toPersian(num) {
+            return num.toString().padStart(2, '0').split('').map(d => persianNumbers[parseInt(d)]).join('');
+        }
+        
+        document.getElementById('days').textContent = toPersian(days);
+        document.getElementById('hours').textContent = toPersian(hours);
+        document.getElementById('minutes').textContent = toPersian(minutes);
+        document.getElementById('seconds').textContent = toPersian(seconds);
+        
+        // Change color to orange when less than 24 hours
+        if (distance < 24 * 60 * 60 * 1000) {
+            document.querySelectorAll('#countdown-timer .bg-blue-600').forEach(el => {
+                el.classList.remove('bg-blue-600');
+                el.classList.add('bg-orange-500');
+            });
+        }
+    }
+    
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+}
+</script>
+ <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal895f6ef515592ffd4805667c75b9d7a7)): ?>
+<?php $attributes = $__attributesOriginal895f6ef515592ffd4805667c75b9d7a7; ?>
+<?php unset($__attributesOriginal895f6ef515592ffd4805667c75b9d7a7); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal895f6ef515592ffd4805667c75b9d7a7)): ?>
+<?php $component = $__componentOriginal895f6ef515592ffd4805667c75b9d7a7; ?>
+<?php unset($__componentOriginal895f6ef515592ffd4805667c75b9d7a7); ?>
+<?php endif; ?>
+<?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/orders/show.blade.php ENDPATH**/ ?>

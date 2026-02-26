@@ -66,6 +66,62 @@
         </div>
     </div>
 
+    <!-- Wallet Adjustment Card -->
+    <?php if($user->wallet): ?>
+    <div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">مدیریت کیف پول</h3>
+                <p class="text-sm text-gray-500 mt-1">افزایش یا کاهش موجودی کیف پول کاربر</p>
+            </div>
+            <div class="text-left">
+                <p class="text-xs text-gray-500">موجودی فعلی</p>
+                <p class="text-2xl font-bold text-gray-900 font-mono">
+                    <?php echo e(\App\Services\PersianNumberService::convertToPersian(number_format($user->wallet->balance))); ?> تومان
+                </p>
+            </div>
+        </div>
+
+        <form action="<?php echo e(route('admin.users.adjustWallet', $user)); ?>" method="POST" class="space-y-4">
+            <?php echo csrf_field(); ?>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">نوع عملیات</label>
+                    <select name="type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                        <option value="add">افزایش موجودی</option>
+                        <option value="subtract">کاهش موجودی</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ (تومان)</label>
+                    <input type="number" name="amount" min="1" step="1" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="مبلغ را وارد کنید" required>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">دلیل تغییر</label>
+                <textarea name="description" rows="3" 
+                          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          placeholder="دلیل افزایش یا کاهش موجودی را وارد کنید (این متن در تاریخچه تراکنش‌های کاربر نمایش داده می‌شود)" required></textarea>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-yellow-600 mt-0.5">info</span>
+                    <div class="text-sm text-yellow-800">
+                        <p class="font-bold mb-1">توجه:</p>
+                        <p>این تراکنش در تاریخچه کیف پول کاربر با دلیلی که وارد می‌کنید ثبت خواهد شد.</p>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold">
+                <i class="fas fa-save ml-2"></i>
+                اعمال تغییرات
+            </button>
+        </form>
+    </div>
+    <?php endif; ?>
+
     <!-- Stats Cards - Different for Buyer vs Seller -->
     <?php if($user->role === 'buyer'): ?>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -224,16 +280,20 @@
     <?php endif; ?>
 
     <!-- Store Info (if seller) -->
-    <?php if($user->role === 'seller' && $user->store): ?>
+    <?php if($user->role === 'seller'): ?>
     <div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
             <span class="material-symbols-outlined">storefront</span>
             اطلاعات فروشگاه
         </h3>
+        <?php if($user->store): ?>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <p class="text-sm text-gray-500">نام فروشگاه</p>
-                <p class="text-base font-medium text-gray-900 mt-1"><?php echo e($user->store->name); ?></p>
+                <p class="text-base font-medium text-gray-900 mt-1">
+                    <?php echo e($user->store->name ?: 'فروشگاه ' . $user->name); ?>
+
+                </p>
             </div>
             <?php if($user->store->description): ?>
             <div>
@@ -241,7 +301,29 @@
                 <p class="text-base text-gray-900 mt-1"><?php echo e($user->store->description); ?></p>
             </div>
             <?php endif; ?>
+            <?php if($user->store->slug): ?>
+            <div>
+                <p class="text-sm text-gray-500">آدرس فروشگاه</p>
+                <p class="text-base text-gray-900 mt-1">
+                    <a href="<?php echo e(route('stores.show', $user->store->slug)); ?>" target="_blank" class="text-primary hover:underline">
+                        <?php echo e($user->store->slug); ?>
+
+                    </a>
+                </p>
+            </div>
+            <?php endif; ?>
         </div>
+        <?php else: ?>
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+                <span class="material-symbols-outlined text-yellow-600 mt-0.5">info</span>
+                <div class="text-sm text-yellow-800">
+                    <p class="font-bold mb-1">فروشگاه ایجاد نشده</p>
+                    <p>این فروشنده هنوز فروشگاه خود را ایجاد نکرده است.</p>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
 

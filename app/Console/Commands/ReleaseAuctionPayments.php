@@ -14,15 +14,15 @@ class ReleaseAuctionPayments extends Command
 
     public function handle(AuctionService $auctionService)
     {
-        // Get setting for auto-release days (default 7 days)
-        $autoReleaseDays = (int) \App\Models\SiteSetting::get('auction_auto_release_days', 7);
+        // Get setting for test period days (default 7 days)
+        $testPeriodDays = (int) \App\Models\SiteSetting::get('order_test_period_days', 7);
         
-        // Find delivered orders that are past the auto-release period
+        // Find delivered orders that are past the test period
         // Only for auction orders (check if listing has required_deposit)
         // And payment not yet released
         $orders = Order::where('status', 'delivered')
             ->whereNull('payment_released_at')
-            ->where('updated_at', '<=', Carbon::now()->subDays($autoReleaseDays))
+            ->where('updated_at', '<=', Carbon::now()->subDays($testPeriodDays))
             ->whereHas('items.listing', function ($query) {
                 $query->whereNotNull('required_deposit');
             })

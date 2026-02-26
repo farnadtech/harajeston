@@ -113,21 +113,41 @@ class NotificationService
     public function notifyNewOrder(Order $order): void
     {
         $seller = $order->seller;
+        $listing = $order->items->first()?->listing;
+        $isAuction = $listing && $listing->required_deposit > 0;
         
-        Notification::create([
-            'user_id' => $seller->id,
-            'type' => 'order',
-            'title' => 'سفارش جدید',
-            'message' => sprintf(
-                'سفارش #%s به مبلغ %s تومان ثبت شد',
-                $order->order_number,
-                number_format($order->total)
-            ),
-            'icon' => 'shopping_bag',
-            'color' => 'green',
-            'link' => route('admin.orders.show', $order->id),
-            'is_read' => false,
-        ]);
+        if ($isAuction) {
+            // Notify seller for auction order
+            Notification::create([
+                'user_id' => $seller->id,
+                'type' => 'order',
+                'title' => 'تکمیل پرداخت حراجی',
+                'message' => sprintf(
+                    'مبلغ حراجی "%s" توسط خریدار تکمیل شد و منتظر تایید و ارسال شما است',
+                    $listing->title
+                ),
+                'icon' => 'shopping_bag',
+                'color' => 'green',
+                'link' => route('orders.show', $order->id),
+                'is_read' => false,
+            ]);
+        } else {
+            // Notify seller - use regular orders.show route
+            Notification::create([
+                'user_id' => $seller->id,
+                'type' => 'order',
+                'title' => 'سفارش جدید',
+                'message' => sprintf(
+                    'سفارش #%s به مبلغ %s تومان ثبت شد',
+                    $order->order_number,
+                    number_format($order->total)
+                ),
+                'icon' => 'shopping_bag',
+                'color' => 'green',
+                'link' => route('orders.show', $order->id),
+                'is_read' => false,
+            ]);
+        }
         
         // Notify buyer
         Notification::create([
@@ -145,12 +165,124 @@ class NotificationService
             'is_read' => false,
         ]);
         
-        // Notify admin
+        // Notify admin - use admin route
         $this->notifyAdmins('order', 'سفارش جدید', sprintf(
             'سفارش #%d به مبلغ %s تومان ثبت شد',
             $order->id,
             number_format($order->total_amount)
         ), 'shopping_bag', 'green', route('admin.orders.show', $order->id));
+    }
+
+    /**
+     * Notify order cancellation with penalty
+     */
+    public function notifyOrderCancelled(Order $order, string $cancelledBy, float $penalty): void
+    {
+        $penaltyFormatted = number_format($penalty);
+        
+        if ($cancelledBy === 'seller') {
+            // Notify buyer
+            Notification::create([
+                'user_id' => $order->buyer_id,
+                'type' => 'order',
+                'title' => 'لغو سفارش توسط فروشنده',
+                'message' => sprintf(
+                    'سفارش #%s توسط فروشنده لغو شد. مبلغ سفارش به کیف پول شما بازگشت داده شد.',
+                    $order->order_number
+                ),
+                'icon' => 'cancel',
+                'color' => 'red',
+                'link' => route('orders.show', $order->id),
+                'is_read' => false,
+            ]);
+
+            // Notify seller about penalty
+            Notification::create([
+                'user_id' => $order->seller_id,
+                'type' => 'order',
+                'title' => 'لغو سفارش',
+                'message' => sprintf(
+                    'سفارش #%s لغو شد. جریمه لغو: %s تومان از کیف پول شما کسر شد.',
+                    $order->order_number,
+                    $penaltyFormatted
+                ),
+                'icon' => 'cancel',
+                'color' => 'red',
+                'link' => route('orders.show', $order->id),
+                'is_read' => false,
+            ]);
+        } else {
+            // Notify seller
+            Notification::create([
+                'user_id' => $order->seller_id,
+                'type' => 'order',
+                'title' => 'لغو سفارش توسط خریدار',
+                'message' => sprintf(
+                    'سفارش #%s توسط خریدار لغو شد.',
+                    $order->order_number
+                ),
+                'icon' => 'cancel',
+                'color' => 'red',
+                'link' => route('orders.show', $order->id),
+                'is_read' => false,
+            ]);
+
+            // Notify buyer about penalty
+            Notification::create([
+                'user_id' => $order->buyer_id,
+                'type' => 'order',
+                'title' => 'لغو سفارش',
+                'message' => sprintf(
+                    'سفارش #%s لغو شد. جریمه لغو: %s تومان از کیف پول شما کسر شد.',
+                    $order->order_number,
+                    $penaltyFormatted
+                ),
+                'icon' => 'cancel',
+                'color' => 'red',
+                'link' => route('orders.show', $order->id),
+                'is_read' => false,
+            ]);
+        }
+
+        // Notify admin
+        $this->notifyAdmins('order', 'لغو سفارش', sprintf(
+            'سفارش #%s توسط %s لغو شد. جریمه: %s تومان',
+            $order->order_number,
+            $cancelledBy === 'seller' ? 'فروشنده' : 'خریدار',
+            $penaltyFormatted
+        ), 'cancel', 'red', route('admin.orders.show', $order->id));
+    }
+
+    /**
+     * Notify order shipped with tracking number
+     */
+    public function notifyOrderShipped(Order $order): void
+    {
+        $testDays = (int) \App\Models\SiteSetting::get('order_test_period_days', 7);
+        
+        // Notify buyer
+        Notification::create([
+            'user_id' => $order->buyer_id,
+            'type' => 'order',
+            'title' => 'سفارش ارسال شد',
+            'message' => sprintf(
+                'سفارش #%s ارسال شد. کد رهگیری: %s - از الان تا %d روز وقت دارید کالا را دریافت و تست کنید.',
+                $order->order_number,
+                $order->tracking_number,
+                $testDays
+            ),
+            'icon' => 'local_shipping',
+            'color' => 'blue',
+            'link' => route('orders.show', $order->id),
+            'is_read' => false,
+        ]);
+
+        // Notify admin
+        $this->notifyAdmins('order', 'ارسال سفارش', sprintf(
+            'سفارش #%s ارسال شد. کد رهگیری: %s',
+            $order->order_number,
+            $order->tracking_number
+        ), 'local_shipping', 'blue', route('admin.orders.show', $order->id));
     }
     
     /**
@@ -379,7 +511,7 @@ class NotificationService
             'is_read' => false,
         ]);
         
-        // Notify seller
+        // Notify seller - use regular orders.show route
         Notification::create([
             'user_id' => $order->seller_id,
             'type' => 'order_status',
@@ -391,7 +523,7 @@ class NotificationService
             ),
             'icon' => 'update',
             'color' => 'blue',
-            'link' => route('admin.orders.show', $order->id),
+            'link' => route('orders.show', $order->id),
             'is_read' => false,
         ]);
     }

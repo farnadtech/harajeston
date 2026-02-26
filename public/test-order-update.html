@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Order Status Update</title>
+</head>
+<body>
+    <h1>Test Order Status Update</h1>
+    
+    <form action="http://localhost/haraj/public/orders/15/status" method="POST">
+        <input type="hidden" name="_token" value="GET_FROM_BROWSER">
+        <input type="hidden" name="_method" value="PUT">
+        <input type="hidden" name="status" value="delivered">
+        <button type="submit">تایید دریافت کالا</button>
+    </form>
+    
+    <hr>
+    
+    <p>Instructions:</p>
+    <ol>
+        <li>Login as buyer (user ID 40)</li>
+        <li>Open browser console</li>
+        <li>Get CSRF token: <code>document.querySelector('meta[name="csrf-token"]').content</code></li>
+        <li>Replace "GET_FROM_BROWSER" with the token</li>
+        <li>Submit form</li>
+    </ol>
+</body>
+</html>

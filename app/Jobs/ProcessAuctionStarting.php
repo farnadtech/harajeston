@@ -18,7 +18,7 @@ class ProcessAuctionStarting implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(AuctionService $auctionService): void
+    public function handle(): void
     {
         // Query auctions with status='pending' and starts_at <= now
         $auctions = Listing::where('status', 'pending')

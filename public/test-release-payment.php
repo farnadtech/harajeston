@@ -1,42 +1,108 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 $app = require_once __DIR__ . '/../bootstrap/app.php';
-$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
-$order = \App\Models\Order::find(8);
+// Get order
+$orderId = 15;
+$order = \App\Models\Order::with(['buyer.wallet', 'seller.wallet', 'items.listing'])->find($orderId);
 
-echo "Order #" . $order->order_number . "\n";
-echo "Status: " . $order->status . "\n";
-echo "Created: " . $order->created_at . "\n";
-echo "Updated: " . $order->updated_at . "\n";
+if (!$order) {
+    die("Order not found\n");
+}
 
-// Change status to delivered and set updated_at to 8 days ago
-echo "\nChanging status to delivered and setting date to 8 days ago...\n";
+echo "=== Before Release ===\n";
+echo "Order: #{$order->order_number}\n";
+echo "Total: " . number_format($order->total) . " تومان\n";
+echo "\n";
 
-$order->status = 'delivered';
-$order->updated_at = now()->subDays(8);
-$order->save();
+echo "Buyer Wallet:\n";
+echo "- Balance: " . number_format($order->buyer->wallet->balance) . "\n";
+echo "- Frozen: " . number_format($order->buyer->wallet->frozen) . "\n";
+echo "\n";
 
-echo "New status: " . $order->status . "\n";
-echo "New updated_at: " . $order->updated_at . "\n";
+echo "Seller Wallet:\n";
+echo "- Balance: " . number_format($order->seller->wallet->balance) . "\n";
+echo "- Frozen: " . number_format($order->seller->wallet->frozen) . "\n";
+echo "\n";
 
-// Check wallet before
-$buyer = $order->buyer;
-$seller = $order->seller;
+// Get listing
+$listing = $order->items->first()->listing;
+echo "Listing Category: {$listing->category_id}\n";
 
-echo "\nBuyer wallet (user {$buyer->id}):\n";
-echo "  Balance: " . $buyer->wallet->balance . "\n";
-echo "  Frozen: " . $buyer->wallet->frozen . "\n";
+// Calculate commission
+$commissionService = app(\App\Services\CommissionService::class);
+$commission = $commissionService->calculateCommission($order->total, $listing->category_id);
+$sellerAmount = $order->total - $commission;
 
-echo "\nSeller wallet (user {$seller->id}):\n";
-echo "  Balance: " . $seller->wallet->balance . "\n";
-echo "  Frozen: " . $seller->wallet->frozen . "\n";
+echo "\nCommission Calculation:\n";
+echo "- Total: " . number_format($order->total) . "\n";
+echo "- Commission: " . number_format($commission) . "\n";
+echo "- Seller Amount: " . number_format($sellerAmount) . "\n";
+echo "\n";
 
-// Get site user (ID 1)
-$site = \App\Models\User::find(1);
-echo "\nSite wallet (user 1):\n";
-echo "  Balance: " . $site->wallet->balance . "\n";
-echo "  Frozen: " . $site->wallet->frozen . "\n";
+// Count transactions before
+$buyerTxBefore = \App\Models\WalletTransaction::where('user_id', $order->buyer_id)->count();
+$sellerTxBefore = \App\Models\WalletTransaction::where('user_id', $order->seller_id)->count();
 
-echo "\n--- Now run: php artisan auction:release-payments ---\n";
+echo "Transactions Before:\n";
+echo "- Buyer: {$buyerTxBefore}\n";
+echo "- Seller: {$sellerTxBefore}\n";
+echo "\n";
+
+// Release payment
+try {
+    $auctionService = app(\App\Services\AuctionService::class);
+    $auctionService->releasePaymentToSeller($order);
+    echo "✓ Payment released successfully\n\n";
+} catch (\Exception $e) {
+    die("Error: " . $e->getMessage() . "\n");
+}
+
+// Refresh
+$order->refresh();
+$order->buyer->wallet->refresh();
+$order->seller->wallet->refresh();
+
+echo "=== After Release ===\n";
+echo "Buyer Wallet:\n";
+echo "- Balance: " . number_format($order->buyer->wallet->balance) . "\n";
+echo "- Frozen: " . number_format($order->buyer->wallet->frozen) . "\n";
+echo "\n";
+
+echo "Seller Wallet:\n";
+echo "- Balance: " . number_format($order->seller->wallet->balance) . "\n";
+echo "- Frozen: " . number_format($order->seller->wallet->frozen) . "\n";
+echo "\n";
+
+// Count transactions after
+$buyerTxAfter = \App\Models\WalletTransaction::where('user_id', $order->buyer_id)->count();
+$sellerTxAfter = \App\Models\WalletTransaction::where('user_id', $order->seller_id)->count();
+
+echo "Transactions After:\n";
+echo "- Buyer: {$buyerTxAfter} (+" . ($buyerTxAfter - $buyerTxBefore) . ")\n";
+echo "- Seller: {$sellerTxAfter} (+" . ($sellerTxAfter - $sellerTxBefore) . ")\n";
+echo "\n";
+
+// Show new transactions
+echo "=== New Buyer Transactions ===\n";
+$buyerNewTx = \App\Models\WalletTransaction::where('user_id', $order->buyer_id)
+    ->orderBy('id', 'desc')
+    ->limit($buyerTxAfter - $buyerTxBefore)
+    ->get();
+
+foreach ($buyerNewTx as $tx) {
+    echo "- {$tx->type}: " . number_format($tx->amount) . " - {$tx->description}\n";
+}
+echo "\n";
+
+echo "=== New Seller Transactions ===\n";
+$sellerNewTx = \App\Models\WalletTransaction::where('user_id', $order->seller_id)
+    ->orderBy('id', 'desc')
+    ->limit($sellerTxAfter - $sellerTxBefore)
+    ->get();
+
+foreach ($sellerNewTx as $tx) {
+    echo "- {$tx->type}: " . number_format($tx->amount) . " - {$tx->description}\n";
+}

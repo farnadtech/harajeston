@@ -20,7 +20,17 @@ class OrderPolicy
      */
     public function updateStatus(User $user, Order $order): bool
     {
-        return $user->id === $order->seller_id;
+        // Seller can update to any status
+        if ($user->id === $order->seller_id) {
+            return true;
+        }
+        
+        // Buyer can only update from 'shipped' to 'delivered' (confirm delivery)
+        if ($user->id === $order->buyer_id && $order->status === 'shipped') {
+            return true;
+        }
+        
+        return false;
     }
 
     /**

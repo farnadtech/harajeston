@@ -37,11 +37,18 @@ class OrderController extends Controller
     }
 
     /**
-     * Update order status (seller only)
+     * Update order status (seller or buyer for delivery confirmation)
      */
     public function updateStatus(UpdateOrderStatusRequest $request, Order $order)
     {
         $this->authorize('updateStatus', $order);
+        
+        // If buyer is confirming delivery, only allow 'delivered' status
+        if ($order->buyer_id === auth()->id()) {
+            if ($request->status !== 'delivered' || $order->status !== 'shipped') {
+                abort(403, 'شما فقط می‌توانید دریافت کالا را تایید کنید');
+            }
+        }
 
         $this->orderService->updateOrderStatus($order, $request->status);
 
@@ -107,6 +114,114 @@ class OrderController extends Controller
             return redirect()
                 ->route('orders.show', $order)
                 ->with('error', 'خطا در آزادسازی پول: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Confirm order preparation (seller only)
+     */
+    public function confirmPreparation(Order $order)
+    {
+        if ($order->seller_id !== auth()->id()) {
+            abort(403, 'شما مجاز به انجام این عملیات نیستید.');
+        }
+
+        if ($order->status !== 'processing') {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'فقط سفارشات در حال پردازش قابل تایید هستند.');
+        }
+
+        try {
+            $this->orderService->confirmOrderPreparation($order, auth()->user());
+
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('success', 'تهیه اقلام تایید شد. سفارش آماده ارسال است.');
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'خطا: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Add tracking number and mark as shipped
+     */
+    public function addTrackingNumber(Request $request, Order $order)
+    {
+        if ($order->seller_id !== auth()->id()) {
+            abort(403, 'شما مجاز به انجام این عملیات نیستید.');
+        }
+
+        if ($order->status !== 'processing') {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'فقط سفارشات در حال پردازش قابل ارسال هستند.');
+        }
+
+        $request->validate([
+            'tracking_number' => 'required|string|max:100',
+        ], [
+            'tracking_number.required' => 'کد رهگیری الزامی است.',
+            'tracking_number.max' => 'کد رهگیری نباید بیشتر از 100 کاراکتر باشد.',
+        ]);
+
+        try {
+            $this->orderService->addTrackingNumber($order, $request->tracking_number, auth()->user());
+
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('success', 'کد رهگیری ثبت شد و سفارش به مرحله ارسال رفت.');
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'خطا: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Cancel order with penalty (seller or buyer, processing status only)
+     */
+    public function cancelWithPenalty(Request $request, Order $order)
+    {
+        $user = auth()->user();
+        $cancelledBy = null;
+
+        if ($order->seller_id === $user->id) {
+            $cancelledBy = 'seller';
+        } elseif ($order->buyer_id === $user->id) {
+            $cancelledBy = 'buyer';
+        } else {
+            abort(403, 'شما مجاز به لغو این سفارش نیستید.');
+        }
+
+        if ($order->status !== 'processing') {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'فقط سفارشات در حال پردازش قابل لغو هستند.');
+        }
+
+        try {
+            // Get penalty info for confirmation
+            $penaltyType = \App\Models\SiteSetting::get('order_cancellation_penalty_type', 'percentage');
+            $penaltyValue = (float) \App\Models\SiteSetting::get('order_cancellation_penalty_value', 10);
+            
+            if ($penaltyType === 'percentage') {
+                $penalty = ($order->total * $penaltyValue) / 100;
+            } else {
+                $penalty = $penaltyValue;
+            }
+
+            $this->orderService->cancelOrderWithPenalty($order, $user, $cancelledBy);
+
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('success', sprintf('سفارش لغو شد. جریمه لغو: %s تومان از کیف پول شما کسر شد.', number_format($penalty)));
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'خطا: ' . $e->getMessage());
         }
     }
 }

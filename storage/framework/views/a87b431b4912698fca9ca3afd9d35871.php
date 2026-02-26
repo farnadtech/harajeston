@@ -314,6 +314,7 @@
                         <th class="px-6 py-4 text-right text-sm font-semibold text-gray-700">تاریخ</th>
                         <th class="px-6 py-4 text-right text-sm font-semibold text-gray-700">نوع</th>
                         <th class="px-6 py-4 text-right text-sm font-semibold text-gray-700">مبلغ</th>
+                        <th class="px-6 py-4 text-right text-sm font-semibold text-gray-700">توضیحات</th>
                         <th class="px-6 py-4 text-right text-sm font-semibold text-gray-700">موجودی بعد</th>
                     </tr>
                 </thead>
@@ -369,13 +370,17 @@
                                     <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($transaction->amount, true); ?>
                                 </span>
                             </td>
+                            <td class="px-6 py-4 text-sm text-gray-600">
+                                <?php echo e($transaction->description ?? '-'); ?>
+
+                            </td>
                             <td class="px-6 py-4 text-sm font-medium text-gray-900">
                                 <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($transaction->balance_after, true); ?>
                             </td>
                         </tr>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr>
-                            <td colspan="4" class="px-6 py-12 text-center">
+                            <td colspan="5" class="px-6 py-12 text-center">
                                 <span class="material-symbols-outlined text-gray-300 text-6xl mb-3 block">receipt_long</span>
                                 <p class="text-gray-500 font-medium">هیچ تراکنشی یافت نشد</p>
                             </td>

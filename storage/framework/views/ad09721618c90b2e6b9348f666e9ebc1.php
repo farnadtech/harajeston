@@ -421,31 +421,13 @@
             </form>
         </div>
 
-        <!-- تنظیمات آزادسازی پول حراجی -->
+        <!-- تنظیمات زمان‌بندی حراجی -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات آزادسازی پول حراجی</h2>
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات زمان‌بندی حراجی</h2>
             
             <form action="<?php echo e(route('admin.settings.auction-release.update')); ?>" method="POST">
                 <?php echo csrf_field(); ?>
                 <?php echo method_field('PUT'); ?>
-
-                <div class="mb-6">
-                    <label for="auction_auto_release_days" class="block text-gray-700 font-bold mb-2">
-                        تعداد روز تا آزادسازی خودکار پول
-                    </label>
-                    <input type="number" 
-                           id="auction_auto_release_days" 
-                           name="auction_auto_release_days" 
-                           value="<?php echo e($auctionReleaseSettings['auto_release_days'] ?? 7); ?>"
-                           class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                           min="1" 
-                           max="90">
-                    <p class="text-sm text-gray-600 mt-2">
-                        بعد از تحویل کالا، پول خریدار به مدت این تعداد روز بلاک می‌ماند. بعد از این مدت، به صورت خودکار کمیسیون کسر شده و مابقی به فروشنده واریز می‌شود.
-                        <br>
-                        <strong>توصیه:</strong> 7 روز برای اطمینان از رضایت خریدار مناسب است.
-                    </p>
-                </div>
 
                 <div class="mb-6">
                     <label for="auction_finalize_deadline_hours" class="block text-gray-700 font-bold mb-2">
@@ -466,7 +448,7 @@
                 </div>
 
                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-                    ذخیره تنظیمات آزادسازی پول
+                    ذخیره تنظیمات زمان‌بندی
                 </button>
             </form>
         </div>
@@ -558,6 +540,120 @@
 
                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
                     ذخیره تنظیمات کیف پول
+                </button>
+            </form>
+        </div>
+
+        <!-- تنظیمات جریمه لغو سفارش -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات جریمه لغو سفارش</h2>
+            
+            <form action="<?php echo e(route('admin.settings.cancellation-penalty.update')); ?>" method="POST">
+                <?php echo csrf_field(); ?>
+                <?php echo method_field('PUT'); ?>
+
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-yellow-600 mt-0.5">info</span>
+                        <div class="text-sm text-gray-700">
+                            <p class="font-bold mb-1">درباره جریمه لغو سفارش:</p>
+                            <p>زمانی که خریدار یا فروشنده سفارشی را در مرحله "در حال پردازش" لغو می‌کند، این جریمه از کیف پول آن‌ها کسر شده و به حساب مدیر سایت واریز می‌شود.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-bold mb-2">نوع محاسبه جریمه</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="radio" name="order_cancellation_penalty_type" value="percentage" 
+                                   <?php echo e((\App\Models\SiteSetting::get('order_cancellation_penalty_type', 'percentage') === 'percentage') ? 'checked' : ''); ?>
+
+                                   class="ml-2">
+                            <span>درصد از مبلغ سفارش</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="order_cancellation_penalty_type" value="fixed" 
+                                   <?php echo e((\App\Models\SiteSetting::get('order_cancellation_penalty_type', 'percentage') === 'fixed') ? 'checked' : ''); ?>
+
+                                   class="ml-2">
+                            <span>مبلغ ثابت</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label for="order_cancellation_penalty_value" class="block text-gray-700 font-bold mb-2">
+                        مقدار جریمه (درصد یا مبلغ ثابت به تومان)
+                    </label>
+                    <input type="number" 
+                           id="order_cancellation_penalty_value" 
+                           name="order_cancellation_penalty_value" 
+                           value="<?php echo e(\App\Models\SiteSetting::get('order_cancellation_penalty_value', 10)); ?>"
+                           class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           min="0"
+                           step="0.01">
+                    <p class="text-sm text-gray-600 mt-2">
+                        اگر نوع "درصد" انتخاب شده: عدد بین 0 تا 100 (مثلاً 10 یعنی 10 درصد)<br>
+                        اگر نوع "مبلغ ثابت" انتخاب شده: مبلغ به تومان (مثلاً 50000 یعنی 50,000 تومان)
+                    </p>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-blue-600 mt-0.5">calculate</span>
+                        <div class="text-sm text-blue-800">
+                            <p class="font-bold mb-1">مثال محاسبه:</p>
+                            <p class="mb-2"><strong>درصدی:</strong> سفارش 1,000,000 تومانی با جریمه 10% = 100,000 تومان جریمه</p>
+                            <p><strong>ثابت:</strong> هر سفارش لغو شده = 50,000 تومان جریمه (صرف‌نظر از مبلغ سفارش)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    ذخیره تنظیمات جریمه
+                </button>
+            </form>
+        </div>
+
+        <!-- تنظیمات مهلت تست کالا -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات مهلت تست و بررسی کالا</h2>
+            
+            <form action="<?php echo e(route('admin.settings.test-period.update')); ?>" method="POST">
+                <?php echo csrf_field(); ?>
+                <?php echo method_field('PUT'); ?>
+
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-blue-600 mt-0.5">info</span>
+                        <div class="text-sm text-gray-700">
+                            <p class="font-bold mb-1">درباره مهلت تست:</p>
+                            <p>پس از ارسال سفارش (وقتی فروشنده کد رهگیری را ثبت کرد)، خریدار این مدت زمان را برای دریافت و تست کالا دارد. اگر مشکلی اعلام نکند، پول به فروشنده واریز می‌شود.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label for="order_test_period_days" class="block text-gray-700 font-bold mb-2">
+                        مهلت تست و بررسی کالا (روز)
+                    </label>
+                    <input type="number" 
+                           id="order_test_period_days" 
+                           name="order_test_period_days" 
+                           value="<?php echo e(\App\Models\SiteSetting::get('order_test_period_days', 7)); ?>"
+                           class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           min="1"
+                           max="30">
+                    <p class="text-sm text-gray-600 mt-2">
+                        تعداد روزهایی که خریدار برای دریافت و تست کالا وقت دارد. این مهلت از زمان ثبت کد رهگیری توسط فروشنده شروع می‌شود.
+                        <br>
+                        <strong>پیشنهادی:</strong> 7 روز
+                    </p>
+                </div>
+
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    ذخیره تنظیمات مهلت تست
                 </button>
             </form>
         </div>

@@ -164,8 +164,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
-    Route::put('/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
+    Route::match(['PUT', 'POST'], '/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.updateStatus');
     Route::post('/orders/{order}/release-payment', [OrderController::class, 'releasePayment'])->name('orders.releasePayment');
+    Route::post('/orders/{order}/confirm-preparation', [OrderController::class, 'confirmPreparation'])->name('orders.confirmPreparation');
+    Route::post('/orders/{order}/add-tracking', [OrderController::class, 'addTrackingNumber'])->name('orders.addTracking');
+    Route::post('/orders/{order}/cancel-with-penalty', [OrderController::class, 'cancelWithPenalty'])->name('orders.cancelWithPenalty');
+    
+    // Checkout
+    Route::get('/checkout/auction/{listing}', [CheckoutController::class, 'auctionCheckout'])->name('checkout.auction');
+    Route::post('/checkout/auction/{listing}', [CheckoutController::class, 'processAuctionCheckout'])->name('checkout.auction.process');
     
     // Seller Reviews
     Route::get('/orders/{order}/review', [\App\Http\Controllers\SellerReviewController::class, 'create'])->name('seller-reviews.create');
@@ -188,6 +195,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/seller', [SettingsController::class, 'updateSeller'])->name('admin.settings.seller.update');
         Route::put('/settings/auction-duration', [SettingsController::class, 'updateAuctionDuration'])->name('admin.settings.auction-duration.update');
         Route::put('/settings/wallet', [SettingsController::class, 'updateWallet'])->name('admin.settings.wallet.update');
+        Route::put('/settings/cancellation-penalty', [SettingsController::class, 'updateCancellationPenalty'])->name('admin.settings.cancellation-penalty.update');
+        Route::put('/settings/test-period', [SettingsController::class, 'updateTestPeriod'])->name('admin.settings.test-period.update');
         Route::put('/settings/loser-fee', [SettingsController::class, 'updateLoserFee'])->name('admin.settings.loser-fee.update');
         Route::put('/settings/forfeit', [SettingsController::class, 'updateForfeit'])->name('admin.settings.forfeit.update');
         Route::put('/settings/auction-release', [SettingsController::class, 'updateAuctionRelease'])->name('admin.settings.auction-release.update');
@@ -255,6 +264,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/users/{user}/suspend', [\App\Http\Controllers\Admin\UserController::class, 'suspend'])->name('admin.users.suspend');
         Route::post('/users/{user}/activate', [\App\Http\Controllers\Admin\UserController::class, 'activate'])->name('admin.users.activate');
         Route::post('/users/{user}/verify-email', [\App\Http\Controllers\Admin\UserController::class, 'verifyEmail'])->name('admin.users.verify-email');
+        Route::post('/users/{user}/adjust-wallet', [\App\Http\Controllers\Admin\UserController::class, 'adjustWallet'])->name('admin.users.adjustWallet');
         
         // Seller Management
         Route::get('/sellers', [\App\Http\Controllers\Admin\SellerController::class, 'index'])->name('admin.sellers.index');
@@ -289,6 +299,12 @@ Route::middleware('auth')->group(function () {
         Route::delete('/seller-reviews/{id}', [\App\Http\Controllers\Admin\SellerReviewController::class, 'destroy'])->name('admin.seller-reviews.destroy');
         
         Route::resource('shipping-methods', ShippingMethodController::class, ['as' => 'admin']);
+        
+        // Order Management
+        Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('admin.orders.index');
+        Route::get('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])->name('admin.orders.show');
+        Route::put('/orders/{order}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])->name('admin.orders.updateStatus');
+        Route::put('/orders/{order}/shipping', [\App\Http\Controllers\Admin\OrderController::class, 'updateShipping'])->name('admin.orders.updateShipping');
         Route::post('/shipping-methods/{shippingMethod}/toggle', [ShippingMethodController::class, 'toggle'])->name('admin.shipping-methods.toggle');
         Route::resource('orders', AdminOrderController::class, ['as' => 'admin'])->only(['index', 'show']);
     });

@@ -42,6 +42,7 @@ class WalletService
                 'balance_after' => $wallet->balance,
                 'frozen_before' => $wallet->frozen,
                 'frozen_after' => $wallet->frozen,
+                'status' => 'completed',
                 'description' => $description,
             ]);
             
@@ -105,6 +106,7 @@ class WalletService
                 'frozen_after' => $wallet->frozen,
                 'reference_type' => $listing ? Listing::class : null,
                 'reference_id' => $listing?->id,
+                'status' => 'completed',
                 'description' => $description,
             ]);
             
@@ -150,6 +152,7 @@ class WalletService
                 'frozen_after' => $wallet->frozen,
                 'reference_type' => Listing::class,
                 'reference_id' => $listing->id,
+                'status' => 'completed',
                 'description' => sprintf('مسدود سازی سپرده مزایده: %s', $listing->title),
             ]);
             
@@ -191,6 +194,7 @@ class WalletService
                 'frozen_after' => $wallet->frozen,
                 'reference_type' => Listing::class,
                 'reference_id' => $listing->id,
+                'status' => 'completed',
                 'description' => sprintf('آزادسازی سپرده مزایده: %s', $listing->title),
             ]);
             
@@ -231,6 +235,7 @@ class WalletService
                 'frozen_after' => $wallet->frozen,
                 'reference_type' => $listing ? Listing::class : null,
                 'reference_id' => $listing?->id,
+                'status' => 'completed',
                 'description' => $description,
             ]);
             

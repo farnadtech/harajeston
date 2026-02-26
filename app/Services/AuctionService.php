@@ -74,7 +74,7 @@ class AuctionService
     }
     
     /**
-     * Process auction ending - identify top 3 bidders and release others
+     * Process auction ending - identify winner and release losers' deposits
      * 
      * @param Listing $listing
      * @return void
@@ -90,13 +90,7 @@ class AuctionService
                 throw new AuctionNotActiveException($listing->id, $listing->status);
             }
             
-            // Skip if required_deposit is not set
-            if (!$listing->required_deposit) {
-                \Illuminate\Support\Facades\Log::warning('ProcessAuctionEnding: Skipping auction ' . $listing->id . ' - no required_deposit set');
-                return;
-            }
-            
-            // Get all bids ordered by amount DESC, grouped by user (highest bid per user)
+            // Get all bids ordered by amount DESC
             $bids = Bid::where('listing_id', $listing->id)
                 ->orderBy('amount', 'desc')
                 ->orderBy('created_at', 'asc') // Earlier bid wins in case of tie
@@ -111,28 +105,46 @@ class AuctionService
                 return;
             }
             
-            // Identify top 3 bidders
-            $top3 = $bids->take(3);
-            $others = $bids->skip(3);
+            // Get winner (highest bidder)
+            $winner = $bids->first();
             
-            // Release deposits for non-top-3 bidders
-            foreach ($others as $bid) {
+            // Get deposit amount from settings
+            $depositPercentage = (float) \App\Models\SiteSetting::get('auction_deposit_percentage', 20);
+            $depositAmount = (int) (($listing->base_price ?? $listing->starting_price) * ($depositPercentage / 100));
+            
+            // Release deposits for all losers
+            foreach ($bids->skip(1) as $bid) {
+                $user = $bid->user;
+                
                 // بررسی تنظیمات کارمزد بازندگان
                 $loserFeeEnabled = \App\Models\SiteSetting::get('loser_fee_enabled', false);
                 $loserFeePercentage = (float) \App\Models\SiteSetting::get('loser_fee_percentage', 0);
                 
-                if ($loserFeeEnabled && $loserFeePercentage > 0) {
+                if ($loserFeeEnabled && $loserFeePercentage > 0 && $depositAmount > 0) {
                     // محاسبه کارمزد
-                    $fee = (int) ($listing->required_deposit * ($loserFeePercentage / 100));
-                    $refundAmount = $listing->required_deposit - $fee;
+                    $fee = (int) ($depositAmount * ($loserFeePercentage / 100));
+                    $refundAmount = $depositAmount - $fee;
                     
                     // کسر کارمزد از موجودی مسدود
-                    $this->walletService->deductFrozenAmount(
-                        $bid->user,
-                        $fee,
-                        sprintf('کارمزد شرکت در مزایده: %s', $listing->title),
-                        $listing
-                    );
+                    $wallet = $user->wallet;
+                    $wallet->frozen -= $fee;
+                    $wallet->save();
+                    
+                    \App\Models\WalletTransaction::create([
+                        'wallet_id' => $wallet->id,
+                        'user_id' => $user->id,
+                        'type' => 'deduct_frozen',
+                        'amount' => $fee,
+                        'final_amount' => $fee,
+                        'balance_before' => $wallet->balance,
+                        'balance_after' => $wallet->balance,
+                        'frozen_before' => $wallet->frozen + $fee,
+                        'frozen_after' => $wallet->frozen,
+                        'reference_type' => \App\Models\Listing::class,
+                        'reference_id' => $listing->id,
+                        'status' => 'completed',
+                        'description' => sprintf('کارمزد بازنده حراجی: %s', $listing->title),
+                    ]);
                     
                     // واریز کارمزد به کیف پول سایت
                     $siteUser = User::find(1);
@@ -146,14 +158,13 @@ class AuctionService
                     
                     // آزادسازی مابقی سپرده
                     if ($refundAmount > 0) {
-                        $wallet = $bid->user->wallet;
                         $wallet->frozen -= $refundAmount;
                         $wallet->balance += $refundAmount;
                         $wallet->save();
                         
                         \App\Models\WalletTransaction::create([
                             'wallet_id' => $wallet->id,
-                            'user_id' => $bid->user->id,
+                            'user_id' => $user->id,
                             'type' => 'release_deposit',
                             'amount' => $refundAmount,
                             'final_amount' => $refundAmount,
@@ -163,14 +174,15 @@ class AuctionService
                             'frozen_after' => $wallet->frozen,
                             'reference_type' => \App\Models\Listing::class,
                             'reference_id' => $listing->id,
+                            'status' => 'completed',
                             'description' => sprintf('بازگشت سپرده (پس از کسر کارمزد): %s', $listing->title),
                         ]);
                     }
-                } else {
+                } else if ($depositAmount > 0) {
                     // آزادسازی کامل سپرده بدون کارمزد
                     $this->walletService->releaseDeposit(
-                        $bid->user,
-                        $listing->required_deposit,
+                        $user,
+                        $depositAmount,
                         $listing
                     );
                 }
@@ -178,77 +190,22 @@ class AuctionService
             
             // Update auction status to 'ended'
             $listing->status = 'ended';
-            
-            // Set rank 1 as current winner with 48-hour deadline
-            $winner = $top3->first();
             $listing->current_winner_id = $winner->user_id;
-            $listing->finalization_deadline = now()->addHours(48);
+            
+            // Set finalization deadline from settings
+            $deadlineHours = (int) \App\Models\SiteSetting::get('auction_payment_deadline_hours', 24);
+            $listing->finalization_deadline = now()->addHours($deadlineHours);
             
             $listing->save();
             
             // Send notification to winner
             $notificationService = app(\App\Services\NotificationService::class);
             $notificationService->notifyAuctionWon($listing, $winner->user, $winner->amount);
-            
-            // Release deposits for rank 2 and 3 (they are not winners)
-            foreach ($top3->skip(1) as $bid) {
-                $loserFeeEnabled = \App\Models\SiteSetting::get('loser_fee_enabled', false);
-                $loserFeePercentage = (float) \App\Models\SiteSetting::get('loser_fee_percentage', 0);
-                
-                if ($loserFeeEnabled && $loserFeePercentage > 0) {
-                    $fee = (int) ($listing->required_deposit * ($loserFeePercentage / 100));
-                    $refundAmount = $listing->required_deposit - $fee;
-                    
-                    $this->walletService->deductFrozenAmount(
-                        $bid->user,
-                        $fee,
-                        sprintf('کارمزد شرکت در مزایده: %s', $listing->title),
-                        $listing
-                    );
-                    
-                    $siteUser = User::find(1);
-                    if ($siteUser) {
-                        $this->walletService->addFunds(
-                            $siteUser,
-                            $fee,
-                            sprintf('کارمزد بازنده مزایده: %s', $listing->title)
-                        );
-                    }
-                    
-                    if ($refundAmount > 0) {
-                        $wallet = $bid->user->wallet;
-                        $wallet->frozen -= $refundAmount;
-                        $wallet->balance += $refundAmount;
-                        $wallet->save();
-                        
-                        \App\Models\WalletTransaction::create([
-                            'wallet_id' => $wallet->id,
-                            'user_id' => $bid->user->id,
-                            'type' => 'release_deposit',
-                            'amount' => $refundAmount,
-                            'final_amount' => $refundAmount,
-                            'balance_before' => $wallet->balance - $refundAmount,
-                            'balance_after' => $wallet->balance,
-                            'frozen_before' => $wallet->frozen + $refundAmount,
-                            'frozen_after' => $wallet->frozen,
-                            'reference_type' => \App\Models\Listing::class,
-                            'reference_id' => $listing->id,
-                            'description' => sprintf('بازگشت سپرده (پس از کسر کارمزد): %s', $listing->title),
-                        ]);
-                    }
-                } else {
-                    $this->walletService->releaseDeposit(
-                        $bid->user,
-                        $listing->required_deposit,
-                        $listing
-                    );
-                }
-            }
         });
     }
     
     /**
-     * Handle finalization timeout - cascade to next bidder
+     * Handle finalization timeout - forfeit deposit and mark as failed
      * 
      * @param Listing $listing
      * @return void
@@ -266,85 +223,70 @@ class AuctionService
             
             $currentWinner = User::find($listing->current_winner_id);
             
-            // تنظیمات تقسیم سپرده ضبط شده
-            $forfeitToSite = (float) \App\Models\SiteSetting::get('forfeit_to_site_percentage', 100);
-            $forfeitToSeller = 100 - $forfeitToSite;
+            // Get deposit amount from settings
+            $depositPercentage = (float) \App\Models\SiteSetting::get('auction_deposit_percentage', 20);
+            $depositAmount = (int) (($listing->base_price ?? $listing->starting_price) * ($depositPercentage / 100));
             
-            $siteAmount = (int) ($listing->required_deposit * ($forfeitToSite / 100));
-            $sellerAmount = $listing->required_deposit - $siteAmount;
-            
-            // Forfeit current winner's deposit
-            $this->walletService->deductFrozenAmount(
-                $currentWinner,
-                $listing->required_deposit,
-                sprintf('ضبط سپرده به دلیل عدم پرداخت در مهلت مقرر: %s', $listing->title),
-                $listing
-            );
-            
-            // واریز سهم سایت
-            if ($siteAmount > 0) {
-                $siteUser = User::find(1);
-                if ($siteUser) {
-                    $this->walletService->addFunds(
-                        $siteUser,
-                        $siteAmount,
-                        sprintf('سهم سایت از سپرده ضبط شده: %s', $listing->title)
-                    );
-                }
-            }
-            
-            // واریز سهم فروشنده
-            if ($sellerAmount > 0) {
-                $this->walletService->addFunds(
-                    $listing->seller,
-                    $sellerAmount,
-                    sprintf('سهم فروشنده از سپرده ضبط شده: %s', $listing->title)
-                );
-            }
-            
-            // Find next ranked bidder (top 3)
-            $top3Bids = Bid::where('listing_id', $listing->id)
-                ->orderBy('amount', 'desc')
-                ->orderBy('created_at', 'asc')
-                ->get()
-                ->unique('user_id')
-                ->take(3);
-            
-            // Find current winner's rank
-            $currentRank = $top3Bids->search(function ($bid) use ($listing) {
-                return $bid->user_id === $listing->current_winner_id;
-            });
-            
-            // Get next bidder
-            $nextBidder = $top3Bids->get($currentRank + 1);
-            
-            if ($nextBidder) {
-                // Set next bidder as current winner with new 48-hour deadline
-                $listing->current_winner_id = $nextBidder->user_id;
-                $listing->finalization_deadline = now()->addHours(48);
-                $listing->save();
+            if ($depositAmount > 0) {
+                // تنظیمات تقسیم سپرده ضبط شده
+                $forfeitToSite = (float) \App\Models\SiteSetting::get('forfeit_to_site_percentage', 100);
+                $forfeitToSeller = 100 - $forfeitToSite;
                 
-                // TODO: Send notification to new winner
-            } else {
-                // No more bidders - mark auction as failed
-                $listing->status = 'failed';
-                $listing->current_winner_id = null;
-                $listing->finalization_deadline = null;
-                $listing->save();
+                $siteAmount = (int) ($depositAmount * ($forfeitToSite / 100));
+                $sellerAmount = $depositAmount - $siteAmount;
                 
-                // Release remaining deposits (if any)
-                foreach ($top3Bids as $bid) {
-                    if ($bid->user_id !== $currentWinner->id) {
-                        $this->walletService->releaseDeposit(
-                            $bid->user,
-                            $listing->required_deposit,
-                            $listing
+                // Forfeit current winner's deposit
+                $wallet = $currentWinner->wallet;
+                $wallet->frozen -= $depositAmount;
+                $wallet->save();
+                
+                \App\Models\WalletTransaction::create([
+                    'wallet_id' => $wallet->id,
+                    'user_id' => $currentWinner->id,
+                    'type' => 'deduct_frozen',
+                    'amount' => $depositAmount,
+                    'final_amount' => $depositAmount,
+                    'balance_before' => $wallet->balance,
+                    'balance_after' => $wallet->balance,
+                    'frozen_before' => $wallet->frozen + $depositAmount,
+                    'frozen_after' => $wallet->frozen,
+                    'reference_type' => \App\Models\Listing::class,
+                    'reference_id' => $listing->id,
+                    'status' => 'completed',
+                    'description' => sprintf('ضبط سپرده به دلیل عدم پرداخت: %s', $listing->title),
+                ]);
+                
+                // واریز سهم سایت
+                if ($siteAmount > 0) {
+                    $siteUser = User::find(1);
+                    if ($siteUser) {
+                        $this->walletService->addFunds(
+                            $siteUser,
+                            $siteAmount,
+                            sprintf('سهم سایت از سپرده ضبط شده: %s', $listing->title)
                         );
                     }
                 }
                 
-                // TODO: Send notification to seller
+                // واریز سهم فروشنده
+                if ($sellerAmount > 0) {
+                    $this->walletService->addFunds(
+                        $listing->seller,
+                        $sellerAmount,
+                        sprintf('سهم فروشنده از سپرده ضبط شده: %s', $listing->title)
+                    );
+                }
             }
+            
+            // Mark auction as failed
+            $listing->status = 'failed';
+            $listing->current_winner_id = null;
+            $listing->finalization_deadline = null;
+            $listing->save();
+            
+            // Send notification to seller
+            $notificationService = app(\App\Services\NotificationService::class);
+            // TODO: Add notifyAuctionFailed method
         });
     }
     
@@ -430,24 +372,30 @@ class AuctionService
             }
             
             $totalAmount = $winningBid->amount;
-            $depositAmount = $listing->required_deposit;
+            
+            // Get deposit amount from settings
+            $depositPercentage = (float) \App\Models\SiteSetting::get('auction_deposit_percentage', 20);
+            $depositAmount = (int) (($listing->base_price ?? $listing->starting_price) * ($depositPercentage / 100));
             $remainingAmount = $totalAmount - $depositAmount;
             
             // Convert deposit to payment (no change in frozen, just record the conversion)
-            \App\Models\WalletTransaction::create([
-                'wallet_id' => $winner->wallet->id,
-                'user_id' => $winner->id,
-                'type' => 'auction_payment',
-                'amount' => $depositAmount,
-                'final_amount' => $depositAmount,
-                'balance_before' => $winner->wallet->balance,
-                'balance_after' => $winner->wallet->balance,
-                'frozen_before' => $winner->wallet->frozen,
-                'frozen_after' => $winner->wallet->frozen,
-                'reference_type' => \App\Models\Listing::class,
-                'reference_id' => $listing->id,
-                'description' => sprintf('تبدیل سپرده به پرداخت: %s', $listing->title),
-            ]);
+            if ($depositAmount > 0) {
+                \App\Models\WalletTransaction::create([
+                    'wallet_id' => $winner->wallet->id,
+                    'user_id' => $winner->id,
+                    'type' => 'auction_payment',
+                    'amount' => $depositAmount,
+                    'final_amount' => $depositAmount,
+                    'balance_before' => $winner->wallet->balance,
+                    'balance_after' => $winner->wallet->balance,
+                    'frozen_before' => $winner->wallet->frozen,
+                    'frozen_after' => $winner->wallet->frozen,
+                    'reference_type' => \App\Models\Listing::class,
+                    'reference_id' => $listing->id,
+                    'status' => 'completed',
+                    'description' => sprintf('تبدیل سپرده به پرداخت: %s', $listing->title),
+                ]);
+            }
             
             // Freeze remaining amount (deposit is already frozen)
             if ($remainingAmount > 0) {
@@ -474,6 +422,7 @@ class AuctionService
                     'frozen_after' => $wallet->frozen,
                     'reference_type' => \App\Models\Listing::class,
                     'reference_id' => $listing->id,
+                    'status' => 'completed',
                     'description' => sprintf('بلاک مبلغ باقیمانده حراجی: %s', $listing->title),
                 ]);
             }
@@ -536,14 +485,15 @@ class AuctionService
             // Get buyer wallet
             $buyerWallet = $order->buyer->wallet;
             
-            // Release frozen amount from buyer
+            // Release frozen amount from buyer and record as payment
             $buyerWallet->frozen -= $totalAmount;
             $buyerWallet->save();
             
+            // Record buyer payment transaction
             \App\Models\WalletTransaction::create([
                 'wallet_id' => $buyerWallet->id,
                 'user_id' => $order->buyer_id,
-                'type' => 'deduct_frozen',
+                'type' => 'withdrawal',
                 'amount' => $totalAmount,
                 'final_amount' => $totalAmount,
                 'balance_before' => $buyerWallet->balance,
@@ -552,7 +502,8 @@ class AuctionService
                 'frozen_after' => $buyerWallet->frozen,
                 'reference_type' => \App\Models\Order::class,
                 'reference_id' => $order->id,
-                'description' => sprintf('کسر مبلغ بلاک شده برای سفارش #%s', $order->order_number),
+                'status' => 'completed',
+                'description' => sprintf('پرداخت سفارش #%s', $order->order_number),
             ]);
             
             // Transfer commission to site
@@ -565,7 +516,7 @@ class AuctionService
                 );
             }
             
-            // Transfer seller amount to seller
+            // Transfer seller amount to seller (this creates a deposit transaction)
             if ($sellerAmount > 0) {
                 $this->walletService->addFunds(
                     $order->seller,
@@ -583,4 +534,142 @@ class AuctionService
             $order->save();
         });
     }
+
+    /**
+     * Finalize auction with shipping details
+     */
+    public function finalizeAuctionWithShipping(Listing $listing, User $winner, array $shippingData): \App\Models\Order
+    {
+        return DB::transaction(function () use ($listing, $winner, $shippingData) {
+            $listing = Listing::where('id', $listing->id)
+                ->lockForUpdate()
+                ->first();
+            
+            if ($listing->status !== 'ended') {
+                throw new \Exception('حراجی در وضعیت مناسب برای نهایی‌سازی نیست');
+            }
+            
+            if ($listing->current_winner_id !== $winner->id) {
+                throw new \Exception('شما برنده این حراجی نیستید');
+            }
+            
+            // Get winning bid
+            $winningBid = Bid::where('listing_id', $listing->id)
+                ->where('user_id', $winner->id)
+                ->orderBy('amount', 'desc')
+                ->first();
+            
+            if (!$winningBid) {
+                throw new \Exception('پیشنهاد برنده یافت نشد');
+            }
+            
+            $totalAmount = $winningBid->amount;
+            
+            // Get deposit amount from settings
+            $depositPercentage = (float) \App\Models\SiteSetting::get('auction_deposit_percentage', 20);
+            $depositAmount = (int) (($listing->base_price ?? $listing->starting_price) * ($depositPercentage / 100));
+            $remainingAmount = $totalAmount - $depositAmount;
+            
+            // Get shipping cost
+            $shippingMethod = \App\Models\ShippingMethod::findOrFail($shippingData['shipping_method_id']);
+            $shippingCost = $shippingMethod->cost;
+            
+            // Check if listing has custom shipping cost
+            $listingShipping = $listing->shippingMethods()
+                ->where('shipping_method_id', $shippingMethod->id)
+                ->first();
+            
+            if ($listingShipping && $listingShipping->pivot->custom_cost_adjustment) {
+                $shippingCost += $listingShipping->pivot->custom_cost_adjustment;
+            }
+            
+            $finalTotal = $totalAmount + $shippingCost;
+            $amountToFreeze = $remainingAmount + $shippingCost;
+            
+            // Convert deposit to payment (no change in frozen, just record the conversion)
+            if ($depositAmount > 0) {
+                \App\Models\WalletTransaction::create([
+                    'wallet_id' => $winner->wallet->id,
+                    'user_id' => $winner->id,
+                    'type' => 'auction_payment',
+                    'amount' => $depositAmount,
+                    'final_amount' => $depositAmount,
+                    'balance_before' => $winner->wallet->balance,
+                    'balance_after' => $winner->wallet->balance,
+                    'frozen_before' => $winner->wallet->frozen,
+                    'frozen_after' => $winner->wallet->frozen,
+                    'reference_type' => \App\Models\Listing::class,
+                    'reference_id' => $listing->id,
+                    'status' => 'completed',
+                    'description' => sprintf('تبدیل سپرده به پرداخت: %s', $listing->title),
+                ]);
+            }
+            
+            // Freeze remaining amount + shipping cost
+            if ($amountToFreeze > 0) {
+                $wallet = $winner->wallet;
+                
+                if ($wallet->balance < $amountToFreeze) {
+                    throw new \Exception('موجودی کیف پول کافی نیست. مبلغ مورد نیاز: ' . number_format($amountToFreeze) . ' تومان');
+                }
+                
+                // Freeze the amount
+                $wallet->balance -= $amountToFreeze;
+                $wallet->frozen += $amountToFreeze;
+                $wallet->save();
+                
+                \App\Models\WalletTransaction::create([
+                    'wallet_id' => $wallet->id,
+                    'user_id' => $winner->id,
+                    'type' => 'freeze_deposit',
+                    'amount' => $amountToFreeze,
+                    'final_amount' => $amountToFreeze,
+                    'balance_before' => $wallet->balance + $amountToFreeze,
+                    'balance_after' => $wallet->balance,
+                    'frozen_before' => $wallet->frozen - $amountToFreeze,
+                    'frozen_after' => $wallet->frozen,
+                    'reference_type' => \App\Models\Listing::class,
+                    'reference_id' => $listing->id,
+                    'status' => 'completed',
+                    'description' => sprintf('بلاک مبلغ باقیمانده + هزینه ارسال: %s', $listing->title),
+                ]);
+            }
+            
+            // Create order - set to processing since payment is complete
+            $order = \App\Models\Order::create([
+                'buyer_id' => $winner->id,
+                'seller_id' => $listing->seller_id,
+                'subtotal' => $totalAmount,
+                'shipping_cost' => $shippingCost,
+                'total' => $finalTotal,
+                'status' => 'processing',
+                'shipping_method_id' => $shippingMethod->id,
+                'shipping_address' => $shippingData['shipping_address'],
+                'shipping_city' => $shippingData['shipping_city'],
+                'shipping_postal_code' => $shippingData['shipping_postal_code'],
+                'shipping_phone' => $shippingData['shipping_phone'],
+            ]);
+            
+            // Create order item
+            \App\Models\OrderItem::create([
+                'order_id' => $order->id,
+                'listing_id' => $listing->id,
+                'quantity' => 1,
+                'price_snapshot' => $totalAmount,
+                'subtotal' => $totalAmount,
+            ]);
+            
+            // Update listing status
+            $listing->status = 'completed';
+            $listing->save();
+            
+            // Send notifications
+            $notificationService = app(\App\Services\NotificationService::class);
+            $notificationService->notifyNewOrder($order);
+            
+            return $order;
+        });
+    }
+
 }
+

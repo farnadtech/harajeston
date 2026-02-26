@@ -1,46 +1,40 @@
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
+
 $app = require_once __DIR__ . '/../bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
-$kernel->bootstrap();
+$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
-use App\Models\Notification;
+echo "=== اصلاح لینک‌های نوتیفیکیشن ===\n\n";
 
-try {
-    $notifications = Notification::whereNotNull('link')
-        ->where('link', 'like', '%admin/listings/%')
-        ->get();
+// پیدا کردن نوتیفیکیشن‌های سفارش که لینک admin دارند
+$notifications = \App\Models\Notification::where('type', 'order')
+    ->orWhere('type', 'order_status')
+    ->get();
 
-    $updated = 0;
+echo "تعداد کل نوتیفیکیشن‌های سفارش: {$notifications->count()}\n\n";
 
-    foreach ($notifications as $notification) {
-        $user = $notification->user;
-        
-        if (!$user) continue;
-        
-        // اگر کاربر ادمین نیست، لینک رو تغییر بده
-        if ($user->role !== 'admin') {
-            $oldLink = $notification->link;
+$fixed = 0;
+foreach ($notifications as $notification) {
+    $user = \App\Models\User::find($notification->user_id);
+    if (!$user) continue;
+    
+    // اگر کاربر ادمین نیست و لینک admin داره، درستش کن
+    if ($user->role !== 'admin' && strpos($notification->link, '/admin/orders/') !== false) {
+        // استخراج order ID از لینک
+        preg_match('/\/admin\/orders\/(\d+)/', $notification->link, $matches);
+        if (isset($matches[1])) {
+            $orderId = $matches[1];
+            $newLink = route('orders.show', $orderId);
             
-            // استخراج listing ID از لینک
-            if (preg_match('/listings\/(\d+)/', $oldLink, $matches)) {
-                $listingId = $matches[1];
-                
-                try {
-                    $newLink = url("/listings/{$listingId}");
-                    
-                    $notification->link = $newLink;
-                    $notification->save();
-                    
-                    $updated++;
-                } catch (Exception $e) {
-                    // Skip this notification
-                }
-            }
+            echo "نوتیفیکیشن #{$notification->id} (User #{$user->id} - {$user->role}):\n";
+            echo "  قبل: {$notification->link}\n";
+            echo "  بعد: {$newLink}\n\n";
+            
+            $notification->link = $newLink;
+            $notification->save();
+            $fixed++;
         }
     }
-
-    echo "✓ تعداد {$updated} نوتیفیکیشن به‌روز شد";
-} catch (Exception $e) {
-    echo "خطا: " . $e->getMessage();
 }
+
+echo "\n✓ تعداد نوتیفیکیشن‌های اصلاح شده: {$fixed}\n";

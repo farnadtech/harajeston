@@ -43,6 +43,7 @@ class ListingController extends Controller
             }
             
             $listings = $query->with('seller', 'images')
+                ->withCount('bids')
                 ->orderBy('ends_at', 'asc')
                 ->paginate(20);
             
@@ -179,6 +180,7 @@ class ListingController extends Controller
         }
 
         $listings = $query->with('seller', 'images')
+            ->withCount('bids')
             ->paginate(20)
             ->appends($request->except('page'));
 

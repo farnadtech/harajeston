@@ -10,7 +10,19 @@ class UpdateOrderStatusRequest extends FormRequest
     public function authorize(): bool
     {
         $order = $this->route('order');
-        return $this->user()->id === $order->seller_id;
+        $user = $this->user();
+        
+        // Seller can update any status
+        if ($user->id === $order->seller_id) {
+            return true;
+        }
+        
+        // Buyer can only update from 'shipped' to 'delivered'
+        if ($user->id === $order->buyer_id && $order->status === 'shipped' && $this->status === 'delivered') {
+            return true;
+        }
+        
+        return false;
     }
 
     public function rules(): array

@@ -92,4 +92,60 @@ class UserController extends Controller
         
         return response()->json(['success' => true]);
     }
+
+    /**
+     * Adjust user wallet balance
+     */
+    public function adjustWallet(Request $request, User $user)
+    {
+        $request->validate([
+            'amount' => 'required|numeric',
+            'type' => 'required|in:add,subtract',
+            'description' => 'required|string|max:500'
+        ]);
+
+        $amount = abs($request->amount);
+        
+        if ($request->type === 'subtract') {
+            $amount = -$amount;
+        }
+
+        // Get or create wallet
+        $wallet = $user->wallet;
+        if (!$wallet) {
+            $wallet = $user->wallet()->create(['balance' => 0]);
+        }
+
+        // Check if balance is sufficient for subtraction
+        if ($amount < 0 && $wallet->balance < abs($amount)) {
+            return redirect()
+                ->back()
+                ->withErrors(['amount' => 'موجودی کیف پول کافی نیست.']);
+        }
+
+        // Store balance before update
+        $balanceBefore = $wallet->balance;
+
+        // Update balance
+        $wallet->balance += $amount;
+        $wallet->save();
+
+        // Create transaction record
+        $wallet->transactions()->create([
+            'user_id' => $user->id,
+            'type' => $amount > 0 ? 'deposit' : 'withdrawal',
+            'amount' => abs($amount),
+            'final_amount' => abs($amount),
+            'balance_before' => $balanceBefore,
+            'balance_after' => $wallet->balance,
+            'frozen_before' => $wallet->frozen ?? 0,
+            'frozen_after' => $wallet->frozen ?? 0,
+            'description' => $request->description,
+            'status' => 'completed'
+        ]);
+
+        return redirect()
+            ->route('admin.users.show', $user)
+            ->with('success', 'موجودی کیف پول با موفقیت به‌روزرسانی شد.');
+    }
 }

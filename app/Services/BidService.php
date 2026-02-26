@@ -106,6 +106,23 @@ class BidService
                 $wallet->balance -= $depositAmount;
                 $wallet->frozen += $depositAmount;
                 $wallet->save();
+                
+                // ثبت تراکنش بلاک سپرده
+                \App\Models\WalletTransaction::create([
+                    'wallet_id' => $wallet->id,
+                    'user_id' => $user->id,
+                    'type' => 'freeze_deposit',
+                    'amount' => $depositAmount,
+                    'final_amount' => $depositAmount,
+                    'balance_before' => $wallet->balance + $depositAmount,
+                    'balance_after' => $wallet->balance,
+                    'frozen_before' => $wallet->frozen - $depositAmount,
+                    'frozen_after' => $wallet->frozen,
+                    'reference_type' => \App\Models\Listing::class,
+                    'reference_id' => $listing->id,
+                    'status' => 'completed',
+                    'description' => sprintf('بلاک سپرده حراجی: %s', $listing->title),
+                ]);
             }
             
             // Create bid
@@ -116,8 +133,8 @@ class BidService
             ]);
             
             // Update listing with new highest bid
-            $listing->current_highest_bid = $amount;
-            $listing->highest_bidder_id = $user->id;
+            $listing->current_price = $amount;
+            $listing->current_winner_id = $user->id;
             $listing->save();
             
             // Send notification to seller
