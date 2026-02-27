@@ -362,7 +362,7 @@ $__split = function ($name, $params = []) {
 };
 [$__name, $__params] = $__split('auction-countdown', ['listing' => $listing]);
 
-$__html = app('livewire')->mount($__name, $__params, 'DkvWZbe', $__slots ?? [], get_defined_vars());
+$__html = app('livewire')->mount($__name, $__params, 'CbAe2ul', $__slots ?? [], get_defined_vars());
 
 echo $__html;
 
@@ -552,20 +552,14 @@ if (isset($__slots)) unset($__slots);
                                     <?php endif; ?>
                                     
                                     
-                                    <?php if($walletBalance < $requiredBalance): ?>
+                                    <?php if(!$userHasBid && $depositAmount > 0 && $walletBalance < $depositAmount): ?>
                                         <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3 text-sm">
                                             <div class="flex items-start gap-2 text-orange-800">
                                                 <span class="material-symbols-outlined text-lg">warning</span>
                                                 <div>
-                                                    <p class="font-bold mb-1">موجودی کیف پول شما کافی نیست!</p>
+                                                    <p class="font-bold mb-1">موجودی کیف پول شما برای پرداخت سپرده کافی نیست!</p>
                                                     <p class="text-xs">موجودی فعلی: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($walletBalance)); ?></strong> تومان</p>
-                                                    <p class="text-xs">حداقل پیشنهاد: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($minimumBid)); ?></strong> تومان</p>
-                                                    <?php if($depositAmount > 0 && !$userHasBid): ?>
-                                                        <p class="text-xs">سپرده مزایده: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($depositAmount)); ?></strong> تومان</p>
-                                                        <p class="text-xs mt-1 font-bold">مجموع مورد نیاز: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($requiredBalance)); ?></strong> تومان</p>
-                                                    <?php else: ?>
-                                                        <p class="text-xs mt-1 font-bold">مورد نیاز: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($requiredBalance)); ?></strong> تومان</p>
-                                                    <?php endif; ?>
+                                                    <p class="text-xs">سپرده مزایده: <strong><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($depositAmount)); ?></strong> تومان</p>
                                                     <a href="<?php echo e(route('wallet.show')); ?>" class="inline-block mt-2 px-3 py-1 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-xs font-bold">
                                                         شارژ کیف پول
                                                     </a>
@@ -670,22 +664,17 @@ unset($__errorArgs, $__bag); ?>
                                         return false;
                                     }
                                     
-                                    // Calculate required balance for this bid
-                                    let requiredForThisBid = value;
-                                    if (depositAmount > 0 && !hasParticipated) {
-                                        requiredForThisBid += depositAmount;
-                                    }
-                                    
-                                    if (walletBalance < requiredForThisBid) {
-                                        errorDiv.classList.remove('hidden');
-                                        if (depositAmount > 0 && !hasParticipated) {
-                                            errorText.textContent = 'موجودی کیف پول شما کافی نیست. مبلغ مورد نیاز: ' + toPersianNumber(formatNumber(requiredForThisBid)) + ' تومان (شامل ' + toPersianNumber(formatNumber(depositAmount)) + ' تومان سپرده)';
-                                        } else {
-                                            errorText.textContent = 'موجودی کیف پول شما کافی نیست. مبلغ مورد نیاز: ' + toPersianNumber(formatNumber(requiredForThisBid)) + ' تومان';
+                                    // Only check balance for first bid (when deposit needs to be paid)
+                                    if (!hasParticipated && depositAmount > 0) {
+                                        // For first bid, only check if user has enough for deposit
+                                        if (walletBalance < depositAmount) {
+                                            errorDiv.classList.remove('hidden');
+                                            errorText.textContent = 'موجودی کیف پول شما برای پرداخت سپرده کافی نیست. مبلغ سپرده: ' + toPersianNumber(formatNumber(depositAmount)) + ' تومان، موجودی شما: ' + toPersianNumber(formatNumber(walletBalance)) + ' تومان';
+                                            submitBtn.disabled = true;
+                                            return false;
                                         }
-                                        submitBtn.disabled = true;
-                                        return false;
                                     }
+                                    // For subsequent bids, no balance check needed (deposit already paid)
                                     
                                     errorDiv.classList.add('hidden');
                                     submitBtn.disabled = false;

@@ -76,30 +76,24 @@ class BidService
                 throw new InvalidBidAmountException($amount, $minimumBid);
             }
             
-            // Check wallet balance and block deposit if needed
+            // Check wallet and block deposit if needed (only for first bid)
             $wallet = $user->wallet;
             if (!$wallet) {
                 throw new \Exception('کیف پول شما یافت نشد. لطفا با پشتیبانی تماس بگیرید.');
             }
             
-            $balance = $wallet->balance;
-            $requiredBalance = $amount;
-            
             // Check if user has already bid (deposit already blocked)
             $userHasBid = $listing->bids()->where('user_id', $user->id)->exists();
             
-            // Add deposit to required balance if this is first bid
-            if ($depositAmount > 0 && !$userHasBid) {
-                $requiredBalance += $depositAmount;
-            }
-            
-            if ($balance < $requiredBalance) {
-                if ($depositAmount > 0 && !$userHasBid) {
-                    throw new \Exception('موجودی کیف پول شما کافی نیست. مبلغ مورد نیاز: ' . number_format($requiredBalance) . ' تومان (شامل ' . number_format($depositAmount) . ' تومان سپرده)');
-                } else {
-                    throw new \Exception('موجودی کیف پول شما کافی نیست. مبلغ مورد نیاز: ' . number_format($requiredBalance) . ' تومان');
+            // Only check balance for first bid (when deposit needs to be blocked)
+            if (!$userHasBid && $depositAmount > 0) {
+                $balance = $wallet->balance;
+                
+                if ($balance < $depositAmount) {
+                    throw new \Exception('موجودی کیف پول شما برای پرداخت سپرده کافی نیست. مبلغ سپرده: ' . number_format($depositAmount) . ' تومان، موجودی شما: ' . number_format($balance) . ' تومان');
                 }
             }
+            // For subsequent bids, no balance check needed (deposit already blocked and user will pay only if they win)
             
             // Block deposit amount for first bid
             if ($depositAmount > 0 && !$userHasBid) {

@@ -46,46 +46,38 @@ class PlaceBidRequest extends FormRequest
                         $validator->errors()->add('amount', 'مبلغ پیشنهاد باید حداقل ' . $persianAmount . ' تومان باشد.');
                     }
                     
-                    // Check wallet balance including deposit if needed
+                    // Check wallet balance only for first bid (deposit requirement)
                     $user = auth()->user();
                     $wallet = $user->wallet;
                     $balance = $wallet ? $wallet->balance : 0;
                     
-                    $requiredBalance = $this->amount;
+                    // Check if user has already bid in this auction
+                    $userHasBid = $listing->bids()->where('user_id', $user->id)->exists();
                     
-                    // Get deposit from site settings
-                    $depositSetting = \App\Models\SiteSetting::where('key', 'deposit_type')->first();
-                    $depositType = $depositSetting ? $depositSetting->value : 'none';
-                    
-                    $depositAmount = 0;
-                    if ($depositType === 'fixed') {
-                        $fixedSetting = \App\Models\SiteSetting::where('key', 'deposit_fixed_amount')->first();
-                        $depositAmount = $fixedSetting ? (int)$fixedSetting->value : 0;
-                    } elseif ($depositType === 'percentage') {
-                        $percentageSetting = \App\Models\SiteSetting::where('key', 'deposit_percentage')->first();
-                        $percentage = $percentageSetting ? (float)$percentageSetting->value : 0;
-                        $depositAmount = (int)($listing->starting_price * ($percentage / 100));
-                    }
-                    
-                    // Add deposit to required balance if user hasn't bid yet
-                    if ($depositAmount > 0) {
-                        $userHasBid = $listing->bids()->where('user_id', $user->id)->exists();
-                        if (!$userHasBid) {
-                            $requiredBalance += $depositAmount;
-                        }
-                    }
-                    
-                    if ($balance < $requiredBalance) {
-                        $persianRequired = \App\Services\PersianNumberService::convertToPersian(number_format($requiredBalance));
-                        $persianBalance = \App\Services\PersianNumberService::convertToPersian(number_format($balance));
+                    // Only check balance for first bid (when deposit needs to be blocked)
+                    if (!$userHasBid) {
+                        // Get deposit from site settings
+                        $depositSetting = \App\Models\SiteSetting::where('key', 'deposit_type')->first();
+                        $depositType = $depositSetting ? $depositSetting->value : 'none';
                         
-                        if ($depositAmount > 0 && !$userHasBid) {
+                        $depositAmount = 0;
+                        if ($depositType === 'fixed') {
+                            $fixedSetting = \App\Models\SiteSetting::where('key', 'deposit_fixed_amount')->first();
+                            $depositAmount = $fixedSetting ? (int)$fixedSetting->value : 0;
+                        } elseif ($depositType === 'percentage') {
+                            $percentageSetting = \App\Models\SiteSetting::where('key', 'deposit_percentage')->first();
+                            $percentage = $percentageSetting ? (float)$percentageSetting->value : 0;
+                            $depositAmount = (int)($listing->starting_price * ($percentage / 100));
+                        }
+                        
+                        // For first bid, only check if user has enough for deposit
+                        if ($depositAmount > 0 && $balance < $depositAmount) {
                             $persianDeposit = \App\Services\PersianNumberService::convertToPersian(number_format($depositAmount));
-                            $validator->errors()->add('amount', 'موجودی کیف پول شما (' . $persianBalance . ' تومان) کافی نیست. مبلغ مورد نیاز: ' . $persianRequired . ' تومان (شامل ' . $persianDeposit . ' تومان سپرده)');
-                        } else {
-                            $validator->errors()->add('amount', 'موجودی کیف پول شما (' . $persianBalance . ' تومان) کافی نیست. مبلغ مورد نیاز: ' . $persianRequired . ' تومان');
+                            $persianBalance = \App\Services\PersianNumberService::convertToPersian(number_format($balance));
+                            $validator->errors()->add('amount', 'موجودی کیف پول شما (' . $persianBalance . ' تومان) برای پرداخت سپرده (' . $persianDeposit . ' تومان) کافی نیست.');
                         }
                     }
+                    // For subsequent bids, no balance check needed (deposit already blocked)
                 }
             }
         });
