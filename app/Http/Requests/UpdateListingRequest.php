@@ -13,6 +13,24 @@ class UpdateListingRequest extends FormRequest
 
     public function rules(): array
     {
+        // Get the listing being updated
+        $listing = $this->route('listing');
+        
+        // Check if listing has active bids
+        $hasActiveBids = $listing && $listing->hasActiveBids();
+        
+        // If has active bids, only validate description and shipping
+        if ($hasActiveBids) {
+            return [
+                'description' => 'required|string',
+                'shipping_methods' => 'required|array|min:1',
+                'shipping_methods.*' => 'exists:shipping_methods,id',
+                'shipping_costs' => 'nullable|array',
+                'shipping_costs.*' => 'nullable|numeric|min:0',
+            ];
+        }
+        
+        // Normal validation for listings without active bids
         return [
             'title' => 'required|string|max:255',
             'description' => 'required|string',

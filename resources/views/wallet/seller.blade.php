@@ -340,6 +340,10 @@
                                         'forfeit' => 'ضبط سپرده',
                                         'purchase' => 'خرید',
                                         'refund' => 'بازگشت وجه',
+                                        'auction_payment' => 'تبدیل سپرده به پرداخت',
+                                        'order_cancellation_penalty' => 'جریمه لغو سفارش',
+                                        'order_cancellation_penalty_revenue' => 'درآمد جریمه لغو',
+                                        'unfreeze_refund' => 'بازگشت وجه مسدود شده',
                                     ];
                                     $typeColors = [
                                         'deposit' => 'bg-green-100 text-green-800',
@@ -352,6 +356,10 @@
                                         'forfeit' => 'bg-red-100 text-red-800',
                                         'purchase' => 'bg-purple-100 text-purple-800',
                                         'refund' => 'bg-green-100 text-green-800',
+                                        'auction_payment' => 'bg-blue-100 text-blue-800',
+                                        'order_cancellation_penalty' => 'bg-red-100 text-red-800',
+                                        'order_cancellation_penalty_revenue' => 'bg-green-100 text-green-800',
+                                        'unfreeze_refund' => 'bg-green-100 text-green-800',
                                     ];
                                     
                                     $label = $typeLabels[$transaction->type] ?? $transaction->type;
@@ -362,8 +370,8 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="text-sm font-bold {{ in_array($transaction->type, ['deposit', 'release_deposit', 'refund', 'transfer_in']) ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ in_array($transaction->type, ['deposit', 'release_deposit', 'refund', 'transfer_in']) ? '+' : '-' }}
+                                <span class="text-sm font-bold {{ in_array($transaction->type, ['deposit', 'release_deposit', 'refund', 'transfer_in', 'unfreeze_refund', 'order_cancellation_penalty_revenue']) ? 'text-green-600' : 'text-red-600' }}">
+                                    {{ in_array($transaction->type, ['deposit', 'release_deposit', 'refund', 'transfer_in', 'unfreeze_refund', 'order_cancellation_penalty_revenue']) ? '+' : '-' }}
                                     @price($transaction->amount)
                                 </span>
                             </td>

@@ -1,39 +1,49 @@
-<x-dashboard-layout>
-    <x-slot name="title">کیف پول</x-slot>
-    <x-slot name="pageTitle">کیف پول من</x-slot>
-    
-    <x-slot name="styles">
-        <link rel="stylesheet" href="{{ url('css/persian-datepicker-package.css') }}?v={{ now()->timestamp }}">
-    </x-slot>
+
+
+<?php $__env->startSection('title', 'کیف پول'); ?>
+<?php $__env->startSection('page-title', 'کیف پول من'); ?>
+<?php $__env->startSection('page-subtitle', 'مدیریت موجودی و تراکنش‌های مالی'); ?>
+
+<?php $__env->startPush('styles'); ?>
+<link rel="stylesheet" href="<?php echo e(url('css/persian-datepicker-package.css')); ?>?v=<?php echo e(now()->timestamp); ?>">
+<?php $__env->stopPush(); ?>
+
+<?php $__env->startSection('content'); ?>
+<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">کیف پول من</h1>
+        <p class="text-gray-600 mt-2">مدیریت موجودی و تراکنش‌های مالی</p>
+    </div>
 
     <!-- Success/Error Messages -->
-    @if(session('success'))
+    <?php if(session('success')): ?>
         <div class="bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
             <span class="material-symbols-outlined">check_circle</span>
-            <span>{{ session('success') }}</span>
+            <span><?php echo e(session('success')); ?></span>
         </div>
-    @endif
+    <?php endif; ?>
 
-    @if(session('error'))
+    <?php if(session('error')): ?>
         <div class="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
             <span class="material-symbols-outlined">error</span>
-            <span>{{ session('error') }}</span>
+            <span><?php echo e(session('error')); ?></span>
         </div>
-    @endif
+    <?php endif; ?>
 
-    @if($errors->any())
+    <?php if($errors->any()): ?>
         <div class="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-xl mb-6">
             <div class="flex items-center gap-3 mb-2">
                 <span class="material-symbols-outlined">error</span>
                 <span class="font-bold">خطاهای اعتبارسنجی:</span>
             </div>
             <ul class="list-disc list-inside mr-8">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
+                <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <li><?php echo e($error); ?></li>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </ul>
         </div>
-    @endif
+    <?php endif; ?>
 
     <!-- Balance Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -44,7 +54,7 @@
                 <span class="material-symbols-outlined text-3xl opacity-80">account_balance_wallet</span>
             </div>
             <p class="text-4xl font-bold">
-                @price($wallet->balance)
+                <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($wallet->balance, true); ?>
                 <span class="text-lg mr-2 font-normal">تومان</span>
             </p>
         </div>
@@ -56,7 +66,7 @@
                 <span class="material-symbols-outlined text-3xl opacity-80">lock</span>
             </div>
             <p class="text-4xl font-bold">
-                @price($wallet->frozen)
+                <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($wallet->frozen, true); ?>
                 <span class="text-lg mr-2 font-normal">تومان</span>
             </p>
         </div>
@@ -68,7 +78,7 @@
                 <span class="material-symbols-outlined text-3xl opacity-80">savings</span>
             </div>
             <p class="text-4xl font-bold">
-                @price($wallet->balance + $wallet->frozen)
+                <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($wallet->balance + $wallet->frozen, true); ?>
                 <span class="text-lg mr-2 font-normal">تومان</span>
             </p>
         </div>
@@ -84,70 +94,144 @@
                 </div>
                 <h2 class="text-xl font-bold text-gray-900">افزایش موجودی</h2>
             </div>
-            <form method="POST" action="{{ route('wallet.add-funds') }}" class="space-y-4" id="addFundsFormBuyer">
-                @csrf
+            <form method="POST" action="<?php echo e(route('wallet.add-funds')); ?>" class="space-y-4" id="addFundsFormSeller">
+                <?php echo csrf_field(); ?>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ شارژ (تومان)</label>
-                    @php
+                    <?php
                         $minDeposit = \App\Models\SiteSetting::get('wallet_min_deposit', 10000);
                         $maxDeposit = \App\Models\SiteSetting::get('wallet_max_deposit', 100000000);
                         $taxPercentage = \App\Models\SiteSetting::get('wallet_charge_tax', 0);
-                    @endphp
-                    <input type="number" name="amount" id="chargeAmountBuyer" placeholder="مثال: 100000" required 
+                    ?>
+                    <input type="number" name="amount" id="chargeAmountSeller" placeholder="مثال: 100000" required 
                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                           oninput="calculateChargeTaxBuyer()">
-                    <p class="text-xs text-gray-500 mt-1">حداقل: @price($minDeposit) - حداکثر: @price($maxDeposit) تومان</p>
-                    <p id="amountErrorBuyer" class="text-xs text-red-600 mt-1" style="display:none;"></p>
+                           oninput="calculateChargeTaxSeller()">
+                    <p class="text-xs text-gray-500 mt-1">حداقل: <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($minDeposit, true); ?> - حداکثر: <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($maxDeposit, true); ?> تومان</p>
+                    <p id="amountErrorSeller" class="text-xs text-red-600 mt-1" style="display:none;"></p>
                 </div>
 
-                @if($taxPercentage > 0)
-                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4" id="taxInfoBuyer" style="display: none;">
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-700">مبلغ شارژ:</span>
-                            <span class="font-semibold text-gray-900" id="baseAmountBuyer">0</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-700">مالیات ({{ \App\Services\PersianNumberService::convertToPersian($taxPercentage) }}%):</span>
-                            <span class="font-semibold text-blue-600" id="taxAmountBuyer">0</span>
-                        </div>
-                        <div class="border-t border-blue-300 pt-2 flex justify-between">
-                            <span class="font-bold text-gray-900">مبلغ قابل پرداخت:</span>
-                            <span class="font-bold text-lg text-blue-700" id="totalAmountBuyer">0</span>
-                        </div>
-                    </div>
-                </div>
-                @endif
-
-                @if($gateways->count() > 0)
+                <!-- Gateway Selection -->
+                <?php if($gateways->count() > 0): ?>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-3">انتخاب درگاه پرداخت</label>
                     <div class="space-y-2">
-                        @foreach($gateways as $gateway)
+                        <?php $__currentLoopData = $gateways; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $gateway): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <label class="flex items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-green-500 transition-colors">
-                            <input type="radio" name="gateway" value="{{ $gateway->name }}" required
+                            <input type="radio" name="gateway" value="<?php echo e($gateway->name); ?>" required
                                    class="w-5 h-5 text-green-600 focus:ring-green-500">
                             <div class="mr-3 flex-1">
-                                <span class="font-medium text-gray-900">{{ $gateway->display_name }}</span>
+                                <span class="font-medium text-gray-900"><?php echo e($gateway->display_name); ?></span>
                             </div>
                             <span class="material-symbols-outlined text-gray-400">payment</span>
                         </label>
-                        @endforeach
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </div>
                 </div>
-                @else
+                <?php else: ?>
                 <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                     <p class="text-sm text-yellow-800">در حال حاضر درگاه پرداخت فعالی وجود ندارد. لطفا با پشتیبانی تماس بگیرید.</p>
                 </div>
-                @endif
+                <?php endif; ?>
 
-                <button type="submit" class="w-full bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2" 
-                        id="submitChargeBuyer" {{ $gateways->count() == 0 ? 'disabled' : '' }}>
+                <?php if($taxPercentage > 0): ?>
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4" id="taxInfoSeller" style="display: none;">
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-700">مبلغ شارژ:</span>
+                            <span class="font-semibold text-gray-900" id="baseAmountSeller">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-700">مالیات (<?php echo e(\App\Services\PersianNumberService::convertToPersian($taxPercentage)); ?>%):</span>
+                            <span class="font-semibold text-blue-600" id="taxAmountSeller">0</span>
+                        </div>
+                        <div class="border-t border-blue-300 pt-2 flex justify-between">
+                            <span class="font-bold text-gray-900">مبلغ قابل پرداخت:</span>
+                            <span class="font-bold text-lg text-blue-700" id="totalAmountSeller">0</span>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <button type="submit" id="submitChargeSeller" class="w-full bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2" 
+                        <?php echo e($gateways->count() == 0 ? 'disabled' : ''); ?>>
                     <span class="material-symbols-outlined">payments</span>
                     <span>پرداخت و شارژ کیف پول</span>
                 </button>
             </form>
         </div>
+
+        <script>
+        const TAX_PERCENTAGE_SELLER = <?php echo e($taxPercentage); ?>;
+        const MIN_DEPOSIT = <?php echo e($minDeposit); ?>;
+        const MAX_DEPOSIT = <?php echo e($maxDeposit); ?>;
+        const MIN_WITHDRAW = <?php echo e($minWithdraw); ?>;
+        const MAX_WITHDRAW = <?php echo e($wallet->balance); ?>;
+        
+        function calculateChargeTaxSeller() {
+            const amountInput = document.getElementById('chargeAmountSeller');
+            const amount = parseFloat(amountInput.value) || 0;
+            const errorElement = document.getElementById('amountErrorSeller');
+            const submitButton = document.getElementById('submitChargeSeller');
+            
+            // بررسی محدوده مبلغ
+            let hasError = false;
+            if (amount > 0 && amount < MIN_DEPOSIT) {
+                errorElement.textContent = 'حداقل مبلغ شارژ ' + MIN_DEPOSIT.toLocaleString('fa-IR') + ' تومان است.';
+                errorElement.style.display = 'block';
+                hasError = true;
+            } else if (amount > MAX_DEPOSIT) {
+                errorElement.textContent = 'حداکثر مبلغ شارژ ' + MAX_DEPOSIT.toLocaleString('fa-IR') + ' تومان است.';
+                errorElement.style.display = 'block';
+                hasError = true;
+            } else {
+                errorElement.style.display = 'none';
+            }
+            
+            // غیرفعال کردن دکمه در صورت خطا
+            if (submitButton) {
+                submitButton.disabled = hasError || amount <= 0;
+            }
+            
+            if (amount > 0 && TAX_PERCENTAGE_SELLER > 0 && !hasError) {
+                // محاسبه مالیات و رند کردن به عدد صحیح
+                const tax = Math.round((amount * TAX_PERCENTAGE_SELLER) / 100);
+                const total = amount + tax;
+                
+                document.getElementById('baseAmountSeller').textContent = amount.toLocaleString('fa-IR') + ' تومان';
+                document.getElementById('taxAmountSeller').textContent = tax.toLocaleString('fa-IR') + ' تومان';
+                document.getElementById('totalAmountSeller').textContent = total.toLocaleString('fa-IR') + ' تومان';
+                document.getElementById('taxInfoSeller').style.display = 'block';
+            } else {
+                document.getElementById('taxInfoSeller').style.display = 'none';
+            }
+        }
+        
+        function validateWithdrawSeller() {
+            const amountInput = document.getElementById('withdrawAmountSeller');
+            const amount = parseFloat(amountInput.value) || 0;
+            const errorElement = document.getElementById('withdrawErrorSeller');
+            const submitButton = document.getElementById('submitWithdrawSeller');
+            
+            // بررسی محدوده مبلغ
+            let hasError = false;
+            if (amount > 0 && amount < MIN_WITHDRAW) {
+                errorElement.textContent = 'حداقل مبلغ برداشت ' + MIN_WITHDRAW.toLocaleString('fa-IR') + ' تومان است.';
+                errorElement.style.display = 'block';
+                hasError = true;
+            } else if (amount > MAX_WITHDRAW) {
+                errorElement.textContent = 'حداکثر مبلغ برداشت ' + MAX_WITHDRAW.toLocaleString('fa-IR') + ' تومان است (موجودی شما).';
+                errorElement.style.display = 'block';
+                hasError = true;
+            } else {
+                errorElement.style.display = 'none';
+            }
+            
+            // غیرفعال کردن دکمه در صورت خطا
+            if (submitButton) {
+                submitButton.disabled = hasError || amount <= 0;
+            }
+        }
+        </script>
 
         <!-- Withdraw Funds -->
         <div class="bg-white rounded-2xl shadow-md p-6">
@@ -157,20 +241,20 @@
                 </div>
                 <h2 class="text-xl font-bold text-gray-900">برداشت از حساب</h2>
             </div>
-            <form method="POST" action="{{ route('wallet.withdraw') }}" class="space-y-4" id="withdrawFormBuyer">
-                @csrf
+            <form method="POST" action="<?php echo e(route('wallet.withdraw')); ?>" class="space-y-4">
+                <?php echo csrf_field(); ?>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ (تومان)</label>
-                    @php
+                    <?php
                         $minWithdraw = \App\Models\SiteSetting::get('wallet_min_withdraw', 50000);
-                    @endphp
-                    <input type="number" name="amount" id="withdrawAmountBuyer" placeholder="مثال: 50000" required 
+                    ?>
+                    <input type="number" name="amount" id="withdrawAmountSeller" placeholder="مثال: 50000" required 
                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                           oninput="validateWithdrawBuyer()">
-                    <p class="text-xs text-gray-500 mt-1">حداقل: @price($minWithdraw) - حداکثر: @price($wallet->balance) تومان</p>
-                    <p id="withdrawErrorBuyer" class="text-xs text-red-600 mt-1" style="display:none;"></p>
+                           oninput="validateWithdrawSeller()">
+                    <p class="text-xs text-gray-500 mt-1">حداقل: <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($minWithdraw, true); ?> - حداکثر: <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($wallet->balance, true); ?> تومان</p>
+                    <p id="withdrawErrorSeller" class="text-xs text-red-600 mt-1" style="display:none;"></p>
                 </div>
-                <button type="submit" id="submitWithdrawBuyer" class="w-full bg-red-600 text-white px-6 py-3 rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2">
+                <button type="submit" id="submitWithdrawSeller" class="w-full bg-red-600 text-white px-6 py-3 rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined">account_balance</span>
                     <span>درخواست برداشت</span>
                 </button>
@@ -188,7 +272,7 @@
                     </div>
                     <h2 class="text-xl font-bold text-gray-900">تاریخچه تراکنش‌ها</h2>
                 </div>
-                <a href="{{ route('wallet.export') }}" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
+                <a href="<?php echo e(route('wallet.export')); ?>" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
                     <span class="material-symbols-outlined text-xl">download</span>
                     <span>دانلود CSV</span>
                 </a>
@@ -200,13 +284,13 @@
             <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">از تاریخ</label>
-                    <input type="text" id="from_date" name="from_date" value="{{ request('from_date') }}" 
+                    <input type="text" id="from_date" name="from_date" value="<?php echo e(request('from_date')); ?>" 
                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            placeholder="انتخاب تاریخ" readonly>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">تا تاریخ</label>
-                    <input type="text" id="to_date" name="to_date" value="{{ request('to_date') }}"
+                    <input type="text" id="to_date" name="to_date" value="<?php echo e(request('to_date')); ?>"
                            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            placeholder="انتخاب تاریخ" readonly>
                 </div>
@@ -215,7 +299,7 @@
                         <span class="material-symbols-outlined">filter_alt</span>
                         <span>اعمال فیلتر</span>
                     </button>
-                    <a href="{{ route('wallet.show') }}" class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium">
+                    <a href="<?php echo e(route('wallet.show')); ?>" class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium">
                         حذف فیلتر
                     </a>
                 </div>
@@ -235,16 +319,17 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
-                    @forelse($transactions ?? [] as $transaction)
+                    <?php $__empty_1 = true; $__currentLoopData = $transactions ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $transaction): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 text-sm text-gray-900">
-                                @php
+                                <?php
                                     $jalaliDate = \Morilog\Jalali\Jalalian::fromDateTime($transaction->created_at)->format('Y/m/d H:i');
-                                @endphp
-                                {{ \App\Services\PersianNumberService::convertToPersian($jalaliDate) }}
+                                ?>
+                                <?php echo e(\App\Services\PersianNumberService::convertToPersian($jalaliDate)); ?>
+
                             </td>
                             <td class="px-6 py-4">
-                                @php
+                                <?php
                                     $typeLabels = [
                                         'deposit' => 'واریز',
                                         'withdrawal' => 'برداشت از حساب',
@@ -280,129 +365,65 @@
                                     
                                     $label = $typeLabels[$transaction->type] ?? $transaction->type;
                                     $color = $typeColors[$transaction->type] ?? 'bg-gray-100 text-gray-800';
-                                @endphp
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {{ $color }}">
-                                    {{ $label }}
+                                ?>
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium <?php echo e($color); ?>">
+                                    <?php echo e($label); ?>
+
                                 </span>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="text-sm font-bold {{ in_array($transaction->type, ['deposit', 'release_deposit', 'refund', 'transfer_in', 'unfreeze_refund', 'order_cancellation_penalty_revenue']) ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ in_array($transaction->type, ['deposit', 'release_deposit', 'refund', 'transfer_in', 'unfreeze_refund', 'order_cancellation_penalty_revenue']) ? '+' : '-' }}
-                                    @price($transaction->amount)
+                                <span class="text-sm font-bold <?php echo e(in_array($transaction->type, ['deposit', 'release_deposit', 'refund', 'transfer_in', 'unfreeze_refund', 'order_cancellation_penalty_revenue']) ? 'text-green-600' : 'text-red-600'); ?>">
+                                    <?php echo e(in_array($transaction->type, ['deposit', 'release_deposit', 'refund', 'transfer_in', 'unfreeze_refund', 'order_cancellation_penalty_revenue']) ? '+' : '-'); ?>
+
+                                    <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($transaction->amount, true); ?>
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-600">
-                                {{ $transaction->description ?? '-' }}
+                                <?php echo e($transaction->description ?? '-'); ?>
+
                             </td>
                             <td class="px-6 py-4 text-sm font-medium text-gray-900">
-                                @price($transaction->balance_after)
+                                <?php echo app(\App\Services\PersianNumberService::class)->formatNumber($transaction->balance_after, true); ?>
                             </td>
                         </tr>
-                    @empty
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr>
                             <td colspan="5" class="px-6 py-12 text-center">
                                 <span class="material-symbols-outlined text-gray-300 text-6xl mb-3 block">receipt_long</span>
                                 <p class="text-gray-500 font-medium">هیچ تراکنشی یافت نشد</p>
                             </td>
                         </tr>
-                    @endforelse
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
 
-        @if(isset($transactions) && $transactions->hasPages())
+        <?php if(isset($transactions) && $transactions->hasPages()): ?>
             <div class="p-6 border-t border-gray-200">
-                {{ $transactions->links() }}
+                <?php echo e($transactions->links()); ?>
+
             </div>
-        @endif
+        <?php endif; ?>
     </div>
+</div>
+<?php $__env->stopSection(); ?>
 
-    <x-slot name="scripts">
-        <script src="{{ url('js/persian-datepicker-package.js') }}?v={{ now()->timestamp }}"></script>
-        <script>
-        const TAX_PERCENTAGE_BUYER = {{ $taxPercentage ?? 0 }};
-        const MIN_DEPOSIT = {{ $minDeposit }};
-        const MAX_DEPOSIT = {{ $maxDeposit }};
-        const MIN_WITHDRAW = {{ $minWithdraw }};
-        const MAX_WITHDRAW = {{ $wallet->balance }};
-        
-        function calculateChargeTaxBuyer() {
-            const amountInput = document.getElementById('chargeAmountBuyer');
-            const amount = parseFloat(amountInput.value) || 0;
-            const errorElement = document.getElementById('amountErrorBuyer');
-            const submitButton = document.getElementById('submitChargeBuyer');
-            
-            // بررسی محدوده مبلغ
-            let hasError = false;
-            if (amount > 0 && amount < MIN_DEPOSIT) {
-                errorElement.textContent = 'حداقل مبلغ شارژ ' + MIN_DEPOSIT.toLocaleString('fa-IR') + ' تومان است.';
-                errorElement.style.display = 'block';
-                hasError = true;
-            } else if (amount > MAX_DEPOSIT) {
-                errorElement.textContent = 'حداکثر مبلغ شارژ ' + MAX_DEPOSIT.toLocaleString('fa-IR') + ' تومان است.';
-                errorElement.style.display = 'block';
-                hasError = true;
-            } else {
-                errorElement.style.display = 'none';
-            }
-            
-            // غیرفعال کردن دکمه در صورت خطا
-            if (submitButton) {
-                submitButton.disabled = hasError || amount <= 0;
-            }
-            
-            if (amount > 0 && TAX_PERCENTAGE_BUYER > 0 && !hasError) {
-                // محاسبه مالیات و رند کردن به عدد صحیح
-                const tax = Math.round((amount * TAX_PERCENTAGE_BUYER) / 100);
-                const total = amount + tax;
-                
-                document.getElementById('baseAmountBuyer').textContent = amount.toLocaleString('fa-IR') + ' تومان';
-                document.getElementById('taxAmountBuyer').textContent = tax.toLocaleString('fa-IR') + ' تومان';
-                document.getElementById('totalAmountBuyer').textContent = total.toLocaleString('fa-IR') + ' تومان';
-                document.getElementById('taxInfoBuyer').style.display = 'block';
-            } else {
-                document.getElementById('taxInfoBuyer').style.display = 'none';
-            }
-        }
-        
-        function validateWithdrawBuyer() {
-            const amountInput = document.getElementById('withdrawAmountBuyer');
-            const amount = parseFloat(amountInput.value) || 0;
-            const errorElement = document.getElementById('withdrawErrorBuyer');
-            const submitButton = document.getElementById('submitWithdrawBuyer');
-            
-            // بررسی محدوده مبلغ
-            let hasError = false;
-            if (amount > 0 && amount < MIN_WITHDRAW) {
-                errorElement.textContent = 'حداقل مبلغ برداشت ' + MIN_WITHDRAW.toLocaleString('fa-IR') + ' تومان است.';
-                errorElement.style.display = 'block';
-                hasError = true;
-            } else if (amount > MAX_WITHDRAW) {
-                errorElement.textContent = 'حداکثر مبلغ برداشت ' + MAX_WITHDRAW.toLocaleString('fa-IR') + ' تومان است (موجودی شما).';
-                errorElement.style.display = 'block';
-                hasError = true;
-            } else {
-                errorElement.style.display = 'none';
-            }
-            
-            // غیرفعال کردن دکمه در صورت خطا
-            if (submitButton) {
-                submitButton.disabled = hasError || amount <= 0;
-            }
-        }
+<?php $__env->startPush('scripts'); ?>
+<script src="<?php echo e(url('js/persian-datepicker-package.js')); ?>?v=<?php echo e(now()->timestamp); ?>"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fromDateInput = document.getElementById('from_date');
+    const toDateInput = document.getElementById('to_date');
+    
+    if (fromDateInput && typeof PersianDatePicker !== 'undefined') {
+        new PersianDatePicker(fromDateInput);
+    }
+    
+    if (toDateInput && typeof PersianDatePicker !== 'undefined') {
+        new PersianDatePicker(toDateInput);
+    }
+});
+</script>
+<?php $__env->stopPush(); ?>
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const fromDateInput = document.getElementById('from_date');
-            const toDateInput = document.getElementById('to_date');
-            
-            if (fromDateInput && typeof PersianDatePicker !== 'undefined') {
-                new PersianDatePicker(fromDateInput);
-            }
-            
-            if (toDateInput && typeof PersianDatePicker !== 'undefined') {
-                new PersianDatePicker(toDateInput);
-            }
-        });
-        </script>
-    </x-slot>
-</x-dashboard-layout>
+<?php echo $__env->make('layouts.seller', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/wallet/seller.blade.php ENDPATH**/ ?>

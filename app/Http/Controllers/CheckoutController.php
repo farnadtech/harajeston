@@ -69,9 +69,27 @@ class CheckoutController extends Controller
             abort(404, 'پیشنهاد برنده یافت نشد');
         }
         
-        // Calculate amounts
-        $depositPercentage = (float) \App\Models\SiteSetting::get('auction_deposit_percentage', 20);
-        $depositAmount = (int) ($listing->starting_price * ($depositPercentage / 100));
+        // Get actual deposit amount from participation record
+        $participation = \App\Models\AuctionParticipation::where('listing_id', $listing->id)
+            ->where('user_id', auth()->id())
+            ->first();
+        
+        // If participation exists, use its deposit amount
+        // Otherwise, check if listing requires deposit (for legacy listings)
+        if ($participation) {
+            $depositAmount = $participation->deposit_amount;
+        } else {
+            // For legacy listings without participation record
+            // Check if deposit was actually paid by looking at wallet transactions
+            $depositTransaction = \App\Models\WalletTransaction::where('user_id', auth()->id())
+                ->where('reference_type', 'App\Models\Listing')
+                ->where('reference_id', $listing->id)
+                ->where('type', 'freeze_deposit')
+                ->first();
+            
+            $depositAmount = $depositTransaction ? abs($depositTransaction->amount) : 0;
+        }
+        
         $totalAmount = $winningBid->amount;
         $remainingAmount = $totalAmount - $depositAmount;
         

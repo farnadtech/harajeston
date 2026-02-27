@@ -130,6 +130,9 @@ class ListingService
                 }
             }
             
+            // Ignore any changes to images, tags, and other fields
+            // This is a security measure to prevent manipulation
+            
             return $listing->fresh();
         }
         

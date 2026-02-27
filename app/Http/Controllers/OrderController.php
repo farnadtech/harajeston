@@ -218,10 +218,18 @@ class OrderController extends Controller
             return redirect()
                 ->route('orders.show', $order)
                 ->with('success', sprintf('سفارش لغو شد. جریمه لغو: %s تومان از کیف پول شما کسر شد.', number_format($penalty)));
+        } catch (\App\Exceptions\Wallet\InsufficientBalanceException $e) {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'موجودی کیف پول شما برای پرداخت جریمه لغو کافی نیست.');
+        } catch (\App\Exceptions\Order\InvalidOrderStatusException $e) {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'وضعیت سفارش برای لغو مناسب نیست.');
         } catch (\Exception $e) {
             return redirect()
                 ->route('orders.show', $order)
-                ->with('error', 'خطا: ' . $e->getMessage());
+                ->with('error', 'خطا در لغو سفارش: ' . $e->getMessage());
         }
     }
 }

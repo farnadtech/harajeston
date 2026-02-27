@@ -370,7 +370,6 @@ class OrderService
             $wallet = $user->wallet;
             if ($wallet->balance < $penalty) {
                 throw new \App\Exceptions\Wallet\InsufficientBalanceException(
-                    $user->id,
                     $penalty,
                     $wallet->balance
                 );

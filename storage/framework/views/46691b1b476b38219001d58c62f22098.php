@@ -1,14 +1,14 @@
-@extends('layouts.admin')
 
-@section('title', 'کیف پول')
-@section('page-title', 'مدیریت کیف پول')
-@section('page-subtitle', 'مشاهده و مدیریت موجودی کیف پول')
 
-@push('styles')
-<link rel="stylesheet" href="{{ url('css/persian-datepicker-package.css') }}?v={{ now()->timestamp }}">
-@endpush
+<?php $__env->startSection('title', 'کیف پول'); ?>
+<?php $__env->startSection('page-title', 'مدیریت کیف پول'); ?>
+<?php $__env->startSection('page-subtitle', 'مشاهده و مدیریت موجودی کیف پول'); ?>
 
-@section('content')
+<?php $__env->startPush('styles'); ?>
+<link rel="stylesheet" href="<?php echo e(url('css/persian-datepicker-package.css')); ?>?v=<?php echo e(now()->timestamp); ?>">
+<?php $__env->stopPush(); ?>
+
+<?php $__env->startSection('content'); ?>
 <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
     <!-- Page Header -->
     <div class="mb-8">
@@ -21,17 +21,17 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-blue-100 text-sm mb-2">موجودی کیف پول</p>
-                <h2 class="text-4xl font-bold mb-1">{{ number_format($wallet->balance) }} تومان</h2>
-                @if($wallet->frozen > 0)
+                <h2 class="text-4xl font-bold mb-1"><?php echo e(number_format($wallet->balance)); ?> تومان</h2>
+                <?php if($wallet->frozen > 0): ?>
                     <p class="text-blue-100 text-sm mt-2">
                         <span class="inline-flex items-center">
                             <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
                             </svg>
-                            مسدود شده: {{ number_format($wallet->frozen) }} تومان
+                            مسدود شده: <?php echo e(number_format($wallet->frozen)); ?> تومان
                         </span>
                     </p>
-                @endif
+                <?php endif; ?>
             </div>
             <div class="text-left">
                 <svg class="w-20 h-20 text-blue-300 opacity-50" fill="currentColor" viewBox="0 0 20 20">
@@ -55,13 +55,13 @@
 
     <!-- Filters -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <form method="GET" action="{{ route('wallet.show') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form method="GET" action="<?php echo e(route('wallet.show')); ?>" class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">از تاریخ</label>
                 <input type="text" 
                        name="from_date" 
                        id="from_date"
-                       value="{{ request('from_date') }}"
+                       value="<?php echo e(request('from_date')); ?>"
                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                        placeholder="انتخاب تاریخ">
             </div>
@@ -71,7 +71,7 @@
                 <input type="text" 
                        name="to_date" 
                        id="to_date"
-                       value="{{ request('to_date') }}"
+                       value="<?php echo e(request('to_date')); ?>"
                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                        placeholder="انتخاب تاریخ">
             </div>
@@ -80,7 +80,7 @@
                 <button type="submit" class="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
                     فیلتر
                 </button>
-                <a href="{{ route('wallet.show') }}" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                <a href="<?php echo e(route('wallet.show')); ?>" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                     پاک کردن
                 </a>
             </div>
@@ -91,12 +91,12 @@
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900">تراکنش‌های اخیر</h3>
-            <a href="{{ route('wallet.export') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            <a href="<?php echo e(route('wallet.export')); ?>" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
                 دانلود گزارش
             </a>
         </div>
         
-        @if($transactions->count() > 0)
+        <?php if($transactions->count() > 0): ?>
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead class="bg-gray-50">
@@ -109,13 +109,14 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
-                        @foreach($transactions as $transaction)
+                        <?php $__currentLoopData = $transactions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $transaction): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i') }}
+                                    <?php echo e(\Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i')); ?>
+
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    @php
+                                    <?php
                                         $typeLabels = [
                                             'deposit' => 'واریز',
                                             'withdrawal' => 'برداشت',
@@ -152,31 +153,32 @@
                                         ];
                                         $label = $typeLabels[$transaction->type] ?? $transaction->type;
                                         $color = $typeColors[$transaction->type] ?? 'bg-gray-100 text-gray-800';
-                                    @endphp
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $color }}">{{ $label }}</span>
+                                    ?>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo e($color); ?>"><?php echo e($label); ?></span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium {{ $transaction->amount > 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ $transaction->amount > 0 ? '+' : '' }}{{ number_format($transaction->amount) }} تومان
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium <?php echo e($transaction->amount > 0 ? 'text-green-600' : 'text-red-600'); ?>">
+                                    <?php echo e($transaction->amount > 0 ? '+' : ''); ?><?php echo e(number_format($transaction->amount)); ?> تومان
                                 </td>
-                                <td class="px-6 py-4 text-sm text-gray-600">{{ $transaction->description }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($transaction->after_balance) }} تومان</td>
+                                <td class="px-6 py-4 text-sm text-gray-600"><?php echo e($transaction->description); ?></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?php echo e(number_format($transaction->after_balance)); ?> تومان</td>
                             </tr>
-                        @endforeach
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </tbody>
                 </table>
             </div>
             
             <div class="px-6 py-4 border-t border-gray-200">
-                {{ $transactions->links('vendor.pagination.custom') }}
+                <?php echo e($transactions->links('vendor.pagination.custom')); ?>
+
             </div>
-        @else
+        <?php else: ?>
             <div class="px-6 py-12 text-center">
                 <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
                 <p class="mt-4 text-gray-500">هیچ تراکنشی یافت نشد</p>
             </div>
-        @endif
+        <?php endif; ?>
     </div>
 
     <!-- Modals -->
@@ -190,24 +192,24 @@
                     </svg>
                 </button>
             </div>
-            <form method="POST" action="{{ route('wallet.add-funds') }}" id="addFundsForm">
-                @csrf
+            <form method="POST" action="<?php echo e(route('wallet.add-funds')); ?>" id="addFundsForm">
+                <?php echo csrf_field(); ?>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ شارژ (تومان)</label>
-                    @php
+                    <?php
                         $minDeposit = \App\Models\SiteSetting::get('wallet_min_deposit', 10000);
                         $maxDeposit = \App\Models\SiteSetting::get('wallet_max_deposit', 100000000);
                         $taxPercentage = \App\Models\SiteSetting::get('wallet_charge_tax', 0);
-                    @endphp
+                    ?>
                     <input type="number" name="amount" id="chargeAmount" required step="1000"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            placeholder="مثال: 100000"
                            oninput="calculateChargeTax()">
-                    <p class="text-xs text-gray-500 mt-1">حداقل: {{ number_format($minDeposit) }} تومان | حداکثر: {{ number_format($maxDeposit) }} تومان</p>
+                    <p class="text-xs text-gray-500 mt-1">حداقل: <?php echo e(number_format($minDeposit)); ?> تومان | حداکثر: <?php echo e(number_format($maxDeposit)); ?> تومان</p>
                     <p id="amountError" class="text-xs text-red-600 mt-1" style="display:none;"></p>
                 </div>
 
-                @if($taxPercentage > 0)
+                <?php if($taxPercentage > 0): ?>
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4" id="taxInfo" style="display: none;">
                     <div class="space-y-2 text-sm">
                         <div class="flex justify-between">
@@ -215,7 +217,7 @@
                             <span class="font-semibold text-gray-900" id="baseAmount">0</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-700">مالیات ({{ \App\Services\PersianNumberService::convertToPersian($taxPercentage) }}%):</span>
+                            <span class="text-gray-700">مالیات (<?php echo e(\App\Services\PersianNumberService::convertToPersian($taxPercentage)); ?>%):</span>
                             <span class="font-semibold text-blue-600" id="taxAmount">0</span>
                         </div>
                         <div class="border-t border-blue-300 pt-2 flex justify-between">
@@ -224,7 +226,7 @@
                         </div>
                     </div>
                 </div>
-                @endif
+                <?php endif; ?>
 
                 <div class="flex gap-3">
                     <button type="submit" id="submitCharge" class="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">پرداخت</button>
@@ -236,9 +238,9 @@
     </div>
 
     <script>
-    const TAX_PERCENTAGE = {{ $taxPercentage }};
-    const MIN_DEPOSIT = {{ $minDeposit }};
-    const MAX_DEPOSIT = {{ $maxDeposit }};
+    const TAX_PERCENTAGE = <?php echo e($taxPercentage); ?>;
+    const MIN_DEPOSIT = <?php echo e($minDeposit); ?>;
+    const MAX_DEPOSIT = <?php echo e($maxDeposit); ?>;
     
     function calculateChargeTax() {
         const amountInput = document.getElementById('chargeAmount');
@@ -289,17 +291,17 @@
                     </svg>
                 </button>
             </div>
-            <form method="POST" action="{{ route('wallet.withdraw') }}">
-                @csrf
+            <form method="POST" action="<?php echo e(route('wallet.withdraw')); ?>">
+                <?php echo csrf_field(); ?>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ (تومان)</label>
-                    @php
+                    <?php
                         $minWithdraw = \App\Models\SiteSetting::get('wallet_min_withdraw', 50000);
-                    @endphp
-                    <input type="number" name="amount" required min="{{ $minWithdraw }}" max="{{ $wallet->balance }}" step="1000"
+                    ?>
+                    <input type="number" name="amount" required min="<?php echo e($minWithdraw); ?>" max="<?php echo e($wallet->balance); ?>" step="1000"
                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            placeholder="مثال: 100000">
-                    <p class="text-xs text-gray-500 mt-1">حداقل: {{ number_format($minWithdraw) }} تومان | حداکثر: {{ number_format($wallet->balance) }} تومان</p>
+                    <p class="text-xs text-gray-500 mt-1">حداقل: <?php echo e(number_format($minWithdraw)); ?> تومان | حداکثر: <?php echo e(number_format($wallet->balance)); ?> تومان</p>
                 </div>
                 <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                     <p class="text-sm text-yellow-800">مبلغ درخواستی ظرف 24 ساعت به حساب بانکی شما واریز خواهد شد.</p>
@@ -313,10 +315,10 @@
         </div>
     </div>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
 
-@push('scripts')
-<script src="{{ url('js/persian-datepicker-package.js') }}?v={{ now()->timestamp }}"></script>
+<?php $__env->startPush('scripts'); ?>
+<script src="<?php echo e(url('js/persian-datepicker-package.js')); ?>?v=<?php echo e(now()->timestamp); ?>"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const fromDateInput = document.getElementById('from_date');
@@ -331,4 +333,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-@endpush
+<?php $__env->stopPush(); ?>
+
+<?php echo $__env->make('layouts.admin', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/wallet/admin.blade.php ENDPATH**/ ?>

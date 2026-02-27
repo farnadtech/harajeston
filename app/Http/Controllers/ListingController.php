@@ -184,13 +184,39 @@ class ListingController extends Controller
             ->paginate(20)
             ->appends($request->except('page'));
 
-        // Get available attributes for filtering (if category is selected)
+        // Get available attributes for filtering
         $availableAttributes = [];
         if ($request->has('category') && $request->category && isset($category)) {
+            // If category is selected, get its attributes
             $availableAttributes = \App\Models\CategoryAttribute::where('category_id', $category->id)
                 ->where('is_filterable', true)
                 ->orderBy('order')
                 ->get();
+        } elseif ($request->has('tag') && $request->tag && $listings->isNotEmpty()) {
+            // If tag is selected, get attributes from the most common category in results
+            $categoryIds = $listings->pluck('category_id')->unique();
+            if ($categoryIds->count() === 1) {
+                // All listings are from the same category, show its filters
+                $availableAttributes = \App\Models\CategoryAttribute::where('category_id', $categoryIds->first())
+                    ->where('is_filterable', true)
+                    ->orderBy('order')
+                    ->get();
+            } elseif ($categoryIds->count() > 1) {
+                // Multiple categories, find the most common one
+                $mostCommonCategoryId = $listings->groupBy('category_id')
+                    ->sortByDesc(function ($group) {
+                        return $group->count();
+                    })
+                    ->keys()
+                    ->first();
+                
+                if ($mostCommonCategoryId) {
+                    $availableAttributes = \App\Models\CategoryAttribute::where('category_id', $mostCommonCategoryId)
+                        ->where('is_filterable', true)
+                        ->orderBy('order')
+                        ->get();
+                }
+            }
         }
 
         // Return search results view

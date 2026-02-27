@@ -66,7 +66,18 @@
                 @endif
 
                 @if(request()->hasAny(['category', 'tag', 'search', 'attr']))
-                <a href="{{ route('listings.index') }}" class="block w-full mt-3 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-center font-medium">
+                @php
+                    // Build clear filters URL - keep category, tag, or search but remove other filters
+                    $clearUrl = route('listings.index');
+                    if (request('category')) {
+                        $clearUrl = route('listings.index', ['category' => request('category')]);
+                    } elseif (request('tag')) {
+                        $clearUrl = route('listings.index', ['tag' => request('tag')]);
+                    } elseif (request('search')) {
+                        $clearUrl = route('listings.index', ['search' => request('search')]);
+                    }
+                @endphp
+                <a href="{{ $clearUrl }}" class="block w-full mt-3 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-center font-medium">
                     حذف همه فیلترها
                 </a>
                 @endif
@@ -161,7 +172,18 @@
             </a>
             @endif
             
-            <a href="{{ route('listings.index') }}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors">
+            @php
+                // Build clear filters URL - keep category, tag, or search but remove other filters
+                $clearUrl = route('listings.index');
+                if (request('category')) {
+                    $clearUrl = route('listings.index', ['category' => request('category')]);
+                } elseif (request('tag')) {
+                    $clearUrl = route('listings.index', ['tag' => request('tag')]);
+                } elseif (request('search')) {
+                    $clearUrl = route('listings.index', ['search' => request('search')]);
+                }
+            @endphp
+            <a href="{{ $clearUrl }}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors">
                 <span class="material-symbols-outlined text-sm">clear_all</span>
                 حذف همه فیلترها
             </a>

@@ -373,9 +373,12 @@ class AuctionService
             
             $totalAmount = $winningBid->amount;
             
-            // Get deposit amount from settings
-            $depositPercentage = (float) \App\Models\SiteSetting::get('auction_deposit_percentage', 20);
-            $depositAmount = (int) (($listing->base_price ?? $listing->starting_price) * ($depositPercentage / 100));
+            // Get actual deposit amount from participation record
+            $participation = \App\Models\AuctionParticipation::where('listing_id', $listing->id)
+                ->where('user_id', $winner->id)
+                ->first();
+            
+            $depositAmount = $participation ? $participation->deposit_amount : 0;
             $remainingAmount = $totalAmount - $depositAmount;
             
             // Convert deposit to payment (no change in frozen, just record the conversion)
@@ -565,9 +568,12 @@ class AuctionService
             
             $totalAmount = $winningBid->amount;
             
-            // Get deposit amount from settings
-            $depositPercentage = (float) \App\Models\SiteSetting::get('auction_deposit_percentage', 20);
-            $depositAmount = (int) (($listing->base_price ?? $listing->starting_price) * ($depositPercentage / 100));
+            // Get actual deposit amount from participation record
+            $participation = \App\Models\AuctionParticipation::where('listing_id', $listing->id)
+                ->where('user_id', $winner->id)
+                ->first();
+            
+            $depositAmount = $participation ? $participation->deposit_amount : 0;
             $remainingAmount = $totalAmount - $depositAmount;
             
             // Get shipping cost

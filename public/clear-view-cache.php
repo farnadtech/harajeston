@@ -1,21 +1,22 @@
 <?php
-require_once __DIR__ . '/../vendor/autoload.php';
+// Clear Laravel view cache
+require __DIR__.'/../vendor/autoload.php';
 
-$app = require_once __DIR__ . '/../bootstrap/app.php';
-$kernel = $app->make('Illuminate\Contracts\Console\Kernel');
+$app = require_once __DIR__.'/../bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
-// Clear view cache
+echo "Clearing view cache...\n";
 Artisan::call('view:clear');
-echo "View cache cleared!\n";
+echo Artisan::output();
 
-// Clear config cache
+echo "\nClearing config cache...\n";
 Artisan::call('config:clear');
-echo "Config cache cleared!\n";
+echo Artisan::output();
 
-// Clear route cache
+echo "\nClearing route cache...\n";
 Artisan::call('route:clear');
-echo "Route cache cleared!\n";
+echo Artisan::output();
 
-echo "\nAll caches cleared successfully!\n";
-echo "Please refresh your browser.\n";
+echo "\nAll caches cleared!\n";
+echo "\nNow try accessing your order page again.\n";
