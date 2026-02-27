@@ -2,7 +2,7 @@
 
 <?php $__env->startSection('title', 'داشبورد فروشنده'); ?>
 
-<?php $__env->startSection('page-title', 'خوش آمدید، ' . (auth()->user()->store->store_name ?? auth()->user()->name) . ' 👋'); ?>
+<?php $__env->startSection('page-title', 'خوش آمدید، ' . (optional(auth()->user()->store)->store_name ?? auth()->user()->name) . ' 👋'); ?>
 <?php $__env->startSection('page-subtitle', 'خلاصه وضعیت فروشگاه شما امروز'); ?>
 
 <?php $__env->startSection('content'); ?>
@@ -178,7 +178,7 @@
                                 <div class="flex items-center gap-3">
                                     <?php if($listing->images->count() > 0): ?>
                                         <div class="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
-                                            <img alt="<?php echo e($listing->title); ?>" class="w-full h-full object-cover" src="<?php echo e(url('storage/' . $listing->images->first()->file_path)); ?>"/>
+                                            <img alt="<?php echo e($listing->title); ?>" class="w-full h-full object-cover" src="<?php echo e($listing->images->first()->url); ?>"/>
                                         </div>
                                     <?php else: ?>
                                         <div class="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
@@ -280,8 +280,8 @@
                             <td class="px-6 py-4 text-sm"><?php echo e($order->buyer->name); ?></td>
                             <td class="px-6 py-4 text-sm font-bold"><?php echo app(\App\Services\PersianNumberService::class)->toPersian(number_format($order->total)); ?> تومان</td>
                             <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    <?php echo e($order->status); ?>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?php echo e(order_status_color($order->status)); ?>">
+                                    <?php echo e(order_status_label($order->status)); ?>
 
                                 </span>
                             </td>
@@ -294,6 +294,5 @@
     </div>
     <?php endif; ?>
 <?php $__env->stopSection(); ?>
-
 
 <?php echo $__env->make('layouts.seller', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views/dashboard/seller.blade.php ENDPATH**/ ?>

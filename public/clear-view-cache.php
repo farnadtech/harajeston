@@ -1,45 +1,21 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
-$app = require_once __DIR__.'/../bootstrap/app.php';
+$app = require_once __DIR__ . '/../bootstrap/app.php';
+$kernel = $app->make('Illuminate\Contracts\Console\Kernel');
+$kernel->bootstrap();
 
-echo "<h1>Clearing View Cache...</h1>";
+// Clear view cache
+Artisan::call('view:clear');
+echo "View cache cleared!\n";
 
-try {
-    // Clear view cache
-    $viewPath = storage_path('framework/views');
-    
-    if (is_dir($viewPath)) {
-        $files = glob($viewPath . '/*');
-        $count = 0;
-        
-        foreach ($files as $file) {
-            if (is_file($file)) {
-                unlink($file);
-                $count++;
-            }
-        }
-        
-        echo "<p>✓ Cleared {$count} cached view files</p>";
-    } else {
-        echo "<p>✗ View cache directory not found</p>";
-    }
-    
-    // Clear config cache
-    if (file_exists(base_path('bootstrap/cache/config.php'))) {
-        unlink(base_path('bootstrap/cache/config.php'));
-        echo "<p>✓ Cleared config cache</p>";
-    }
-    
-    // Clear route cache
-    if (file_exists(base_path('bootstrap/cache/routes-v7.php'))) {
-        unlink(base_path('bootstrap/cache/routes-v7.php'));
-        echo "<p>✓ Cleared route cache</p>";
-    }
-    
-    echo "<h2>Cache cleared successfully!</h2>";
-    echo "<p><a href='/haraj/public/dashboard'>Go to Dashboard</a></p>";
-    
-} catch (\Exception $e) {
-    echo "<p style='color: red;'>Error: " . $e->getMessage() . "</p>";
-}
+// Clear config cache
+Artisan::call('config:clear');
+echo "Config cache cleared!\n";
+
+// Clear route cache
+Artisan::call('route:clear');
+echo "Route cache cleared!\n";
+
+echo "\nAll caches cleared successfully!\n";
+echo "Please refresh your browser.\n";

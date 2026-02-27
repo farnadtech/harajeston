@@ -217,7 +217,9 @@
                                 @elseif($order->status === 'cancelled')
                                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">لغو شده</span>
                                 @else
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{{ $order->status }}</span>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {{ order_status_color($order->status) }}">
+                                        {{ order_status_label($order->status) }}
+                                    </span>
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-center">

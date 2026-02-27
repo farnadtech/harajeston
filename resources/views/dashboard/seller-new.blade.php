@@ -278,8 +278,8 @@
                             <td class="px-6 py-4 text-sm">{{ $order->buyer->name }}</td>
                             <td class="px-6 py-4 text-sm font-bold">@persian(number_format($order->total)) تومان</td>
                             <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    {{ $order->status }}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ order_status_color($order->status) }}">
+                                    {{ order_status_label($order->status) }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-500">{{ $order->created_at->diffForHumans() }}</td>
