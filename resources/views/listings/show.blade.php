@@ -2,6 +2,25 @@
 
 @section('title', $listing->title . ' - Persian Auction Marketplace')
 
+@php
+    // Calculate buy now amounts for modal
+    $userParticipation = null;
+    $depositPaid = 0;
+    $amountToPay = $listing->buy_now_price ?? 0;
+    
+    if(auth()->check() && $listing->buy_now_price) {
+        $userParticipation = \App\Models\AuctionParticipation::where('listing_id', $listing->id)
+            ->where('user_id', auth()->id())
+            ->where('deposit_status', 'paid')
+            ->first();
+        
+        if($userParticipation) {
+            $depositPaid = $userParticipation->deposit_amount;
+            $amountToPay = $listing->buy_now_price - $depositPaid;
+        }
+    }
+@endphp
+
 @section('content')
 <main class="flex-grow w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
     <!-- Success/Error Messages -->
@@ -230,10 +249,10 @@
                         </div>
                         @auth
                             @if(auth()->user()->role !== 'admin' && $listing->seller_id !== auth()->id())
-                                <form action="{{ route('listings.participate', $listing) }}" method="POST">
+                                <form id="buyNowForm" action="{{ route('listings.participate', $listing) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="buy_now" value="1">
-                                    <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-sm font-bold rounded-lg shadow-md flex items-center justify-center gap-2 transition-all">
+                                    <button type="button" onclick="showBuyNowConfirmation()" class="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-sm font-bold rounded-lg shadow-md flex items-center justify-center gap-2 transition-all">
                                         <span class="material-symbols-outlined text-lg">shopping_bag</span>
                                         <span>خرید فوری</span>
                                     </button>
@@ -1161,6 +1180,183 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 </script>
+
+<!-- Buy Now Confirmation Modal -->
+@if($listing->buy_now_price && $listing->buy_now_price > 0 && $listing->isActive() && auth()->check())
+@php
+    // Get shipping methods from listing
+    $shippingMethods = $listing->shippingMethods;
+@endphp
+<div id="buyNowModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] hidden items-center justify-center p-4" onclick="if(event.target === this) closeBuyNowModal()">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden transform transition-all" onclick="event.stopPropagation()">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-orange-500 to-red-500 p-6 text-white flex-shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-3xl">shopping_bag</span>
+                </div>
+                <div>
+                    <h3 class="text-xl font-black">تایید خرید فوری</h3>
+                    <p class="text-sm text-white/90">بررسی جزئیات پرداخت و ارسال</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6 overflow-y-auto flex-1">
+            <div class="bg-orange-50 rounded-xl p-4 mb-6 border border-orange-200">
+                <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-orange-600 text-2xl flex-shrink-0">info</span>
+                    <div class="text-sm text-gray-700 leading-relaxed">
+                        با تایید این عملیات، حراجی به پایان می‌رسد و شما برنده خواهید شد.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shipping Method Selection -->
+            @if($shippingMethods->isNotEmpty())
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-3">روش ارسال:</label>
+                <div class="space-y-2">
+                    @foreach($shippingMethods as $method)
+                    @php
+                        $finalCost = $method->base_cost + ($method->pivot->custom_cost_adjustment ?? 0);
+                    @endphp
+                    <label class="flex items-center gap-3 p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-orange-400 transition-colors shipping-method-option">
+                        <input type="radio" name="shipping_method" value="{{ $method->id }}" 
+                               data-cost="{{ $finalCost }}" 
+                               class="w-5 h-5 text-orange-500 shipping-method-radio"
+                               onchange="updateBuyNowTotal()"
+                               {{ $loop->first ? 'checked' : '' }}>
+                        <div class="flex-1">
+                            <div class="font-bold text-gray-900">{{ $method->name }}</div>
+                            @if($method->description)
+                            <div class="text-xs text-gray-600 mt-1">{{ $method->description }}</div>
+                            @endif
+                        </div>
+                        <div class="font-bold text-orange-600">@price($finalCost) تومان</div>
+                    </label>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            <div class="space-y-3 mb-6">
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span class="text-gray-600">قیمت خرید فوری:</span>
+                    <span class="font-bold text-gray-900">@price($listing->buy_now_price) تومان</span>
+                </div>
+                
+                @if($shippingMethods->isNotEmpty())
+                @php
+                    $firstMethodCost = $shippingMethods->first()->base_cost + ($shippingMethods->first()->pivot->custom_cost_adjustment ?? 0);
+                @endphp
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span class="text-gray-600">هزینه ارسال:</span>
+                    <span class="font-bold text-gray-900" id="shippingCostDisplay">@price($firstMethodCost) تومان</span>
+                </div>
+                @endif
+                
+                @if($userParticipation)
+                <div class="flex justify-between items-center py-2 border-b border-gray-200">
+                    <span class="text-gray-600">سپرده پرداخت شده:</span>
+                    <span class="font-bold text-green-600">@price($depositPaid) تومان</span>
+                </div>
+                
+                <div class="flex justify-between items-center py-3 bg-orange-50 rounded-lg px-3">
+                    <span class="text-gray-900 font-medium">مبلغ قابل پرداخت:</span>
+                    <span class="font-black text-orange-600 text-xl" id="totalAmountDisplay">@price($amountToPay + ($shippingMethods->isNotEmpty() ? $firstMethodCost : 0)) تومان</span>
+                </div>
+                
+                <div class="bg-blue-50 rounded-lg p-3 text-sm text-gray-700">
+                    <div class="flex items-start gap-2">
+                        <span class="material-symbols-outlined text-blue-600 text-lg flex-shrink-0">check_circle</span>
+                        <span>سپرده شما آزاد شده و فقط اختلاف مبلغ از کیف پول کسر می‌شود.</span>
+                    </div>
+                </div>
+                @else
+                <div class="flex justify-between items-center py-3 bg-orange-50 rounded-lg px-3">
+                    <span class="text-gray-900 font-medium">مبلغ قابل پرداخت:</span>
+                    <span class="font-black text-orange-600 text-xl" id="totalAmountDisplay">@price($amountToPay + ($shippingMethods->isNotEmpty() ? $firstMethodCost : 0)) تومان</span>
+                </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Actions (Fixed at bottom) -->
+        <div class="p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+            <div class="flex gap-3">
+                <button type="button" onclick="closeBuyNowModal()" class="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors">
+                    انصراف
+                </button>
+                <button type="button" onclick="confirmBuyNow()" class="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <span>تایید و خرید</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const buyNowBaseAmount = {{ $amountToPay }};
+const hasDeposit = {{ $userParticipation ? 'true' : 'false' }};
+
+function updateBuyNowTotal() {
+    const selectedShipping = document.querySelector('input[name="shipping_method"]:checked');
+    if (selectedShipping) {
+        const shippingCost = parseInt(selectedShipping.dataset.cost);
+        const totalAmount = buyNowBaseAmount + shippingCost;
+        
+        // Update shipping cost display
+        document.getElementById('shippingCostDisplay').textContent = shippingCost.toLocaleString('fa-IR') + ' تومان';
+        
+        // Update total amount display
+        document.getElementById('totalAmountDisplay').textContent = totalAmount.toLocaleString('fa-IR') + ' تومان';
+    }
+}
+
+function showBuyNowConfirmation() {
+    const modal = document.getElementById('buyNowModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeBuyNowModal() {
+    const modal = document.getElementById('buyNowModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    }
+}
+
+function confirmBuyNow() {
+    const selectedShipping = document.querySelector('input[name="shipping_method"]:checked');
+    if (selectedShipping) {
+        // Add shipping method to form
+        const form = document.getElementById('buyNowForm');
+        const shippingInput = document.createElement('input');
+        shippingInput.type = 'hidden';
+        shippingInput.name = 'shipping_method_id';
+        shippingInput.value = selectedShipping.value;
+        form.appendChild(shippingInput);
+    }
+    document.getElementById('buyNowForm').submit();
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeBuyNowModal();
+    }
+});
+</script>
+@endif
+
 @endsection
 
 

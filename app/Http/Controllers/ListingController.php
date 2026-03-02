@@ -483,45 +483,183 @@ class ListingController extends Controller
     {
         // Check if this is a buy now request
         if ($request->has('buy_now') && $request->buy_now == 1) {
+            // Validate buy now is available
+            if (!$listing->buy_now_price || $listing->buy_now_price <= 0) {
+                return redirect()
+                    ->route('listings.show', $listing)
+                    ->with('error', 'خرید فوری برای این حراجی فعال نیست.');
+            }
+
+            // Check if listing is active
+            if (!$listing->isActive()) {
+                return redirect()
+                    ->route('listings.show', $listing)
+                    ->with('error', 'این حراجی فعال نیست.');
+            }
+            
+            // Validate shipping method
+            $shippingMethodId = $request->input('shipping_method_id');
+            if (!$shippingMethodId) {
+                return redirect()
+                    ->route('listings.show', $listing)
+                    ->with('error', 'لطفا روش ارسال را انتخاب کنید.');
+            }
+            
+            // Get shipping method with pivot data from listing
+            $shippingMethod = $listing->shippingMethods()
+                ->where('shipping_method_id', $shippingMethodId)
+                ->first();
+                
+            if (!$shippingMethod) {
+                return redirect()
+                    ->route('listings.show', $listing)
+                    ->with('error', 'روش ارسال انتخاب شده معتبر نیست.');
+            }
+
             try {
-                // Validate buy now is available
-                if (!$listing->buy_now_price || $listing->buy_now_price <= 0) {
-                    return redirect()
-                        ->route('listings.show', $listing)
-                        ->with('error', 'خرید فوری برای این حراجی فعال نیست.');
-                }
+                $order = \DB::transaction(function() use ($listing, $shippingMethod, $shippingMethodId) {
+                    // Check if user has already participated (has deposit blocked)
+                    $participation = \App\Models\AuctionParticipation::where('listing_id', $listing->id)
+                        ->where('user_id', auth()->id())
+                        ->where('deposit_status', 'paid')
+                        ->first();
+                    
+                    $wallet = auth()->user()->wallet;
+                    $buyNowPrice = $listing->buy_now_price;
+                    
+                    // Calculate shipping cost from base_cost + custom_cost_adjustment
+                    $shippingCost = $shippingMethod->base_cost + ($shippingMethod->pivot->custom_cost_adjustment ?? 0);
+                    $totalAmount = $buyNowPrice + $shippingCost;
+                    
+                    if ($participation) {
+                        // User has already bid, so deposit is blocked
+                        // Unfreeze the deposit and freeze the full amount (buy_now + shipping)
+                        $depositAmount = $participation->deposit_amount;
+                        $amountToPay = $totalAmount - $depositAmount;
+                        
+                        // Check if user has enough balance for the difference
+                        if (!$wallet || $wallet->balance < $amountToPay) {
+                            throw new \Exception('موجودی کیف پول شما برای خرید فوری کافی نیست. مبلغ مورد نیاز: ' . number_format($amountToPay) . ' تومان (اختلاف قیمت خرید فوری + هزینه ارسال و سپرده بلاک شده)');
+                        }
+                        
+                        // Unfreeze the deposit first
+                        $wallet->frozen -= $depositAmount;
+                        $wallet->balance += $depositAmount;
+                        
+                        // Now freeze the full amount (buy_now + shipping)
+                        $wallet->balance -= $totalAmount;
+                        $wallet->frozen += $totalAmount;
+                        $wallet->save();
+                        
+                        // Record unfreeze transaction
+                        \App\Models\WalletTransaction::create([
+                            'wallet_id' => $wallet->id,
+                            'user_id' => auth()->id(),
+                            'type' => 'release_deposit',
+                            'amount' => $depositAmount,
+                            'final_amount' => $depositAmount,
+                            'balance_before' => $wallet->balance + $totalAmount - $depositAmount,
+                            'balance_after' => $wallet->balance + $totalAmount,
+                            'frozen_before' => $wallet->frozen - $totalAmount + $depositAmount,
+                            'frozen_after' => $wallet->frozen - $totalAmount,
+                            'reference_type' => \App\Models\Listing::class,
+                            'reference_id' => $listing->id,
+                            'status' => 'completed',
+                            'description' => sprintf('آزادسازی سپرده برای خرید فوری: %s', $listing->title),
+                        ]);
+                        
+                        // Record freeze transaction for buy now + shipping
+                        \App\Models\WalletTransaction::create([
+                            'wallet_id' => $wallet->id,
+                            'user_id' => auth()->id(),
+                            'type' => 'freeze_deposit',
+                            'amount' => $totalAmount,
+                            'final_amount' => $totalAmount,
+                            'balance_before' => $wallet->balance + $totalAmount,
+                            'balance_after' => $wallet->balance,
+                            'frozen_before' => $wallet->frozen - $totalAmount,
+                            'frozen_after' => $wallet->frozen,
+                            'reference_type' => \App\Models\Listing::class,
+                            'reference_id' => $listing->id,
+                            'status' => 'completed',
+                            'description' => sprintf('بلاک مبلغ خرید فوری + هزینه ارسال: %s', $listing->title),
+                        ]);
+                    } else {
+                        // User hasn't bid yet, charge full amount (buy_now + shipping)
+                        if (!$wallet || $wallet->balance < $totalAmount) {
+                            throw new \Exception('موجودی کیف پول شما برای خرید فوری کافی نیست. مبلغ مورد نیاز: ' . number_format($totalAmount) . ' تومان (قیمت خرید فوری + هزینه ارسال)');
+                        }
+                        
+                        // Freeze the full amount
+                        $wallet->balance -= $totalAmount;
+                        $wallet->frozen += $totalAmount;
+                        $wallet->save();
+                        
+                        \App\Models\WalletTransaction::create([
+                            'wallet_id' => $wallet->id,
+                            'user_id' => auth()->id(),
+                            'type' => 'freeze_deposit',
+                            'amount' => $totalAmount,
+                            'final_amount' => $totalAmount,
+                            'balance_before' => $wallet->balance + $totalAmount,
+                            'balance_after' => $wallet->balance,
+                            'frozen_before' => $wallet->frozen - $totalAmount,
+                            'frozen_after' => $wallet->frozen,
+                            'reference_type' => \App\Models\Listing::class,
+                            'reference_id' => $listing->id,
+                            'status' => 'completed',
+                            'description' => sprintf('بلاک مبلغ خرید فوری + هزینه ارسال: %s', $listing->title),
+                        ]);
+                    }
 
-                // Check if listing is active
-                if (!$listing->isActive()) {
-                    return redirect()
-                        ->route('listings.show', $listing)
-                        ->with('error', 'این حراجی فعال نیست.');
-                }
+                    // Create order with pending status (waiting for shipping address)
+                    $order = \App\Models\Order::create([
+                        'order_number' => 'ORD-' . strtoupper(uniqid()),
+                        'buyer_id' => auth()->id(),
+                        'seller_id' => $listing->seller_id,
+                        'status' => 'pending',
+                        'subtotal' => $buyNowPrice,
+                        'shipping_cost' => $shippingCost,
+                        'total' => $totalAmount,
+                        'shipping_method_id' => $shippingMethodId,
+                    ]);
 
-                // Check wallet balance
-                $wallet = auth()->user()->wallet;
-                if (!$wallet || $wallet->balance < $listing->buy_now_price) {
-                    return redirect()
-                        ->route('listings.show', $listing)
-                        ->with('error', 'موجودی کیف پول شما برای خرید فوری کافی نیست. مبلغ مورد نیاز: ' . number_format($listing->buy_now_price) . ' تومان');
-                }
+                    // Create order item
+                    \App\Models\OrderItem::create([
+                        'order_id' => $order->id,
+                        'listing_id' => $listing->id,
+                        'quantity' => 1,
+                        'price_snapshot' => $buyNowPrice,
+                        'subtotal' => $buyNowPrice,
+                    ]);
 
-                // Create order for buy now
-                $order = $this->orderService->createOrderFromBuyNow($listing, auth()->user());
+                    // Update listing status
+                    $listing->status = 'completed';
+                    $listing->save();
+
+                    return $order;
+                });
+
+                // Send notifications (outside transaction)
+                try {
+                    // Notify buyer
+                    auth()->user()->notify(new \App\Notifications\OrderPlacedNotification($order, false));
+                    
+                    // Notify seller about buy now
+                    $listing->seller->notify(new \App\Notifications\BuyNowCompletedNotification($order, $listing));
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to send notification: ' . $e->getMessage());
+                }
                 
                 return redirect()
                     ->route('orders.show', $order)
-                    ->with('success', 'خرید فوری با موفقیت انجام شد. لطفا روش ارسال را انتخاب کنید.');
+                    ->with('success', 'خرید فوری با موفقیت انجام شد. لطفا آدرس ارسال را وارد کنید.');
                     
-            } catch (\App\Exceptions\Wallet\InsufficientBalanceException $e) {
-                return redirect()
-                    ->route('listings.show', $listing)
-                    ->with('error', 'موجودی کیف پول شما کافی نیست. لطفا ابتدا کیف پول خود را شارژ کنید.');
             } catch (\Exception $e) {
                 \Log::error('Buy now error: ' . $e->getMessage());
                 return redirect()
                     ->route('listings.show', $listing)
-                    ->with('error', 'خطا در انجام خرید فوری. لطفا دوباره تلاش کنید.');
+                    ->with('error', $e->getMessage());
             }
         }
 

@@ -22,6 +22,10 @@ class Order extends Model
         'total',
         'shipping_method_id',
         'shipping_address',
+        'shipping_city',
+        'shipping_state',
+        'shipping_postal_code',
+        'shipping_phone',
         'tracking_number',
         'payment_released_at',
     ];

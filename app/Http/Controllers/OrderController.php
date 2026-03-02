@@ -35,6 +35,61 @@ class OrderController extends Controller
 
         return view('orders.show', compact('order'));
     }
+    
+    /**
+     * Update shipping address for pending orders
+     */
+    public function updateShippingAddress(Request $request, Order $order)
+    {
+        $this->authorize('view', $order);
+        
+        // Only buyer can update address
+        if ($order->buyer_id !== auth()->id()) {
+            abort(403, 'شما مجاز به انجام این عملیات نیستید.');
+        }
+        
+        // Only for pending orders
+        if ($order->status !== 'pending') {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'فقط سفارشات در انتظار قابل ویرایش هستند.');
+        }
+        
+        $validated = $request->validate([
+            'shipping_address' => 'required|string|max:500',
+            'shipping_city' => 'required|string|max:100',
+            'shipping_state' => 'required|string|max:100',
+            'shipping_postal_code' => 'required|string|max:20',
+            'shipping_phone' => 'required|string|max:20',
+        ], [
+            'shipping_address.required' => 'آدرس ارسال الزامی است',
+            'shipping_city.required' => 'شهر الزامی است',
+            'shipping_state.required' => 'استان الزامی است',
+            'shipping_postal_code.required' => 'کد پستی الزامی است',
+            'shipping_phone.required' => 'شماره تماس الزامی است',
+        ]);
+        
+        // Update order
+        $order->update([
+            'shipping_address' => $validated['shipping_address'],
+            'shipping_city' => $validated['shipping_city'],
+            'shipping_state' => $validated['shipping_state'],
+            'shipping_postal_code' => $validated['shipping_postal_code'],
+            'shipping_phone' => $validated['shipping_phone'],
+            'status' => 'processing',
+        ]);
+        
+        // Notify seller
+        try {
+            $order->seller->notify(new \App\Notifications\OrderReadyForProcessingNotification($order));
+        } catch (\Exception $e) {
+            \Log::warning('Failed to send notification: ' . $e->getMessage());
+        }
+        
+        return redirect()
+            ->route('orders.show', $order)
+            ->with('success', 'آدرس ارسال با موفقیت ثبت شد. سفارش شما در حال پردازش است.');
+    }
 
     /**
      * Update order status (seller or buyer for delivery confirmation)
@@ -47,6 +102,17 @@ class OrderController extends Controller
         if ($order->buyer_id === auth()->id()) {
             if ($request->status !== 'delivered' || $order->status !== 'shipped') {
                 abort(403, 'شما فقط می‌توانید دریافت کالا را تایید کنید');
+            }
+        }
+        
+        // If seller is moving from pending to processing, ensure shipping address is provided
+        if ($order->seller_id === auth()->id() && 
+            $order->status === 'pending' && 
+            $request->status === 'processing') {
+            if (!$order->shipping_address) {
+                return redirect()
+                    ->route('orders.show', $order)
+                    ->with('error', 'خریدار هنوز آدرس ارسال را وارد نکرده است. لطفا منتظر بمانید تا خریدار آدرس را وارد کند.');
             }
         }
 

@@ -138,6 +138,70 @@
                     </div>
                 </div>
 
+                <!-- Shipping Address Form for Pending Orders -->
+                @if($order->status === 'pending' && $order->buyer_id === auth()->id())
+                    <div class="bg-orange-50 border-2 border-orange-200 rounded-lg p-6">
+                        <div class="flex items-start gap-3 mb-4">
+                            <span class="material-symbols-outlined text-orange-600 text-3xl">location_on</span>
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-800 mb-1">وارد کردن آدرس ارسال</h2>
+                                <p class="text-sm text-gray-600">لطفا آدرس کامل خود را برای ارسال سفارش وارد کنید.</p>
+                            </div>
+                        </div>
+                        
+                        <form action="{{ route('orders.updateShippingAddress', $order) }}" method="POST" class="space-y-4">
+                            @csrf
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">استان *</label>
+                                    <input type="text" name="shipping_state" value="{{ old('shipping_state') }}" 
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                           required>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">شهر *</label>
+                                    <input type="text" name="shipping_city" value="{{ old('shipping_city') }}" 
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                           required>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">آدرس کامل *</label>
+                                <textarea name="shipping_address" rows="3" 
+                                          class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                          required>{{ old('shipping_address') }}</textarea>
+                                <p class="text-xs text-gray-500 mt-1">خیابان، کوچه، پلاک، واحد</p>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">کد پستی *</label>
+                                    <input type="text" name="shipping_postal_code" value="{{ old('shipping_postal_code') }}" 
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                           placeholder="۱۲۳۴۵۶۷۸۹۰"
+                                           required>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">شماره تماس *</label>
+                                    <input type="text" name="shipping_phone" value="{{ old('shipping_phone') }}" 
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                           placeholder="۰۹۱۲۳۴۵۶۷۸۹"
+                                           required>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="w-full px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined">check_circle</span>
+                                <span>ثبت آدرس و ادامه</span>
+                            </button>
+                        </form>
+                    </div>
+                @endif
+
                 <!-- Shipping Address -->
                 @if($order->shipping_address)
                     <div class="bg-white rounded-lg shadow-sm p-6">
@@ -145,7 +209,13 @@
                             <i class="fas fa-map-marker-alt ml-2 text-blue-600"></i>
                             آدرس ارسال
                         </h2>
-                        <p class="text-gray-700 leading-relaxed">{{ $order->shipping_address }}</p>
+                        <div class="space-y-2 text-gray-700">
+                            <p><strong>استان:</strong> {{ $order->shipping_state }}</p>
+                            <p><strong>شهر:</strong> {{ $order->shipping_city }}</p>
+                            <p><strong>آدرس:</strong> {{ $order->shipping_address }}</p>
+                            <p><strong>کد پستی:</strong> {{ $order->shipping_postal_code }}</p>
+                            <p><strong>شماره تماس:</strong> {{ $order->shipping_phone }}</p>
+                        </div>
                     </div>
                 @endif
 
@@ -417,16 +487,29 @@
                 @if($order->seller_id === auth()->id() && $order->status === 'pending')
                     <div class="bg-white rounded-lg shadow-sm p-6">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">تغییر وضعیت سفارش</h2>
-                        <p class="text-sm text-gray-600 mb-4">سفارش در انتظار پردازش است. می‌توانید آن را به مرحله پردازش ببرید.</p>
-                        <form action="{{ route('orders.updateStatus', $order) }}" method="POST">
-                            @csrf
-                            @method('PUT')
-                            <input type="hidden" name="status" value="processing">
-                            <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                                <i class="fas fa-arrow-left ml-2"></i>
-                                انتقال به مرحله پردازش
-                            </button>
-                        </form>
+                        
+                        @if($order->shipping_address)
+                            <p class="text-sm text-gray-600 mb-4">خریدار آدرس ارسال را وارد کرده است. می‌توانید سفارش را به مرحله پردازش ببرید.</p>
+                            <form action="{{ route('orders.updateStatus', $order) }}" method="POST">
+                                @csrf
+                                @method('PUT')
+                                <input type="hidden" name="status" value="processing">
+                                <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                    <i class="fas fa-arrow-left ml-2"></i>
+                                    انتقال به مرحله پردازش
+                                </button>
+                            </form>
+                        @else
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <div class="flex items-start gap-3">
+                                    <i class="fas fa-clock text-yellow-600 text-xl mt-1"></i>
+                                    <div class="text-sm text-gray-700">
+                                        <p class="font-bold mb-1">در انتظار آدرس خریدار</p>
+                                        <p>خریدار هنوز آدرس ارسال را وارد نکرده است. پس از وارد کردن آدرس، می‌توانید سفارش را به مرحله پردازش ببرید.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 @endif
             </div>
