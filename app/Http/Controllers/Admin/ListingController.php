@@ -207,6 +207,8 @@ class ListingController extends Controller
             'auto_extend' => $validated['auto_extend'] ?? false,
             'tags' => $validated['tags'],
             'status' => $status,
+            'approved_at' => now(),
+            'approved_by' => auth()->id(),
         ]);
 
         // ذخیره ویژگی‌ها
@@ -415,18 +417,37 @@ class ListingController extends Controller
     public function suspend(Listing $listing)
     {
         try {
+            $reason = request()->input('reason', 'بدون دلیل');
+
             $listing->update([
                 'status' => 'suspended',
-                'suspension_reason' => request()->input('reason')
+                'suspension_reason' => $reason,
+                'approved_at' => null,
             ]);
 
             \App\Models\AdminActionLog::create([
                 'listing_id' => $listing->id,
                 'admin_id' => auth()->id(),
                 'action' => 'suspend',
-                'description' => request()->input('reason'),
+                'description' => $reason,
                 'icon' => 'block'
             ]);
+
+            // ارسال نوتیفیکیشن به فروشنده از طریق سیستم سفارشی
+            try {
+                \App\Models\Notification::create([
+                    'user_id' => $listing->seller_id,
+                    'type' => 'listing_suspended',
+                    'title' => 'آگهی شما تعلیق شد',
+                    'message' => sprintf('آگهی "%s" توسط مدیریت تعلیق شد. دلیل: %s', $listing->title, $reason),
+                    'icon' => 'block',
+                    'color' => 'red',
+                    'link' => route('listings.edit', $listing),
+                    'is_read' => false,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Failed to send suspension notification: ' . $e->getMessage());
+            }
 
             if (request()->expectsJson()) {
                 return response()->json(['success' => true, 'message' => 'آگهی با موفقیت تعلیق شد']);
@@ -501,7 +522,16 @@ class ListingController extends Controller
 
             // ارسال نوتیفیکیشن به فروشنده
             try {
-                $listing->seller->notify(new \App\Notifications\ListingApprovedNotification($listing));
+                \App\Models\Notification::create([
+                    'user_id' => $listing->seller_id,
+                    'type' => 'listing_approved',
+                    'title' => 'آگهی شما تایید شد',
+                    'message' => sprintf('آگهی "%s" توسط مدیریت تایید و منتشر شد.', $listing->title),
+                    'icon' => 'check_circle',
+                    'color' => 'green',
+                    'link' => route('listings.show', $listing),
+                    'is_read' => false,
+                ]);
             } catch (\Exception $e) {
                 // Ignore notification errors
             }
@@ -546,7 +576,16 @@ class ListingController extends Controller
 
             // ارسال نوتیفیکیشن به فروشنده
             try {
-                $listing->seller->notify(new \App\Notifications\ListingRejectedNotification($listing, $reason));
+                \App\Models\Notification::create([
+                    'user_id' => $listing->seller_id,
+                    'type' => 'listing_rejected',
+                    'title' => 'آگهی شما رد شد',
+                    'message' => sprintf('آگهی "%s" رد شد. دلیل: %s', $listing->title, $reason),
+                    'icon' => 'cancel',
+                    'color' => 'red',
+                    'link' => route('listings.edit', $listing),
+                    'is_read' => false,
+                ]);
             } catch (\Exception $e) {
                 // Ignore notification errors
             }

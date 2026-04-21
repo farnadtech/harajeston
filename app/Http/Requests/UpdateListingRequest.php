@@ -19,10 +19,11 @@ class UpdateListingRequest extends FormRequest
         // Check if listing has active bids
         $hasActiveBids = $listing && $listing->hasActiveBids();
         
-        // If has active bids, only validate description and shipping
+        // If has active bids, only validate description, shipping, and buy_now_price
         if ($hasActiveBids) {
             return [
                 'description' => 'required|string',
+                'buy_now_price' => 'nullable|numeric|min:0',
                 'shipping_methods' => 'required|array|min:1',
                 'shipping_methods.*' => 'exists:shipping_methods,id',
                 'shipping_costs' => 'nullable|array',
@@ -54,6 +55,22 @@ class UpdateListingRequest extends FormRequest
             'attributes' => 'nullable|array',
             'attributes.*' => 'nullable|string',
         ];
+    }
+    
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $listing = $this->route('listing');
+            
+            // If listing has active bids and buy_now_price is being updated
+            if ($listing && $listing->hasActiveBids() && $this->has('buy_now_price') && $this->buy_now_price) {
+                $highestBid = $listing->bids()->orderBy('amount', 'desc')->first();
+                
+                if ($highestBid && $this->buy_now_price <= $highestBid->amount) {
+                    $validator->errors()->add('buy_now_price', 'قیمت خرید فوری باید بالاتر از بالاترین پیشنهاد (' . number_format($highestBid->amount) . ' تومان) باشد.');
+                }
+            }
+        });
     }
 
     protected function prepareForValidation()

@@ -226,6 +226,44 @@
             </form>
         </div>
 
+        <!-- تنظیمات OTP -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">تنظیمات سیستم OTP</h2>
+            <p class="text-sm text-gray-500 mb-6">
+                با غیرفعال کردن این گزینه، سیستم تایید شماره موبایل در ثبت‌نام و ورود با OTP حذف می‌شود.
+                کاربران می‌توانند بدون دریافت کد پیامکی ثبت‌نام کنند و فقط ورود با رمز عبور فعال خواهد بود.
+            </p>
+
+            <form action="{{ route('admin.settings.otp.update') }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div>
+                        <p class="font-bold text-gray-800">فعال بودن سیستم OTP</p>
+                        <p class="text-sm text-gray-500 mt-1">
+                            @if($otpEnabled)
+                                <span class="text-green-600 font-medium">● فعال</span> — کاربران باید شماره موبایل را تایید کنند
+                            @else
+                                <span class="text-red-500 font-medium">● غیرفعال</span> — ثبت‌نام و ورود بدون تایید پیامکی
+                            @endif
+                        </p>
+                    </div>
+                    <label class="flex items-center cursor-pointer gap-3">
+                        <span class="text-sm text-gray-600">{{ $otpEnabled ? 'فعال' : 'غیرفعال' }}</span>
+                        <input type="checkbox" name="otp_enabled" value="1" {{ $otpEnabled ? 'checked' : '' }}
+                               class="w-5 h-5 text-blue-600 rounded">
+                    </label>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        ذخیره تنظیمات OTP
+                    </button>
+                </div>
+            </form>
+        </div>
+
         <!-- تنظیمات کمیسیون -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات کمیسیون سایت</h2>

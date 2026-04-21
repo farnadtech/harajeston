@@ -26,75 +26,48 @@ Route::get('/', [ListingController::class, 'index'])->name('home');
 // Authentication Routes
 Route::get('/login', function () { return view('auth.login'); })->name('login');
 Route::get('/register', function () { return view('auth.register'); })->name('register');
+
+// ورود با رمز عبور
 Route::post('/login', function (\Illuminate\Http\Request $request) {
-    $login = $request->input('login');
-    
-    // Check if login is email or phone
+    $login     = $request->input('login');
     $fieldType = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
-    
-    $credentials = [
-        $fieldType => $login,
-        'password' => $request->input('password')
-    ];
-    
+    $credentials = [$fieldType => $login, 'password' => $request->input('password')];
+
     if (auth()->attempt($credentials, $request->filled('remember'))) {
         $request->session()->regenerate();
         return redirect()->intended('/dashboard');
     }
-    
-    return back()->withErrors([
-        'login' => 'اطلاعات ورود نادرست است.',
-    ])->withInput($request->only('login'));
+
+    return back()->withErrors(['login' => 'اطلاعات ورود نادرست است.'])->withInput($request->only('login'));
 });
-Route::post('/register', function (\Illuminate\Http\Request $request) {
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'phone' => ['required', 'string', 'regex:/^09[0-9]{9}$/', 'unique:users'],
-        'email' => 'required|string|email|max:255|unique:users',
-        'password' => 'required|string|min:8|confirmed',
-        'terms' => 'required|accepted',
-    ], [
-        'name.required' => 'نام و نام خانوادگی الزامی است.',
-        'phone.required' => 'شماره تلفن الزامی است.',
-        'phone.regex' => 'شماره تلفن باید 11 رقمی و با 09 شروع شود.',
-        'phone.unique' => 'این شماره تلفن قبلاً ثبت شده است.',
-        'email.required' => 'ایمیل الزامی است.',
-        'email.email' => 'فرمت ایمیل صحیح نیست.',
-        'email.unique' => 'این ایمیل قبلاً ثبت شده است.',
-        'password.required' => 'رمز عبور الزامی است.',
-        'password.min' => 'رمز عبور باید حداقل ۸ کاراکتر باشد.',
-        'password.confirmed' => 'تکرار رمز عبور مطابقت ندارد.',
-        'terms.required' => 'باید قوانین و مقررات را بپذیرید.',
-        'terms.accepted' => 'باید قوانین و مقررات را بپذیرید.',
-    ]);
-    
-    // All new users start as buyers with no seller status
-    $user = \App\Models\User::create([
-        'name' => $validated['name'],
-        'phone' => $validated['phone'],
-        'email' => $validated['email'],
-        'password' => bcrypt($validated['password']),
-        'role' => 'buyer',
-        'seller_status' => 'none',
-    ]);
-    
-    // Create wallet
-    \App\Models\Wallet::create([
-        'user_id' => $user->id,
-        'balance' => 0,
-        'frozen' => 0,
-    ]);
-    
-    auth()->login($user);
-    
-    return redirect('/dashboard');
-});
+
+// ثبت‌نام با تایید OTP
+Route::post('/register', [\App\Http\Controllers\Auth\OtpController::class, 'completeRegister']);
+
+// ─── OTP Routes ───────────────────────────────────────────────────
+// ورود با OTP
+Route::get('/login/otp', [\App\Http\Controllers\Auth\OtpController::class, 'loginForm'])->name('otp.login');
+Route::post('/login/otp/send', [\App\Http\Controllers\Auth\OtpController::class, 'sendLoginOtp'])->name('otp.login.send');
+Route::get('/login/otp/verify', [\App\Http\Controllers\Auth\OtpController::class, 'verifyLoginForm'])->name('otp.login.verify.form');
+Route::post('/login/otp/verify', [\App\Http\Controllers\Auth\OtpController::class, 'verifyLogin'])->name('otp.login.verify');
+
+// ارسال OTP در ثبت‌نام (AJAX)
+Route::post('/register/otp/send', [\App\Http\Controllers\Auth\OtpController::class, 'sendRegisterOtp'])->name('otp.register.send');
+
+// ارسال مجدد کد
+Route::post('/otp/resend', [\App\Http\Controllers\Auth\OtpController::class, 'resend'])->name('otp.resend');
+// ─────────────────────────────────────────────────────────────────
 
 Route::post('/logout', function () { auth()->logout(); return redirect('/'); })->name('logout');
 
 // Password Reset Routes
-Route::get('/password/request', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
-Route::post('/password/email', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::get('/password/request', [\App\Http\Controllers\Auth\PasswordResetOtpController::class, 'showForm'])->name('password.request');
+Route::post('/password/otp/send', [\App\Http\Controllers\Auth\PasswordResetOtpController::class, 'sendOtp'])->name('password.otp.send');
+Route::get('/password/otp/verify', [\App\Http\Controllers\Auth\PasswordResetOtpController::class, 'showVerifyForm'])->name('password.otp.verify.form');
+Route::post('/password/otp/verify', [\App\Http\Controllers\Auth\PasswordResetOtpController::class, 'verifyOtp'])->name('password.otp.verify');
+Route::post('/password/otp/reset', [\App\Http\Controllers\Auth\PasswordResetOtpController::class, 'resetPassword'])->name('password.otp.reset');
+
+// Legacy email reset (نگه می‌داریم برای سازگاری)
 Route::get('/password/reset/{token}', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'showResetForm'])->name('password.reset');
 Route::post('/password/reset', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])->name('password.update');
 
@@ -179,6 +152,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{order}/review', [\App\Http\Controllers\SellerReviewController::class, 'create'])->name('seller-reviews.create');
     Route::post('/orders/{order}/review', [\App\Http\Controllers\SellerReviewController::class, 'store'])->name('seller-reviews.store');
     
+    // Tickets
+    Route::get('/tickets', [\App\Http\Controllers\TicketController::class, 'index'])->name('tickets.index');
+    Route::get('/tickets/create', [\App\Http\Controllers\TicketController::class, 'create'])->name('tickets.create');
+    Route::post('/tickets', [\App\Http\Controllers\TicketController::class, 'store'])->name('tickets.store');
+    Route::get('/tickets/{ticket}', [\App\Http\Controllers\TicketController::class, 'show'])->name('tickets.show');
+    Route::post('/tickets/{ticket}/reply', [\App\Http\Controllers\TicketController::class, 'reply'])->name('tickets.reply');
+    Route::post('/tickets/{ticket}/close', [\App\Http\Controllers\TicketController::class, 'close'])->name('tickets.close');
+
     // User Notifications (non-admin)
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('user.notifications.index');
     Route::get('/notifications/recent', [\App\Http\Controllers\NotificationController::class, 'getRecent'])->name('user.notifications.recent');
@@ -202,12 +183,18 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/forfeit', [SettingsController::class, 'updateForfeit'])->name('admin.settings.forfeit.update');
         Route::put('/settings/auction-release', [SettingsController::class, 'updateAuctionRelease'])->name('admin.settings.auction-release.update');
         Route::put('/settings/listing', [SettingsController::class, 'updateListing'])->name('admin.settings.listing.update');
+        Route::put('/settings/otp', [SettingsController::class, 'updateOtp'])->name('admin.settings.otp.update');
 
         // Payment Gateways
         Route::get('/payment-gateways', [\App\Http\Controllers\Admin\PaymentGatewayController::class, 'index'])->name('admin.payment-gateways.index');
         Route::get('/payment-gateways/{gateway}/edit', [\App\Http\Controllers\Admin\PaymentGatewayController::class, 'edit'])->name('admin.payment-gateways.edit');
         Route::put('/payment-gateways/{gateway}', [\App\Http\Controllers\Admin\PaymentGatewayController::class, 'update'])->name('admin.payment-gateways.update');
         Route::patch('/payment-gateways/{gateway}/toggle', [\App\Http\Controllers\Admin\PaymentGatewayController::class, 'toggle'])->name('admin.payment-gateways.toggle');
+
+        // SMS Gateways
+        Route::get('/sms-gateways', [\App\Http\Controllers\Admin\SmsGatewayController::class, 'index'])->name('admin.sms-gateways.index');
+        Route::post('/sms-gateways', [\App\Http\Controllers\Admin\SmsGatewayController::class, 'save'])->name('admin.sms-gateways.save');
+        Route::post('/sms-gateways/test', [\App\Http\Controllers\Admin\SmsGatewayController::class, 'test'])->name('admin.sms-gateways.test');
 
         // Category Commissions
         Route::get('/category-commissions', [\App\Http\Controllers\Admin\CategoryCommissionController::class, 'index'])->name('admin.category-commissions.index');
@@ -285,6 +272,16 @@ Route::middleware('auth')->group(function () {
         Route::post('/stores/{store}/approve-name', [\App\Http\Controllers\Admin\SellerController::class, 'approveStoreName'])->name('admin.stores.approve-name');
         Route::post('/stores/{store}/reject-name', [\App\Http\Controllers\Admin\SellerController::class, 'rejectStoreName'])->name('admin.stores.reject-name');
         
+        // Tickets
+        Route::get('/tickets', [\App\Http\Controllers\Admin\TicketController::class, 'index'])->name('admin.tickets.index');
+        Route::get('/tickets/create', [\App\Http\Controllers\Admin\TicketController::class, 'create'])->name('admin.tickets.create');
+        Route::post('/tickets', [\App\Http\Controllers\Admin\TicketController::class, 'store'])->name('admin.tickets.store');
+        Route::get('/tickets/listings-for-user', [\App\Http\Controllers\Admin\TicketController::class, 'listingsForUser'])->name('admin.tickets.listings-for-user');
+        Route::get('/tickets/{ticket}', [\App\Http\Controllers\Admin\TicketController::class, 'show'])->name('admin.tickets.show');
+        Route::post('/tickets/{ticket}/reply', [\App\Http\Controllers\Admin\TicketController::class, 'reply'])->name('admin.tickets.reply');
+        Route::post('/tickets/{ticket}/close', [\App\Http\Controllers\Admin\TicketController::class, 'close'])->name('admin.tickets.close');
+        Route::post('/tickets/{ticket}/reopen', [\App\Http\Controllers\Admin\TicketController::class, 'reopen'])->name('admin.tickets.reopen');
+
         // Notifications
         Route::get('/notifications', [\App\Http\Controllers\Admin\NotificationController::class, 'index'])->name('admin.notifications.index');
         Route::get('/notifications/recent', [\App\Http\Controllers\Admin\NotificationController::class, 'getRecent'])->name('admin.notifications.recent');

@@ -51,7 +51,9 @@ class SettingsController extends Controller
             'default_bid_increment' => SiteSetting::get('default_bid_increment', 10000),
         ];
 
-        return view('admin.settings.index', compact('depositSettings', 'commissionSettings', 'sellerSettings', 'auctionDurationSettings', 'walletSettings', 'loserFeeSettings', 'forfeitSettings', 'auctionReleaseSettings', 'listingSettings'));
+        $otpEnabled = SiteSetting::get('otp_enabled', true);
+
+        return view('admin.settings.index', compact('depositSettings', 'commissionSettings', 'sellerSettings', 'auctionDurationSettings', 'walletSettings', 'loserFeeSettings', 'forfeitSettings', 'auctionReleaseSettings', 'listingSettings', 'otpEnabled'));
     }
 
     /**
@@ -263,5 +265,17 @@ class SettingsController extends Controller
 
         return redirect()->route('admin.settings.index')
             ->with('success', 'تنظیمات مهلت تست کالا با موفقیت به‌روزرسانی شد.');
+    }
+
+    /**
+     * فعال/غیرفعال کردن سیستم OTP
+     */
+    public function updateOtp(Request $request)
+    {
+        $enabled = $request->has('otp_enabled');
+        SiteSetting::set('otp_enabled', $enabled, 'boolean');
+
+        return redirect()->route('admin.settings.index')
+            ->with('success', $enabled ? 'سیستم OTP فعال شد.' : 'سیستم OTP غیرفعال شد.');
     }
 }

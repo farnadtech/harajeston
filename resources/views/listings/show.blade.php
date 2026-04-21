@@ -68,7 +68,19 @@
     @endif
 
     <!-- بنر حراجی هنوز شروع نشده -->
-    @if($listing->isPending())
+    @if($listing->status === 'pending' && !$listing->approved_at)
+        <div class="bg-orange-50 border-2 border-orange-200 rounded-xl p-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-orange-600 text-2xl">pending_actions</span>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-bold text-orange-900 mb-1">این آگهی در انتظار تایید ادمین است</h3>
+                    <p class="text-orange-700 text-sm">پس از تایید توسط مدیریت، آگهی در سایت نمایش داده خواهد شد.</p>
+                </div>
+            </div>
+        </div>
+    @elseif($listing->isPending())
         <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -85,20 +97,72 @@
     @endif
 
     <!-- بنر حراجی به پایان رسیده -->
-    @if($listing->hasEnded() && $listing->status !== 'suspended')
-        <div class="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-gray-600 text-2xl">event_busy</span>
-                </div>
-                <div class="flex-1">
-                    <h3 class="text-lg font-bold text-gray-900 mb-1">این حراجی به پایان رسیده است</h3>
-                    <p class="text-gray-700 text-sm">
-                        زمان پایان: <span class="font-bold">{{ \App\Services\PersianNumberService::convertToPersian(\App\Services\JalaliDateService::toJalali($listing->ends_at, 'Y/m/d H:i')) }}</span>
-                    </p>
+    @if(($listing->hasEnded() || in_array($listing->status, ['ended', 'completed'])) && $listing->status !== 'suspended')
+        @php
+            $winner = $listing->current_winner_id ? \App\Models\User::find($listing->current_winner_id) : null;
+            $isBuyNow = $listing->status === 'completed';
+            // اگر winner از current_winner_id نبود، از order پیدا کن
+            if (!$winner && $isBuyNow) {
+                $buyNowOrder = \App\Models\Order::whereHas('items', fn($q) => $q->where('listing_id', $listing->id))->first();
+                if ($buyNowOrder) {
+                    $winner = \App\Models\User::find($buyNowOrder->buyer_id);
+                }
+            }
+            $isCurrentUserWinner = auth()->check() && $winner && auth()->id() === $winner->id;
+            $isProcessing = $isBuyNow && \App\Models\Order::whereHas('items', fn($q) => $q->where('listing_id', $listing->id))
+                ->whereIn('status', ['pending', 'processing'])->exists();
+        @endphp
+
+        @if($isCurrentUserWinner)
+            {{-- پیام ویژه برای خریدار برنده --}}
+            <div class="bg-green-50 border-2 border-green-300 rounded-xl p-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-green-600 text-2xl">emoji_events</span>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-bold text-green-900 mb-1">🎉 شما این حراجی را برنده شدید!</h3>
+                        <p class="text-green-700 text-sm">
+                            نحوه اتمام: <strong>{{ $isBuyNow ? 'خرید فوری' : 'بالاترین پیشنهاد' }}</strong>
+                        </p>
+                        <p class="text-green-700 text-sm mt-1">برای پیگیری سفارش و وارد کردن آدرس ارسال به صفحه سفارشات مراجعه کنید.</p>
+                    </div>
+                    <a href="{{ route('orders.index') }}" class="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-xl hover:bg-green-700 transition-colors flex items-center gap-1 flex-shrink-0">
+                        <span class="material-symbols-outlined text-sm">shopping_bag</span>
+                        سفارشات من
+                    </a>
                 </div>
             </div>
-        </div>
+        @else
+            {{-- پیام برای بقیه کاربران --}}
+            <div class="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 {{ $winner ? 'bg-yellow-100' : 'bg-gray-100' }} rounded-full flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined {{ $winner ? 'text-yellow-600' : 'text-gray-600' }} text-2xl">{{ $winner ? 'emoji_events' : 'event_busy' }}</span>
+                    </div>
+                    <div class="flex-1">
+                        @if($isProcessing)
+                            <h3 class="text-lg font-bold text-blue-900 mb-1">این حراجی به پایان رسیده و در حال پردازش سفارش است</h3>
+                            <p class="text-blue-700 text-sm">نحوه اتمام: <strong>خرید فوری</strong> - سفارش در حال پردازش می‌باشد</p>
+                        @else
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">این حراجی به پایان رسیده است</h3>
+                            @if($isBuyNow)
+                                <p class="text-gray-600 text-sm">نحوه اتمام: <strong>خرید فوری</strong></p>
+                            @endif
+                        @endif
+                        @if($winner)
+                            @php
+                            $phone = $winner->phone ?? '0000000000';
+                            $maskedPhone = substr($phone, 0, 4) . '***' . substr($phone, -3);
+                        @endphp
+                        <p class="text-gray-700 text-sm mt-1">🏆 برنده: <strong class="text-yellow-700" dir="ltr">{{ $maskedPhone }}</strong></p>
+                        @elseif(!$isProcessing)
+                            <p class="text-gray-600 text-sm mt-1">برنده‌ای ثبت نشده است</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endif
     @endif
 
     <!-- Breadcrumb -->
@@ -479,6 +543,37 @@
                         </div>
                     @elseif(auth()->check() && $listing->seller_id === auth()->id())
                         {{-- Owner of the listing --}}
+                        @if(in_array($listing->status, ['ended', 'completed']))
+                            @php
+                                $order = \App\Models\Order::where('seller_id', $listing->seller_id)
+                                    ->whereHas('items', fn($q) => $q->where('listing_id', $listing->id))
+                                    ->latest()->first();
+                            @endphp
+                            <div class="p-6 bg-blue-50 rounded-xl border-2 border-blue-200 text-center">
+                                <span class="material-symbols-outlined text-blue-600 text-5xl mb-3">emoji_events</span>
+                                <p class="text-lg text-blue-900 font-bold mb-2">حراجی به پایان رسید</p>
+                                @if($listing->current_winner_id)
+                                    @php $winner = \App\Models\User::find($listing->current_winner_id); @endphp
+                                    <p class="text-sm text-blue-700 mb-4">
+                                        برنده: <strong>{{ $winner?->name ?? 'کاربر' }}</strong>
+                                        @if($listing->status === 'completed')
+                                            - خرید فوری
+                                        @endif
+                                    </p>
+                                @endif
+                                @if($order)
+                                    <a href="{{ route('orders.show', $order) }}" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors">
+                                        <span class="material-symbols-outlined">shopping_bag</span>
+                                        مشاهده سفارش
+                                    </a>
+                                @else
+                                    <a href="{{ route('orders.index') }}" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors">
+                                        <span class="material-symbols-outlined">shopping_bag</span>
+                                        مشاهده سفارشات
+                                    </a>
+                                @endif
+                            </div>
+                        @else
                         <div class="p-6 bg-green-50 rounded-xl border-2 border-green-200 text-center">
                             <span class="material-symbols-outlined text-green-600 text-5xl mb-3">storefront</span>
                             <p class="text-lg text-green-900 font-bold mb-3">این حراجی متعلق به شماست</p>
@@ -487,6 +582,7 @@
                                 ویرایش حراجی
                             </a>
                         </div>
+                        @endif
                     @elseif($listing->isActive())
                         {{-- Show bidding form directly (no separate participation needed) --}}
                         <div class="space-y-4">

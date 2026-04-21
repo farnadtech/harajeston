@@ -193,7 +193,7 @@
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">منتظر تایید ادمین</span>
                             @elseif($listing->status === 'active')
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">فعال</span>
-                            @elseif($listing->status === 'pending')
+                            @elseif($listing->status === 'pending' && $listing->approved_at)
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">در انتظار شروع</span>
                             @elseif($listing->status === 'completed')
                                 <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">تکمیل شده</span>

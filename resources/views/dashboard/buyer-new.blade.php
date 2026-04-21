@@ -1,37 +1,36 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html dir="rtl" lang="fa">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>داشبورد خریدار - {{ config('app.name') }}</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#135bec",
-                        "secondary": "#f97316",
-                        "background-light": "#f8f9fc",
-                        "background-dark": "#101622",
-                    },
-                    fontFamily: {
-                        "display": ["Vazirmatn", "sans-serif"],
-                        "body": ["Vazirmatn", "sans-serif"],
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.5rem",
-                        "lg": "0.75rem",
-                        "xl": "1rem",
-                        "2xl": "1.5rem",
-                    },
-                },
-            },
-        }
-    </script>
+    <link href="/haraj/public/css/app.css" rel="stylesheet"/>
+    <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
+    <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
+    <style>
+    @font-face {
+        font-family: 'Material Symbols Outlined';
+        font-style: normal;
+        font-weight: 100 700;
+        font-display: block;
+        src: url('/haraj/public/fonts/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].woff2') format('woff2');
+    }
+    .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined';
+        font-weight: normal;
+        font-style: normal;
+        font-size: 24px;
+        line-height: 1;
+        letter-spacing: normal;
+        text-transform: none;
+        display: inline-block;
+        white-space: nowrap;
+        direction: ltr;
+        -webkit-font-feature-settings: 'liga';
+        font-feature-settings: 'liga';
+        -webkit-font-smoothing: antialiased;
+    }
+    </style>
     <style>
         body {
             font-family: 'Vazirmatn', sans-serif;
@@ -118,6 +117,16 @@
             <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="{{ route('wallet.show') }}">
                 <span class="material-symbols-outlined group-hover:text-primary transition-colors">account_balance_wallet</span>
                 <span>کیف پول</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="{{ route('tickets.index') }}">
+                <span class="material-symbols-outlined group-hover:text-primary transition-colors">confirmation_number</span>
+                <span>تیکت‌های پشتیبانی</span>
+                @php
+                    $buyerDashUnread = \App\Models\Ticket::where(function($q){ $q->where('creator_id', auth()->id())->orWhere('recipient_id', auth()->id()); })->whereHas('messages', fn($q) => $q->where('user_id', '!=', auth()->id())->where('is_read', false))->count();
+                @endphp
+                @if($buyerDashUnread > 0)
+                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">{{ $buyerDashUnread }}</span>
+                @endif
             </a>
             
             <div class="pt-4 mt-4 border-t border-gray-200">

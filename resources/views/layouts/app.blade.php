@@ -6,36 +6,34 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Persian Auction Marketplace')</title>
     
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;family=Vazirmatn:wght@100..900&amp;display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-    
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#135bec",
-                        "secondary": "#f97316",
-                        "background-light": "#f8f9fc",
-                        "background-dark": "#101622",
-                    },
-                    fontFamily: {
-                        "display": ["Vazirmatn", "Manrope", "sans-serif"],
-                        "body": ["Vazirmatn", "Manrope", "sans-serif"],
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.5rem",
-                        "lg": "0.75rem",
-                        "xl": "1rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
+    <link href="/haraj/public/css/app.css" rel="stylesheet"/>
+    <script defer src="/haraj/public/js/alpine.min.js"></script>
+    <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
+    <style>
+    @font-face {
+        font-family: 'Material Symbols Outlined';
+        font-style: normal;
+        font-weight: 100 700;
+        font-display: block;
+        src: url('/haraj/public/fonts/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].woff2') format('woff2');
+    }
+    .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined';
+        font-weight: normal;
+        font-style: normal;
+        font-size: 24px;
+        line-height: 1;
+        letter-spacing: normal;
+        text-transform: none;
+        display: inline-block;
+        white-space: nowrap;
+        word-wrap: normal;
+        direction: ltr;
+        -webkit-font-feature-settings: 'liga';
+        font-feature-settings: 'liga';
+        -webkit-font-smoothing: antialiased;
+    }
+    </style>
     
     <style>
         body {
@@ -471,6 +469,15 @@
                             <div x-show="open" @click.away="open = false" x-transition class="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-50 border border-gray-100">
                                 <a href="{{ route('dashboard') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-t-lg">داشبورد</a>
                                 <a href="{{ route('wallet.show') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">کیف پول</a>
+                                <a href="{{ route('tickets.index') }}" class="flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-gray-100">
+                                    <span>تیکت‌های پشتیبانی</span>
+                                    @php
+                                        $buyerUnread = \App\Models\Ticket::where(function($q){ $q->where('creator_id', auth()->id())->orWhere('recipient_id', auth()->id()); })->whereHas('messages', fn($q) => $q->where('user_id', '!=', auth()->id())->where('is_read', false))->count();
+                                    @endphp
+                                    @if($buyerUnread > 0)
+                                        <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{{ $buyerUnread }}</span>
+                                    @endif
+                                </a>
                                 @if(auth()->user()->role === 'seller')
                                     <a href="{{ route('listings.create') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">ایجاد آگهی</a>
                                 @endif
@@ -580,7 +587,7 @@
     </footer>
 
     @livewireScripts
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="/haraj/public/js/alpine.min.js"></script>
     @stack('scripts')
 </body>
 </html>

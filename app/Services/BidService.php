@@ -117,6 +117,14 @@ class BidService
                     'status' => 'completed',
                     'description' => sprintf('بلاک سپرده حراجی: %s', $listing->title),
                 ]);
+                
+                // ثبت رکورد participation
+                AuctionParticipation::create([
+                    'listing_id' => $listing->id,
+                    'user_id' => $user->id,
+                    'deposit_amount' => $depositAmount,
+                    'deposit_status' => 'paid',
+                ]);
             }
             
             // Create bid
@@ -129,6 +137,33 @@ class BidService
             // Update listing with new highest bid
             $listing->current_price = $amount;
             $listing->current_winner_id = $user->id;
+            
+            // Disable buy now if bid exceeds buy now price
+            if ($listing->buy_now_price && $amount >= $listing->buy_now_price) {
+                $listing->buy_now_price = null;
+            }
+            
+            // Auto-extend auction if bid is placed in last 5 minutes
+            if ($listing->auto_extend) {
+                $now = now();
+                $endsAt = $listing->ends_at;
+                $minutesRemaining = $now->diffInMinutes($endsAt, false);
+                
+                // If less than 5 minutes remaining, extend by 5 minutes
+                if ($minutesRemaining >= 0 && $minutesRemaining < 5) {
+                    $listing->ends_at = $endsAt->addMinutes(5);
+                    
+                    // Log the extension
+                    \Log::info('Auction auto-extended', [
+                        'listing_id' => $listing->id,
+                        'old_end_time' => $endsAt->toDateTimeString(),
+                        'new_end_time' => $listing->ends_at->toDateTimeString(),
+                        'bid_amount' => $amount,
+                        'user_id' => $user->id,
+                    ]);
+                }
+            }
+            
             $listing->save();
             
             // Send notification to seller

@@ -1058,6 +1058,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // Base URL for API calls
 const baseUrl = '{{ url("/") }}';
 
+// Helper: handle fetch errors
+function handleFetchError(error, defaultMessage = 'خطا در ارتباط با سرور') {
+    console.error(error);
+    showNotification(defaultMessage, 'error');
+}
+
 // Image Management
 let currentImageId = {{ $listing->images->sortBy('display_order')->first()->id ?? 0 }};
 
@@ -1491,19 +1497,14 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
     const formData = new FormData(this);
     
     // Check if category is selected
-    const categoryId = document.getElementById('categorySelect').value;
-    if (!categoryId) {
+    const categorySelectEl = document.getElementById('categorySelect');
+    if (categorySelectEl && !categorySelectEl.value) {
         showNotification('لطفاً دسته‌بندی را انتخاب کنید', 'error');
         return;
     }
     
-    // Check if at least one shipping method is selected
+    // Check if at least one shipping method is selected (optional)
     const checkedMethods = document.querySelectorAll('.edit-shipping-method-checkbox:checked');
-    if (checkedMethods.length === 0) {
-        showNotification('لطفاً حداقل یک روش ارسال را انتخاب کنید', 'error');
-        document.getElementById('editShippingMethodsContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
-    }
     
     formData.append('_method', 'PUT');
     

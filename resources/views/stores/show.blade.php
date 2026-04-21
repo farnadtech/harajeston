@@ -228,18 +228,9 @@
                 >
                     {{-- Product Image --}}
                     <div class="relative aspect-[4/3] bg-gray-100 overflow-hidden">
-                        @if($listing->ends_at && $listing->ends_at->diffInHours() < 6)
+                        @if($tab === 'active' && $listing->ends_at && $listing->ends_at->isFuture() && $listing->ends_at->diffInHours() < 6)
                             <div class="absolute top-3 right-3 z-10">
                                 <span class="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm animate-pulse">فوری</span>
-                            </div>
-                        @endif
-
-                        @if($listing->hasBuyNowPrice())
-                            <div class="absolute top-3 left-3 z-10">
-                                <span class="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-xs">bolt</span>
-                                    خرید فوری
-                                </span>
                             </div>
                         @endif
 
@@ -252,7 +243,29 @@
                         @endif
 
                         {{-- Countdown Timer --}}
-                        @if($listing->ends_at)
+                        @if($tab === 'upcoming' && $listing->starts_at)
+                            <div class="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
+                                <div class="flex items-center justify-center gap-1 text-white font-bold text-sm bg-black/40 backdrop-blur-sm rounded-lg py-1.5 mx-8 border border-white/10">
+                                    <span class="material-symbols-outlined text-sm text-yellow-300">schedule</span>
+                                    @php
+                                        $now = \Carbon\Carbon::now();
+                                        $totalMinutesUntil = (int) $now->diffInMinutes($listing->starts_at);
+                                        $totalHoursUntil = (int) $now->diffInHours($listing->starts_at);
+                                        $totalDaysUntil = (int) $now->diffInDays($listing->starts_at);
+                                        if ($totalDaysUntil > 0) {
+                                            $startLabel = \App\Services\PersianNumberService::convertToPersian($totalDaysUntil) . ' روز تا شروع';
+                                        } elseif ($totalHoursUntil > 0) {
+                                            $startLabel = \App\Services\PersianNumberService::convertToPersian($totalHoursUntil) . ' ساعت تا شروع';
+                                        } elseif ($totalMinutesUntil > 0) {
+                                            $startLabel = \App\Services\PersianNumberService::convertToPersian($totalMinutesUntil) . ' دقیقه تا شروع';
+                                        } else {
+                                            $startLabel = 'در حال شروع...';
+                                        }
+                                    @endphp
+                                    <span>{{ $startLabel }}</span>
+                                </div>
+                            </div>
+                        @elseif($tab === 'active' && $listing->ends_at && $listing->ends_at->isFuture())
                             <div class="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
                                 <div class="flex items-center justify-center gap-1 text-white font-bold text-sm bg-black/40 backdrop-blur-sm rounded-lg py-1.5 mx-8 border border-white/10">
                                     @if($listing->ends_at->diffInHours() < 24)
@@ -279,7 +292,7 @@
                                 </div>
                             </div>
 
-                            @if($listing->hasBuyNowPrice())
+                            @if($listing->hasBuyNowPrice() && $tab === 'active')
                                 <div class="flex justify-between items-end mb-3 pb-3 border-b border-gray-100">
                                     <span class="text-xs text-gray-500">خرید فوری</span>
                                     <div class="flex items-baseline gap-1">
@@ -294,12 +307,6 @@
                                 <a href="{{ route('listings.show', $listing) }}" class="flex-1 py-2.5 bg-primary/10 hover:bg-primary hover:text-white text-primary font-bold rounded-xl transition-all text-sm text-center">
                                     ثبت پیشنهاد
                                 </a>
-                                @if($listing->hasBuyNowPrice())
-                                    <a href="{{ route('listings.show', $listing) }}#buy-now" class="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-all text-sm text-center flex items-center justify-center gap-1">
-                                        <span class="material-symbols-outlined text-lg">bolt</span>
-                                        خرید
-                                    </a>
-                                @endif
                             </div>
                             @else
                             <div class="py-2.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm text-center">

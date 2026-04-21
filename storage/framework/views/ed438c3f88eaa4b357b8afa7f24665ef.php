@@ -1,37 +1,36 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html dir="rtl" lang="fa">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title><?php echo $__env->yieldContent('title', 'داشبورد فروشنده'); ?> - <?php echo e(config('app.name')); ?></title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#135bec",
-                        "secondary": "#f97316",
-                        "background-light": "#f8f9fc",
-                        "background-dark": "#101622",
-                    },
-                    fontFamily: {
-                        "display": ["Vazirmatn", "sans-serif"],
-                        "body": ["Vazirmatn", "sans-serif"],
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.5rem",
-                        "lg": "0.75rem",
-                        "xl": "1rem",
-                        "2xl": "1.5rem",
-                    },
-                },
-            },
-        }
-    </script>
+    <link href="/haraj/public/css/app.css" rel="stylesheet"/>
+    <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
+    <style>
+    @font-face {
+        font-family: 'Material Symbols Outlined';
+        font-style: normal;
+        font-weight: 100 700;
+        font-display: block;
+        src: url('/haraj/public/fonts/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].woff2') format('woff2');
+    }
+    .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined';
+        font-weight: normal;
+        font-style: normal;
+        font-size: 24px;
+        line-height: 1;
+        letter-spacing: normal;
+        text-transform: none;
+        display: inline-block;
+        white-space: nowrap;
+        word-wrap: normal;
+        direction: ltr;
+        -webkit-font-feature-settings: 'liga';
+        font-feature-settings: 'liga';
+        -webkit-font-smoothing: antialiased;
+    }
+    </style>
     <style>
         body {
             font-family: 'Vazirmatn', sans-serif;
@@ -85,6 +84,16 @@
             <a class="flex items-center gap-3 px-4 py-3 <?php echo e(request()->routeIs('orders.*') ? 'text-primary bg-primary/5 font-bold' : 'text-gray-600 hover:text-primary hover:bg-gray-50 font-medium'); ?> rounded-xl transition-colors group" href="<?php echo e(route('orders.index')); ?>">
                 <span class="material-symbols-outlined <?php echo e(request()->routeIs('orders.*') ? '' : 'group-hover:text-primary transition-colors'); ?>">shopping_bag</span>
                 <span>سفارشات</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 <?php echo e(request()->routeIs('tickets.*') ? 'text-primary bg-primary/5 font-bold' : 'text-gray-600 hover:text-primary hover:bg-gray-50 font-medium'); ?> rounded-xl transition-colors group" href="<?php echo e(route('tickets.index')); ?>">
+                <span class="material-symbols-outlined <?php echo e(request()->routeIs('tickets.*') ? '' : 'group-hover:text-primary transition-colors'); ?>">confirmation_number</span>
+                <span>تیکت‌های پشتیبانی</span>
+                <?php
+                    $unreadTickets = \App\Models\Ticket::where(function($q){ $q->where('creator_id', auth()->id())->orWhere('recipient_id', auth()->id()); })->whereHas('messages', fn($q) => $q->where('user_id', '!=', auth()->id())->where('is_read', false))->count();
+                ?>
+                <?php if($unreadTickets > 0): ?>
+                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto"><?php echo app(\App\Services\PersianNumberService::class)->toPersian($unreadTickets); ?></span>
+                <?php endif; ?>
             </a>
             <a class="flex items-center gap-3 px-4 py-3 <?php echo e(request()->routeIs('stores.edit') ? 'text-primary bg-primary/5 font-bold' : 'text-gray-600 hover:text-primary hover:bg-gray-50 font-medium'); ?> rounded-xl transition-colors group" href="<?php echo e(route('stores.edit')); ?>">
                 <span class="material-symbols-outlined <?php echo e(request()->routeIs('stores.edit') ? '' : 'group-hover:text-primary transition-colors'); ?>">store</span>
@@ -211,7 +220,7 @@
     </main>
 
     <!-- Alpine.js for dropdown -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="/haraj/public/js/alpine.min.js"></script>
     <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
 </html>

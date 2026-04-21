@@ -4,26 +4,32 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>ورود - حراج‌استون</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#135bec",
-                        "primary-hover": "#0e4ac4",
-                    },
-                    fontFamily: {
-                        "display": ["Vazirmatn", "sans-serif"],
-                        "body": ["Vazirmatn", "sans-serif"],
-                    },
-                },
-            },
-        }
-    </script>
+    <link href="/haraj/public/css/app.css" rel="stylesheet"/>
+    <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
+    <style>
+    @font-face {
+        font-family: 'Material Symbols Outlined';
+        font-style: normal;
+        font-weight: 100 700;
+        font-display: block;
+        src: url('/haraj/public/fonts/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].woff2') format('woff2');
+    }
+    .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined';
+        font-weight: normal;
+        font-style: normal;
+        font-size: 24px;
+        line-height: 1;
+        letter-spacing: normal;
+        text-transform: none;
+        display: inline-block;
+        white-space: nowrap;
+        direction: ltr;
+        -webkit-font-feature-settings: 'liga';
+        font-feature-settings: 'liga';
+        -webkit-font-smoothing: antialiased;
+    }
+    </style>
     <style>
         body { font-family: 'Vazirmatn', sans-serif; }
     </style>
@@ -47,6 +53,12 @@
             <p class="text-sm text-gray-500 text-center">لطفا برای ورود اطلاعات خود را وارد کنید</p>
         </div>
         
+        @if(session('status'))
+            <div class="bg-green-50 border-r-4 border-green-500 rounded-lg p-4 mb-6">
+                <p class="text-sm text-green-700 font-medium">{{ session('status') }}</p>
+            </div>
+        @endif
+
         @if($errors->any())
             <div class="bg-red-50 border-r-4 border-red-500 rounded-lg p-4 mb-6">
                 <div class="flex items-start">
@@ -103,6 +115,15 @@
             <a class="text-sm font-bold text-primary hover:text-primary-hover mr-1" href="{{ route('register') }}">
                 ثبت‌نام کنید
             </a>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-gray-100 text-center">
+            @if(\App\Models\SiteSetting::get('otp_enabled', true))
+            <a href="{{ route('otp.login') }}" class="text-sm text-gray-500 hover:text-primary font-medium flex items-center justify-center gap-1 transition-colors">
+                <span class="material-symbols-outlined text-base">sms</span>
+                ورود با کد یکبار مصرف (OTP)
+            </a>
+            @endif
         </div>
         
         <div class="mt-8 text-center">

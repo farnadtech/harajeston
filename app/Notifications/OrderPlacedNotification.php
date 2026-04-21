@@ -24,18 +24,30 @@ class OrderPlacedNotification extends Notification
         return ['database'];
     }
 
-    public function toArray(object $notifiable): array
+    public function toDatabase(object $notifiable): array
     {
+        $title = $this->forSeller 
+            ? 'سفارش جدید' 
+            : 'ثبت سفارش';
+            
         $message = $this->forSeller 
-            ? 'سفارش جدیدی دریافت کردید.' 
-            : 'سفارش شما با موفقیت ثبت شد.';
+            ? sprintf('سفارش جدیدی با شماره %s دریافت کردید.', $this->order->order_number)
+            : sprintf('سفارش شما با شماره %s با موفقیت ثبت شد.', $this->order->order_number);
 
         return [
+            'title' => $title,
+            'message' => $message,
+            'icon' => 'shopping-bag',
+            'color' => 'green',
+            'link' => route('orders.show', $this->order->id),
             'order_id' => $this->order->id,
             'order_number' => $this->order->order_number,
             'total' => $this->order->total,
-            'message' => $message,
-            'type' => 'order_placed',
         ];
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        return $this->toDatabase($notifiable);
     }
 }

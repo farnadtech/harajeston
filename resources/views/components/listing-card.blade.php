@@ -10,25 +10,25 @@
             </span>
         </div>
     @elseif($listing->status === 'pending' && !$listing->approved_at)
+        {{-- فقط وقتی approved_at خالیه یعنی واقعاً منتظر تایید ادمینه --}}
         <div class="absolute top-3 right-3 z-10">
             <span class="px-3 py-1.5 bg-orange-500 text-white text-xs font-bold rounded-full shadow-lg">
                 منتظر تایید ادمین
             </span>
         </div>
-    @elseif($listing->status === 'pending' && $listing->starts_at && $listing->starts_at->isFuture())
+    @elseif($listing->status === 'pending' && $listing->approved_at && $listing->starts_at && $listing->starts_at->isFuture())
         @php
             $now = \Carbon\Carbon::now();
-            $diff = $now->diff($listing->starts_at);
-            $days = $diff->d;
-            $hours = $diff->h;
-            $minutes = $diff->i;
+            $totalMinutes = (int) $now->diffInMinutes($listing->starts_at);
+            $totalHours = (int) $now->diffInHours($listing->starts_at);
+            $totalDays = (int) $now->diffInDays($listing->starts_at);
             
-            if ($days > 0) {
-                $timeUntilStart = \App\Services\PersianNumberService::convertToPersian($days) . ' روز تا شروع';
-            } elseif ($hours > 0) {
-                $timeUntilStart = \App\Services\PersianNumberService::convertToPersian($hours) . ' ساعت تا شروع';
-            } elseif ($minutes > 0) {
-                $timeUntilStart = \App\Services\PersianNumberService::convertToPersian($minutes) . ' دقیقه تا شروع';
+            if ($totalDays > 0) {
+                $timeUntilStart = \App\Services\PersianNumberService::convertToPersian($totalDays) . ' روز تا شروع';
+            } elseif ($totalHours > 0) {
+                $timeUntilStart = \App\Services\PersianNumberService::convertToPersian($totalHours) . ' ساعت تا شروع';
+            } elseif ($totalMinutes > 0) {
+                $timeUntilStart = \App\Services\PersianNumberService::convertToPersian($totalMinutes) . ' دقیقه تا شروع';
             } else {
                 $timeUntilStart = 'در حال شروع...';
             }
@@ -56,31 +56,21 @@
                     if ($now->greaterThanOrEqualTo($listing->ends_at)) {
                         echo 'پایان یافته';
                     } else {
-                        $diff = $now->diff($listing->ends_at);
-                        $days = $diff->d;
-                        $hours = $diff->h;
-                        $minutes = $diff->i;
+                        $totalDaysLeft = (int) $now->diffInDays($listing->ends_at);
+                        $totalHoursLeft = (int) $now->diffInHours($listing->ends_at);
+                        $totalMinutesLeft = (int) $now->diffInMinutes($listing->ends_at);
                         
-                        if ($days > 0) {
-                            echo \App\Services\PersianNumberService::convertToPersian($days) . ' روز مانده';
-                        } elseif ($hours > 0) {
-                            echo \App\Services\PersianNumberService::convertToPersian($hours) . ' ساعت مانده';
-                        } elseif ($minutes > 0) {
-                            echo \App\Services\PersianNumberService::convertToPersian($minutes) . ' دقیقه مانده';
+                        if ($totalDaysLeft > 0) {
+                            echo \App\Services\PersianNumberService::convertToPersian($totalDaysLeft) . ' روز مانده';
+                        } elseif ($totalHoursLeft > 0) {
+                            echo \App\Services\PersianNumberService::convertToPersian($totalHoursLeft) . ' ساعت مانده';
+                        } elseif ($totalMinutesLeft > 0) {
+                            echo \App\Services\PersianNumberService::convertToPersian($totalMinutesLeft) . ' دقیقه مانده';
                         } else {
                             echo 'کمتر از یک دقیقه';
                         }
                     }
                 @endphp
-            </span>
-        </div>
-    @endif
-
-    @if($listing->buy_now_price && !in_array($listing->status, ['ended', 'completed']))
-        <div class="absolute top-3 {{ ($listing->status === 'pending' && $listing->starts_at && $listing->starts_at->isFuture()) ? 'left-3' : 'right-3' }} z-10">
-            <span class="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-md shadow-sm flex items-center gap-1">
-                <span class="material-symbols-outlined text-xs">bolt</span>
-                خرید فوری
             </span>
         </div>
     @endif

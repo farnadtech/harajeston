@@ -1,38 +1,61 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html dir="rtl" lang="fa">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>ویرایش حراجی - {{ config('app.name') }}</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="/haraj/public/css/app.css" rel="stylesheet"/>
+    <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
+    <style>
+    @font-face {
+        font-family: 'Material Symbols Outlined';
+        font-style: normal;
+        font-weight: 100 700;
+        font-display: block;
+        src: url('/haraj/public/fonts/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].woff2') format('woff2');
+    }
+    .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined';
+        font-weight: normal;
+        font-style: normal;
+        font-size: 24px;
+        line-height: 1;
+        letter-spacing: normal;
+        text-transform: none;
+        display: inline-block;
+        white-space: nowrap;
+        direction: ltr;
+        -webkit-font-feature-settings: 'liga';
+        font-feature-settings: 'liga';
+        -webkit-font-smoothing: antialiased;
+    }
+    </style>
+    <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
+    <style>
+    @font-face {
+        font-family: 'Material Symbols Outlined';
+        font-style: normal;
+        font-weight: 100 700;
+        font-display: block;
+        src: url('/haraj/public/fonts/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].woff2') format('woff2');
+    }
+    .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined';
+        font-weight: normal;
+        font-style: normal;
+        font-size: 24px;
+        line-height: 1;
+        letter-spacing: normal;
+        text-transform: none;
+        display: inline-block;
+        white-space: nowrap;
+        direction: ltr;
+        -webkit-font-feature-settings: 'liga';
+        font-feature-settings: 'liga';
+        -webkit-font-smoothing: antialiased;
+    }
+    </style>
     <link rel="stylesheet" href="{{ url('css/persian-datepicker-package.css') }}?v={{ now()->timestamp }}">
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#135bec",
-                        "secondary": "#f97316",
-                        "background-light": "#f8f9fc",
-                        "background-dark": "#101622",
-                    },
-                    fontFamily: {
-                        "display": ["Vazirmatn", "sans-serif"],
-                        "body": ["Vazirmatn", "sans-serif"],
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.5rem",
-                        "lg": "0.75rem",
-                        "xl": "1rem",
-                        "2xl": "1.5rem",
-                    },
-                },
-            },
-        }
-    </script>
     <style>
         body {
             font-family: 'Vazirmatn', sans-serif;
@@ -276,7 +299,6 @@
                     @endif
 
                     <!-- Auction Settings Section -->
-                    @if(!$hasActiveBids)
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-6">
                         <div class="flex items-center gap-3 pb-4 border-b border-gray-100">
                             <span class="material-symbols-outlined text-primary text-2xl">gavel</span>
@@ -284,6 +306,7 @@
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            @if(!$hasActiveBids)
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     قیمت شروع (تومان) <span class="text-red-500">*</span>
@@ -294,11 +317,29 @@
                                 <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
+                            @else
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    قیمت شروع (تومان)
+                                </label>
+                                <input type="text" value="{{ \App\Services\PersianNumberService::convertToPersian(number_format($listing->starting_price)) }}" disabled
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed">
+                                <input type="hidden" name="starting_price" value="{{ $listing->starting_price }}">
+                            </div>
+                            @endif
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">قیمت خرید فوری (تومان)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    قیمت خرید فوری (تومان)
+                                    @if($hasActiveBids)
+                                        <span class="text-xs text-blue-600">(قابل ویرایش)</span>
+                                    @endif
+                                </label>
                                 <input type="number" name="buy_now_price" value="{{ old('buy_now_price', $listing->buy_now_price) }}" min="0"
                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
+                                @if($hasActiveBids)
+                                    <p class="text-xs text-gray-600 mt-1">باید بالاتر از بالاترین پیشنهاد ({{ \App\Services\PersianNumberService::convertToPersian(number_format($listing->current_price)) }} تومان) باشد</p>
+                                @endif
                                 @error('buy_now_price')
                                 <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                                 @enderror
@@ -309,6 +350,7 @@
                                 $durationDays = \App\Models\SiteSetting::get('auction_duration_days', 7);
                             @endphp
 
+                            @if(!$hasActiveBids)
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     زمان شروع <span class="text-red-500">*</span>
@@ -343,9 +385,24 @@
                                 <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                                 @enderror
                             </div>
+                            @else
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">زمان شروع</label>
+                                <input type="text" value="{{ \App\Services\JalaliDateService::toJalali($listing->starts_at, 'Y/m/d H:i') }}" disabled
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed">
+                                <input type="hidden" name="starts_at" value="{{ \App\Services\JalaliDateService::toJalali($listing->starts_at, 'Y/m/d H:i') }}">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">زمان پایان</label>
+                                <input type="text" value="{{ \App\Services\JalaliDateService::toJalali($listing->ends_at, 'Y/m/d H:i') }}" disabled
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed">
+                                <input type="hidden" name="ends_at" value="{{ \App\Services\JalaliDateService::toJalali($listing->ends_at, 'Y/m/d H:i') }}">
+                            </div>
+                            @endif
                         </div>
 
-                        @if($forceDuration)
+                        @if(!$hasActiveBids && $forceDuration)
                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                             <div class="flex items-start gap-3">
                                 <span class="material-symbols-outlined text-blue-600 mt-0.5">info</span>
@@ -368,7 +425,6 @@
                             </label>
                         </div>
                     </div>
-                    @endif
 
                     <!-- Shipping Methods Section -->
                     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
@@ -602,7 +658,7 @@
     </div>
 
     <!-- Alpine.js (بدون defer) -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="/haraj/public/js/alpine.min.js"></script>
     
     <script src="{{ url('js/persian-datepicker-package.js') }}?v={{ now()->timestamp }}"></script>
     <script>

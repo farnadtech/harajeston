@@ -54,12 +54,12 @@ class OrderService
                 );
             }
 
-            // Create order
+            // Create order with processing status (payment already done via wallet)
             $order = Order::create([
                 'order_number' => $this->generateOrderNumber(),
                 'buyer_id' => $buyer->id,
                 'seller_id' => $listing->seller_id,
-                'status' => 'pending',
+                'status' => 'processing',
                 'subtotal' => $listing->buy_now_price,
                 'shipping_cost' => 0, // Will be set when shipping method is selected
                 'total' => $listing->buy_now_price,
@@ -91,7 +91,7 @@ class OrderService
             );
 
             // End the auction
-            $listing->status = 'sold';
+            $listing->status = 'completed';
             $listing->save();
 
             // Send notifications

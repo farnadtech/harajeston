@@ -15,8 +15,11 @@
                     <a href="?status=active" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'active' ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                         فعال (@persian($counts['active'] ?? 0))
                     </a>
+                    <a href="?status=needs_approval" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'needs_approval' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                        در انتظار تایید ادمین (@persian($counts['needs_approval'] ?? 0))
+                    </a>
                     <a href="?status=pending" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'pending' ? 'bg-yellow-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-                        در انتظار تایید (@persian($counts['pending'] ?? 0))
+                        در انتظار شروع (@persian($counts['pending_start'] ?? 0))
                     </a>
                     <a href="?status=completed" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {{ request('status') === 'completed' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
                         تکمیل شده (@persian($counts['completed'] ?? 0))
@@ -121,14 +124,18 @@
                                             <span class="text-sm text-gray-500">-</span>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 text-center">
+                    <td class="px-6 py-4 text-center">
                                         @if($listing->status === 'active')
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                 در جریان
                                             </span>
-                                        @elseif($listing->status === 'pending')
+                                        @elseif($listing->status === 'pending' && !$listing->approved_at)
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                                در انتظار تایید ادمین
+                                            </span>
+                                        @elseif($listing->status === 'pending' && $listing->approved_at)
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                در انتظار تایید
+                                                در انتظار شروع
                                             </span>
                                         @elseif($listing->status === 'completed')
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -137,6 +144,14 @@
                                         @elseif($listing->status === 'rejected')
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                                 رد شده
+                                            </span>
+                                        @elseif($listing->status === 'suspended')
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                تعلیق شده
+                                            </span>
+                                        @elseif($listing->status === 'ended')
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                پایان یافته
                                             </span>
                                         @else
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">

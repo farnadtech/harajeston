@@ -33,15 +33,20 @@ class ListingService
         // Determine initial status - SIMPLIFIED WORKFLOW
         $startsAt = Carbon::parse($data['starts_at']);
         
+        $approvedAt = null;
+
         if (isset($data['seller_id'])) {
-            // Admin is creating, use provided status or default to pending
-            $status = $data['status'] ?? 'pending';
+            // Admin is creating - auto-approve
+            $status = $data['status'] ?? ($startsAt->isFuture() ? 'pending' : 'active');
+            $approvedAt = now();
         } elseif ($requiresApproval) {
-            // Seller is creating and approval is required - always pending
+            // Seller is creating and approval is required - needs admin review
             $status = 'pending';
+            $approvedAt = null;
         } else {
-            // No approval required, set based on start time
+            // No approval required - auto-approve, set status based on start time
             $status = $startsAt->isFuture() ? 'pending' : 'active';
+            $approvedAt = now();
         }
         
         $listing = Listing::create([
@@ -60,6 +65,7 @@ class ListingService
             'ends_at' => Carbon::parse($data['ends_at']),
             'auto_extend' => $data['auto_extend'] ?? false,
             'status' => $status,
+            'approved_at' => $approvedAt,
             'tags' => isset($data['tags']) ? $this->processTags($data['tags']) : null,
         ]);
 
@@ -78,7 +84,7 @@ class ListingService
         // ذخیره روش‌های ارسال
         if (isset($data['shipping_methods']) && is_array($data['shipping_methods'])) {
             foreach ($data['shipping_methods'] as $methodId) {
-                $customCost = $data['shipping_costs'][$methodId] ?? null;
+                $customCost = $data['shipping_costs'][$methodId] ?? 0;
                 $listing->shippingMethods()->attach($methodId, [
                     'custom_cost_adjustment' => $customCost
                 ]);
@@ -108,11 +114,12 @@ class ListingService
         // Check if listing has active bids
         $hasActiveBids = $listing->hasActiveBids();
         
-        // If listing is active and has bids, only allow description and shipping changes
+        // If listing is active and has bids, only allow description, shipping, and buy_now_price changes
         if ($listing->status === 'active' && $hasActiveBids) {
-            // Only update description and shipping methods
+            // Only update description, shipping methods, and buy_now_price
             $listing->update([
                 'description' => $data['description'] ?? $listing->description,
+                'buy_now_price' => $data['buy_now_price'] ?? $listing->buy_now_price,
             ]);
             
             // Update shipping methods
@@ -179,10 +186,12 @@ class ListingService
 
         // Determine new status
         $newStatus = $listing->status;
+        $newApprovedAt = $listing->approved_at;
         
-        // If suspended, require re-approval
+        // If suspended, always require admin re-approval regardless of approval setting
         if ($listing->status === 'suspended') {
             $newStatus = 'pending';
+            $newApprovedAt = null; // force admin review
         }
 
         // Update basic fields
@@ -199,6 +208,7 @@ class ListingService
             'auto_extend' => $data['auto_extend'] ?? $listing->auto_extend,
             'tags' => isset($data['tags']) ? (is_array($data['tags']) ? $data['tags'] : $this->processTagsToArray($data['tags'])) : $listing->tags,
             'status' => $newStatus,
+            'approved_at' => $newApprovedAt,
         ]);
 
         // Update attributes

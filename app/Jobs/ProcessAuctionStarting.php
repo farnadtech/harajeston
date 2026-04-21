@@ -20,11 +20,19 @@ class ProcessAuctionStarting implements ShouldQueue
      */
     public function handle(): void
     {
-        // Query auctions with status='pending', starts_at <= now, AND approved_at is not null
-        $auctions = Listing::where('status', 'pending')
-            ->where('starts_at', '<=', now())
-            ->whereNotNull('approved_at')
-            ->get();
+        // Check if approval is required
+        $requiresApproval = \App\Models\SiteSetting::get('require_listing_approval', false);
+        
+        // Query auctions with status='pending' and starts_at <= now
+        $query = Listing::where('status', 'pending')
+            ->where('starts_at', '<=', now());
+        
+        // If approval is required, only activate approved listings
+        if ($requiresApproval) {
+            $query->whereNotNull('approved_at');
+        }
+        
+        $auctions = $query->get();
 
         Log::info('ProcessAuctionStarting: Found ' . $auctions->count() . ' auctions to start');
 

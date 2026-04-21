@@ -1,19 +1,22 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   content: [
-    "./resources/**/*.blade.php",
-    "./resources/**/*.js",
-    "./resources/**/*.vue",
-    "./app/Livewire/**/*.php",
+    "./resources/views/**/*.blade.php",
+    "./resources/js/**/*.js",
   ],
+  darkMode: "class",
   theme: {
     extend: {
+      colors: {
+        "primary": "#135bec",
+        "secondary": "#f97316",
+      },
       fontFamily: {
-        'vazirmatn': ['Vazirmatn', 'sans-serif'],
+        "sans": ["Vazirmatn", "sans-serif"],
       },
     },
   },
   plugins: [
-    require('tailwindcss-rtl'),
+    require("@tailwindcss/forms"),
   ],
 }

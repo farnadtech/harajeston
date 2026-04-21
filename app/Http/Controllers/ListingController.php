@@ -35,8 +35,13 @@ class ListingController extends Controller
             $query = Listing::query();
             
             if ($showPendingListings) {
-                // نمایش حراجی‌های active, pending, و suspended
-                $query->whereIn('status', ['active', 'pending', 'suspended']);
+                // نمایش حراجی‌های active و pending که تایید شده‌اند (approved_at دارند)
+                $query->where(function($q) {
+                    $q->whereIn('status', ['active', 'suspended'])
+                      ->orWhere(function($q2) {
+                          $q2->where('status', 'pending')->whereNotNull('approved_at');
+                      });
+                });
             } else {
                 // نمایش active و suspended
                 $query->whereIn('status', ['active', 'suspended']);
@@ -54,8 +59,13 @@ class ListingController extends Controller
         $query = Listing::query();
         
         if ($showPendingListings) {
-            // نمایش active, completed, pending, و suspended
-            $query->whereIn('status', ['active', 'completed', 'pending', 'suspended']);
+            // نمایش active, completed, pending که تایید شده‌اند، و suspended
+            $query->where(function($q) {
+                $q->whereIn('status', ['active', 'completed', 'suspended'])
+                  ->orWhere(function($q2) {
+                      $q2->where('status', 'pending')->whereNotNull('approved_at');
+                  });
+            });
         } else {
             // نمایش active, completed, و suspended
             $query->whereIn('status', ['active', 'completed', 'suspended']);
@@ -92,10 +102,42 @@ class ListingController extends Controller
         // Filter by tag
         if ($request->has('tag') && $request->tag) {
             $tag = trim($request->tag);
-            $query->where(function($q) use ($tag) {
-                $q->whereJsonContains('tags', $tag)
-                  ->orWhereRaw("JSON_SEARCH(tags, 'one', ?) IS NOT NULL", [$tag]);
-            });
+            // تگ‌ها به صورت Unicode escaped در دیتابیس ذخیره می‌شن
+            // باید با PHP فیلتر کنیم
+            $query->whereRaw("1=1"); // placeholder - will filter in PHP
+            $listings = $query->with('seller', 'images')
+                ->withCount('bids')
+                ->get()
+                ->filter(function($listing) use ($tag) {
+                    $tags = $listing->tags ?? [];
+                    if (is_string($tags)) {
+                        $tags = json_decode($tags, true) ?? [];
+                    }
+                    return in_array($tag, $tags);
+                });
+            
+            // Paginate manually
+            $page = $request->get('page', 1);
+            $perPage = 20;
+            $total = $listings->count();
+            $items = $listings->slice(($page - 1) * $perPage, $perPage)->values();
+            
+            $listings = new \Illuminate\Pagination\LengthAwarePaginator(
+                $items, $total, $perPage, $page,
+                ['path' => $request->url(), 'query' => $request->except('page')]
+            );
+            
+            // Get available attributes
+            $availableAttributes = [];
+            if ($items->isNotEmpty()) {
+                $categoryIds = $items->pluck('category_id')->unique();
+                if ($categoryIds->count() === 1) {
+                    $availableAttributes = \App\Models\CategoryAttribute::where('category_id', $categoryIds->first())
+                        ->where('is_filterable', true)->orderBy('order')->get();
+                }
+            }
+            
+            return view('listings.search', compact('listings', 'request', 'availableAttributes'));
         }
 
         // Filter by seller
@@ -236,7 +278,13 @@ class ListingController extends Controller
         $query = Listing::where('seller_id', $user->id);
 
         // Apply status filter
-        if ($status !== 'all') {
+        if ($status === 'needs_approval') {
+            // آگهی‌هایی که واقعاً منتظر تایید ادمین هستند
+            $query->where('status', 'pending')->whereNull('approved_at');
+        } elseif ($status === 'pending') {
+            // آگهی‌هایی که تایید شده‌اند ولی هنوز شروع نشده‌اند
+            $query->where('status', 'pending')->whereNotNull('approved_at');
+        } elseif ($status !== 'all') {
             $query->where('status', $status);
         }
 
@@ -244,7 +292,8 @@ class ListingController extends Controller
         $counts = [
             'all' => Listing::where('seller_id', $user->id)->count(),
             'active' => Listing::where('seller_id', $user->id)->where('status', 'active')->count(),
-            'pending' => Listing::where('seller_id', $user->id)->where('status', 'pending')->count(),
+            'needs_approval' => Listing::where('seller_id', $user->id)->where('status', 'pending')->whereNull('approved_at')->count(),
+            'pending_start' => Listing::where('seller_id', $user->id)->where('status', 'pending')->whereNotNull('approved_at')->count(),
             'completed' => Listing::where('seller_id', $user->id)->where('status', 'completed')->count(),
             'rejected' => Listing::where('seller_id', $user->id)->where('status', 'rejected')->count(),
         ];
@@ -304,9 +353,10 @@ class ListingController extends Controller
             ->paginate(20)
             ->appends($request->except('page'));
 
-        // Add user's bid to each listing
+        // Add user's bid and current highest bid to each listing
         foreach ($listings as $listing) {
-            $listing->my_bid = $listing->bids()->where('user_id', $user->id)->latest()->first();
+            $listing->my_bid = $listing->bids()->where('user_id', $user->id)->orderBy('amount', 'desc')->first();
+            $listing->current_highest_bid = $listing->bids()->max('amount') ?? $listing->starting_price;
         }
 
         return view('listings.my-bids', compact('listings', 'counts'));
@@ -362,17 +412,26 @@ class ListingController extends Controller
     {
         // بررسی دسترسی برای آگهی‌های pending (هنوز شروع نشده)
         if ($listing->status === 'pending') {
-            // بررسی تنظیمات ادمین - فقط تنظیمات ادمین مهم است نه فیلد show_before_start
-            $showPendingListings = \App\Models\SiteSetting::get('default_show_before_start', false);
-            
-            if (!$showPendingListings) {
-                // اگر تنظیمات ادمین غیرفعال است، فقط ادمین و صاحب آگهی می‌تونن ببینن
+            // اگر approved_at خالیه، یعنی منتظر تایید ادمینه
+            if (!$listing->approved_at) {
+                // فقط ادمین و صاحب آگهی می‌تونن ببینن
                 if (!auth()->check() || 
                     (auth()->user()->role !== 'admin' && auth()->id() !== $listing->seller_id)) {
                     abort(404);
                 }
+            } else {
+                // تایید شده ولی هنوز شروع نشده - بررسی تنظیمات ادمین
+                $showPendingListings = \App\Models\SiteSetting::get('default_show_before_start', false);
+                
+                if (!$showPendingListings) {
+                    // اگر تنظیمات ادمین غیرفعال است، فقط ادمین و صاحب آگهی می‌تونن ببینن
+                    if (!auth()->check() || 
+                        (auth()->user()->role !== 'admin' && auth()->id() !== $listing->seller_id)) {
+                        abort(404);
+                    }
+                }
+                // اگر تنظیمات ادمین فعال است، همه می‌تونن ببینن
             }
-            // اگر تنظیمات ادمین فعال است، همه می‌تونن ببینن
         }
 
         // Increment view count (فقط برای آگهی‌های فعال)
@@ -635,6 +694,7 @@ class ListingController extends Controller
 
                     // Update listing status
                     $listing->status = 'completed';
+                    $listing->current_winner_id = auth()->id();
                     $listing->save();
 
                     return $order;
@@ -642,11 +702,29 @@ class ListingController extends Controller
 
                 // Send notifications (outside transaction)
                 try {
-                    // Notify buyer
-                    auth()->user()->notify(new \App\Notifications\OrderPlacedNotification($order, false));
+                    // Notify buyer - custom notification
+                    \App\Models\Notification::create([
+                        'user_id' => auth()->id(),
+                        'type' => 'order_placed',
+                        'title' => 'خرید فوری موفق',
+                        'message' => sprintf('خرید فوری "%s" با موفقیت انجام شد. لطفاً آدرس ارسال را وارد کنید.', $listing->title),
+                        'icon' => 'shopping_bag',
+                        'color' => 'green',
+                        'link' => route('orders.show', $order->id),
+                        'is_read' => false,
+                    ]);
                     
-                    // Notify seller about buy now
-                    $listing->seller->notify(new \App\Notifications\BuyNowCompletedNotification($order, $listing));
+                    // Notify seller about buy now - custom notification
+                    \App\Models\Notification::create([
+                        'user_id' => $listing->seller_id,
+                        'type' => 'buy_now_completed',
+                        'title' => 'خرید فوری انجام شد',
+                        'message' => sprintf('حراجی "%s" با خرید فوری به پایان رسید. خریدار در حال وارد کردن آدرس ارسال است.', $listing->title),
+                        'icon' => 'local_offer',
+                        'color' => 'orange',
+                        'link' => route('orders.show', $order->id),
+                        'is_read' => false,
+                    ]);
                 } catch (\Exception $e) {
                     \Log::warning('Failed to send notification: ' . $e->getMessage());
                 }

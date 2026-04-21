@@ -8,11 +8,15 @@
         "php": "^8.1",
         "farayaz/larapay": "^1.30",
         "guzzlehttp/guzzle": "^7.2",
+        "kavenegar/php": "^1.2",
         "laravel/framework": "^10.0",
         "laravel/sanctum": "^3.2",
         "laravel/tinker": "^2.8",
         "livewire/livewire": "3.0",
-        "morilog/jalali": "^3.5"
+        "melipayamak/laravel": "1.0.0",
+        "melipayamak/php": "^1.0",
+        "morilog/jalali": "^3.5",
+        "tzsk/sms": "^9.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
