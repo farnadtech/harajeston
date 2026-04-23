@@ -465,7 +465,15 @@ class ListingController extends Controller
     public function activate(Listing $listing)
     {
         try {
-            $listing->update(['status' => 'active']);
+            $now = \Carbon\Carbon::now();
+            $updateData = ['status' => 'active'];
+            
+            // اگر starts_at آینده‌ست، به الان تغییر بده
+            if ($listing->starts_at && $listing->starts_at->isFuture()) {
+                $updateData['starts_at'] = $now;
+            }
+            
+            $listing->update($updateData);
 
             \App\Models\AdminActionLog::create([
                 'listing_id' => $listing->id,

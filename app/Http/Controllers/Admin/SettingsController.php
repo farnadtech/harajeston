@@ -112,6 +112,19 @@ class SettingsController extends Controller
     }
 
     /**
+     * به‌روزرسانی تنظیمات احراز هویت
+     */
+    public function updateVerification(Request $request)
+    {
+        $requireVerification = $request->has('require_user_verification');
+        
+        SiteSetting::set('require_user_verification', $requireVerification, 'boolean');
+
+        return redirect()->route('admin.settings.index')
+            ->with('success', 'تنظیمات احراز هویت با موفقیت به‌روزرسانی شد.');
+    }
+
+    /**
      * به‌روزرسانی تنظیمات مدت زمان حراجی
      */
     public function updateAuctionDuration(Request $request)

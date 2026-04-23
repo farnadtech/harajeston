@@ -174,11 +174,17 @@ class WalletService
                 throw new WalletNotFoundException($user->id);
             }
             
+            // اگر frozen کمتر از مقدار درخواستی بود، فقط همون مقدار موجود رو آزاد کن
+            $actualAmount = min($amount, max(0, $wallet->frozen));
+            if ($actualAmount <= 0) {
+                return true; // چیزی برای آزاد کردن نیست
+            }
+            
             $beforeBalance = $wallet->balance;
             $beforeFrozen = $wallet->frozen;
             
-            $wallet->frozen -= $amount;
-            $wallet->balance += $amount;
+            $wallet->frozen -= $actualAmount;
+            $wallet->balance += $actualAmount;
             $wallet->save();
             
             // Record transaction
@@ -216,10 +222,16 @@ class WalletService
                 throw new WalletNotFoundException($user->id);
             }
             
+            // اگر frozen کمتر از مقدار بود، فقط همون مقدار رو کم کن
+            $actualAmount = min($amount, max(0, $wallet->frozen));
+            if ($actualAmount <= 0) {
+                return true;
+            }
+            
             $beforeBalance = $wallet->balance;
             $beforeFrozen = $wallet->frozen;
             
-            $wallet->frozen -= $amount;
+            $wallet->frozen -= $actualAmount;
             $wallet->save();
             
             // Record transaction

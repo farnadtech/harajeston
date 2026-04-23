@@ -62,7 +62,7 @@
                             </span>
                         </div>
                         
-                        <a href="{{ route('listings.show', $comment->listing_id) }}" class="text-sm text-primary hover:underline mb-2 block">
+                        <a href="{{ route('listings.show', $comment->listing) }}" class="text-sm text-primary hover:underline mb-2 block">
                             {{ $comment->listing->title }}
                         </a>
                         

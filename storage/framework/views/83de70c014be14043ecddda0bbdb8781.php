@@ -1,0 +1,1 @@
+<?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views\listings\home.blade.php ENDPATH**/ ?>

@@ -125,52 +125,58 @@ class AuctionService
                     $fee = (int) ($depositAmount * ($loserFeePercentage / 100));
                     $refundAmount = $depositAmount - $fee;
                     
-                    // کسر کارمزد از موجودی مسدود
-                    $wallet = $user->wallet;
-                    $wallet->frozen -= $fee;
+                    // کسر کارمزد از موجودی مسدود - با lockForUpdate
+                    $wallet = \App\Models\Wallet::where('user_id', $user->id)->lockForUpdate()->first();
+                    if (!$wallet) continue;
+                    
+                    $currentFrozen = max(0, $wallet->frozen);
+                    $actualFee = min($fee, $currentFrozen);
+                    $remainingFrozen = $currentFrozen - $actualFee;
+                    $actualRefund = min($refundAmount, $remainingFrozen);
+                    
+                    $beforeFrozen = $wallet->frozen;
+                    $wallet->frozen = max(0, $currentFrozen - $actualFee - $actualRefund);
+                    $wallet->balance += $actualRefund;
                     $wallet->save();
                     
-                    \App\Models\WalletTransaction::create([
-                        'wallet_id' => $wallet->id,
-                        'user_id' => $user->id,
-                        'type' => 'deduct_frozen',
-                        'amount' => $fee,
-                        'final_amount' => $fee,
-                        'balance_before' => $wallet->balance,
-                        'balance_after' => $wallet->balance,
-                        'frozen_before' => $wallet->frozen + $fee,
-                        'frozen_after' => $wallet->frozen,
-                        'reference_type' => \App\Models\Listing::class,
-                        'reference_id' => $listing->id,
-                        'status' => 'completed',
-                        'description' => sprintf('کارمزد بازنده حراجی: %s', $listing->title),
-                    ]);
-                    
-                    // واریز کارمزد به کیف پول سایت
-                    $siteUser = User::find(1);
-                    if ($siteUser) {
-                        $this->walletService->addFunds(
-                            $siteUser,
-                            $fee,
-                            sprintf('کارمزد بازنده مزایده: %s', $listing->title)
-                        );
+                    if ($actualFee > 0) {
+                        \App\Models\WalletTransaction::create([
+                            'wallet_id' => $wallet->id,
+                            'user_id' => $user->id,
+                            'type' => 'deduct_frozen',
+                            'amount' => $actualFee,
+                            'final_amount' => $actualFee,
+                            'balance_before' => $wallet->balance - $actualRefund,
+                            'balance_after' => $wallet->balance,
+                            'frozen_before' => $beforeFrozen,
+                            'frozen_after' => $wallet->frozen,
+                            'reference_type' => \App\Models\Listing::class,
+                            'reference_id' => $listing->id,
+                            'status' => 'completed',
+                            'description' => sprintf('کارمزد بازنده حراجی: %s', $listing->title),
+                        ]);
+                        
+                        // واریز کارمزد به کیف پول سایت
+                        $siteUser = User::find(1);
+                        if ($siteUser) {
+                            $this->walletService->addFunds(
+                                $siteUser,
+                                $actualFee,
+                                sprintf('کارمزد بازنده مزایده: %s', $listing->title)
+                            );
+                        }
                     }
                     
-                    // آزادسازی مابقی سپرده
-                    if ($refundAmount > 0) {
-                        $wallet->frozen -= $refundAmount;
-                        $wallet->balance += $refundAmount;
-                        $wallet->save();
-                        
+                    if ($actualRefund > 0) {
                         \App\Models\WalletTransaction::create([
                             'wallet_id' => $wallet->id,
                             'user_id' => $user->id,
                             'type' => 'release_deposit',
-                            'amount' => $refundAmount,
-                            'final_amount' => $refundAmount,
-                            'balance_before' => $wallet->balance - $refundAmount,
+                            'amount' => $actualRefund,
+                            'final_amount' => $actualRefund,
+                            'balance_before' => $wallet->balance - $actualRefund,
                             'balance_after' => $wallet->balance,
-                            'frozen_before' => $wallet->frozen + $refundAmount,
+                            'frozen_before' => $beforeFrozen,
                             'frozen_after' => $wallet->frozen,
                             'reference_type' => \App\Models\Listing::class,
                             'reference_id' => $listing->id,
@@ -236,8 +242,9 @@ class AuctionService
                 $sellerAmount = $depositAmount - $siteAmount;
                 
                 // Forfeit current winner's deposit
-                $wallet = $currentWinner->wallet;
-                $wallet->frozen -= $depositAmount;
+                $wallet = \App\Models\Wallet::where('user_id', $currentWinner->id)->lockForUpdate()->first();
+                $actualDeposit = min($depositAmount, max(0, $wallet->frozen));
+                $wallet->frozen = max(0, $wallet->frozen - $actualDeposit);
                 $wallet->save();
                 
                 \App\Models\WalletTransaction::create([
@@ -489,7 +496,9 @@ class AuctionService
             $buyerWallet = $order->buyer->wallet;
             
             // Release frozen amount from buyer and record as payment
-            $buyerWallet->frozen -= $totalAmount;
+            $buyerWallet = \App\Models\Wallet::where('user_id', $order->buyer_id)->lockForUpdate()->first();
+            $actualFrozen = min($totalAmount, max(0, $buyerWallet->frozen));
+            $buyerWallet->frozen = max(0, $buyerWallet->frozen - $actualFrozen);
             $buyerWallet->save();
             
             // Record buyer payment transaction

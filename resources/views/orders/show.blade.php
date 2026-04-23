@@ -412,6 +412,14 @@
                                 تایید دریافت کالا
                             </button>
                         </form>
+                        @php $orderListing = $order->items->first()?->listing; @endphp
+                        @if($orderListing)
+                        <a href="{{ route('tickets.create', ['listing_id' => $orderListing->id]) }}"
+                           class="mt-3 flex items-center justify-center gap-2 w-full px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            تحویل نگرفتم / مشکل در محصول
+                        </a>
+                        @endif
                     </div>
                 @endif
 

@@ -27,6 +27,8 @@ class User extends Authenticatable
         'seller_request_data',
         'seller_rating',
         'seller_rating_count',
+        'phone_verified_at',
+        'email_verified_at',
     ];
 
     protected $hidden = [
@@ -36,6 +38,7 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'phone_verified_at' => 'datetime',
         'password' => 'hashed',
         'seller_requested_at' => 'datetime',
         'seller_approved_at' => 'datetime',
@@ -147,6 +150,20 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    /**
+     * آیا کاربر احراز هویت شده (ایمیل یا شماره تلفن تایید شده)
+     * اگر ادمین احراز هویت رو غیرفعال کرده باشه، همه تایید شده محسوب می‌شن
+     */
+    public function isVerified(): bool
+    {
+        // اگر احراز هویت در تنظیمات غیرفعال شده
+        if (!\App\Models\SiteSetting::get('require_user_verification', true)) {
+            return true;
+        }
+
+        return !is_null($this->email_verified_at) || !is_null($this->phone_verified_at);
     }
 
     // Scope methods

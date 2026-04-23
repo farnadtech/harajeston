@@ -161,9 +161,9 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @if($user->email_verified_at)
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">تایید شده</span>
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">ایمیل تایید شده</span>
                             @else
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">در انتظار تایید</span>
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">فعال</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">

@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'داشبورد فروشنده') - {{ config('app.name') }}</title>
     <link href="/haraj/public/css/app.css" rel="stylesheet"/>
     <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
@@ -54,14 +55,21 @@
 </head>
 <body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex overflow-hidden">
     <!-- Sidebar -->
-    <aside class="w-64 bg-white border-l border-gray-200 hidden lg:flex flex-col h-screen fixed right-0 top-0 z-30">
+    <aside class="w-64 border-l border-gray-200 hidden lg:flex flex-col h-screen fixed right-0 top-0 z-30" style="background:{{ \App\Models\SiteSetting::get('theme_dashboard_sidebar_bg', '#ffffff') }};">
         <div class="h-20 flex items-center gap-3 px-6 border-b border-gray-100">
-            <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-2xl">storefront</span>
-            </div>
-            <h1 class="text-xl font-black tracking-tight text-[#0d121b]">
-                حراج<span class="text-primary">آنلاین</span>
-            </h1>
+            @php
+                $dLogo = \App\Models\SiteSetting::get('theme_dashboard_logo', '');
+                $dText = \App\Models\SiteSetting::get('theme_dashboard_logo_text', 'حراجآنلاین');
+                $dIcon = \App\Models\SiteSetting::get('theme_dashboard_logo_icon', 'storefront');
+            @endphp
+            @if($dLogo)
+                <img src="{{ url('storage/'.$dLogo) }}" class="h-10 w-auto object-contain" alt="{{ $dText }}">
+            @else
+                <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-2xl">{{ $dIcon }}</span>
+                </div>
+            @endif
+            <h1 class="text-xl font-black tracking-tight text-[#0d121b]">{{ $dText }}</h1>
         </div>
         
         <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1">
@@ -212,6 +220,7 @@
 
         <!-- Dashboard Content -->
         <div class="flex-1 overflow-y-auto p-4 sm:p-8">
+            <x-verification-banner />
             @yield('content')
         </div>
     </main>

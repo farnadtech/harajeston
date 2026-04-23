@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html dir="rtl" lang="fa">
 <head>
     <meta charset="utf-8"/>
@@ -70,19 +70,27 @@
         .dropdown.active .dropdown-menu {
             display: block;
         }
+        [x-cloak] { display: none !important; }
     </style>
     {{ $styles ?? '' }}
 </head>
 <body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex overflow-hidden">
     <!-- Sidebar -->
-    <aside class="w-64 bg-white border-l border-gray-200 hidden lg:flex flex-col h-screen fixed right-0 top-0 z-30">
+    <aside class="w-64 border-l border-gray-200 hidden lg:flex flex-col h-screen fixed right-0 top-0 z-30" style="background:{{ \App\Models\SiteSetting::get('theme_dashboard_sidebar_bg', '#ffffff') }};">
+        @php
+            $dashLogo = \App\Models\SiteSetting::get('theme_dashboard_logo', '');
+            $dashText = \App\Models\SiteSetting::get('theme_dashboard_logo_text', 'حراجآنلاین');
+            $dashIcon = \App\Models\SiteSetting::get('theme_dashboard_logo_icon', 'storefront');
+        @endphp
         <div class="h-20 flex items-center gap-3 px-6 border-b border-gray-100">
-            <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-2xl">storefront</span>
-            </div>
-            <h1 class="text-xl font-black tracking-tight text-[#0d121b]">
-                حراج<span class="text-primary">آنلاین</span>
-            </h1>
+            @if($dashLogo)
+                <img src="{{ url('storage/'.$dashLogo) }}" class="h-10 w-auto object-contain" alt="{{ $dashText }}">
+            @else
+                <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-2xl">{{ $dashIcon }}</span>
+                </div>
+            @endif
+            <h1 class="text-xl font-black tracking-tight text-[#0d121b]">{{ $dashText }}</h1>
         </div>
         
         <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1">
@@ -266,6 +274,11 @@
 
         <!-- Page Content -->
         <div class="flex-1 overflow-y-auto p-4 sm:p-8">
+
+            <x-verification-banner />
+
+
+
             {{ $slot }}
         </div>
     </main>

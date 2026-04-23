@@ -21,6 +21,12 @@ class SellerRequestController extends Controller
     {
         $user = auth()->user();
 
+        // بررسی احراز هویت
+        if (!$user->isVerified()) {
+            return redirect()->route('dashboard')
+                ->with('error', 'برای درخواست فروشندگی باید ابتدا شماره تلفن یا ایمیل خود را تایید کنید.');
+        }
+
         // اگر فروشنده فعال است
         if ($user->seller_status === 'active') {
             return redirect()->route('dashboard')
@@ -57,6 +63,12 @@ class SellerRequestController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
+
+        // بررسی احراز هویت
+        if (!$user->isVerified()) {
+            return redirect()->route('dashboard')
+                ->with('error', 'برای درخواست فروشندگی باید ابتدا شماره تلفن یا ایمیل خود را تایید کنید.');
+        }
 
         // بررسی اینکه فروشنده فعال نباشد
         if ($user->seller_status === 'active') {

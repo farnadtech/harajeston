@@ -125,12 +125,24 @@
                         <p class="text-green-700 text-sm">
                             نحوه اتمام: <strong>{{ $isBuyNow ? 'خرید فوری' : 'بالاترین پیشنهاد' }}</strong>
                         </p>
-                        <p class="text-green-700 text-sm mt-1">برای پیگیری سفارش و وارد کردن آدرس ارسال به صفحه سفارشات مراجعه کنید.</p>
+                        <p class="text-green-700 text-sm mt-1">برای پیگیری سفارش و وارد کردن آدرس ارسال روی دکمه مقابل کلیک کنید.</p>
                     </div>
-                    <a href="{{ route('orders.index') }}" class="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-xl hover:bg-green-700 transition-colors flex items-center gap-1 flex-shrink-0">
-                        <span class="material-symbols-outlined text-sm">shopping_bag</span>
-                        سفارشات من
-                    </a>
+                    @php
+                        $hasOrder = \App\Models\Order::where('buyer_id', auth()->id())
+                            ->whereHas('items', fn($q) => $q->where('listing_id', $listing->id))
+                            ->exists();
+                    @endphp
+                    @if($hasOrder)
+                        <a href="{{ route('orders.index') }}" class="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-xl hover:bg-green-700 transition-colors flex items-center gap-1 flex-shrink-0">
+                            <span class="material-symbols-outlined text-sm">shopping_bag</span>
+                            سفارشات من
+                        </a>
+                    @else
+                        <a href="{{ route('checkout.auction', $listing) }}" class="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-xl hover:bg-green-700 transition-colors flex items-center gap-1 flex-shrink-0">
+                            <span class="material-symbols-outlined text-sm">shopping_cart_checkout</span>
+                            تکمیل و پرداخت
+                        </a>
+                    @endif
                 </div>
             </div>
         @else

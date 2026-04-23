@@ -1,182 +1,729 @@
 @extends('layouts.app')
-
 @section('title', 'صفحه اصلی')
 
 @section('content')
 @php
-    // همه محصولات حراج هستند
-    $featuredListing = $listings->where('status', 'active')->first();
-    $hotAuctions = $listings->where('status', 'active')->take(8);
+    $blocks    = json_decode(\App\Models\HomepageSetting::get('blocks', '[]'), true) ?? [];
+    $cardStyle = \App\Models\HomepageSetting::get('card_style', 'classic');
+
+    $colsMap = [
+        2 => 'grid-cols-1 sm:grid-cols-2',
+        3 => 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+        4 => 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+    ];
+
+    // آگهی‌های فعال برای استفاده در بلوک‌ها
+    $allListings = $listings;
 @endphp
 
 <div class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-12">
-    <!-- Hero Section -->
-    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-[480px]">
-        <!-- Main Slider -->
-        <div class="lg:col-span-8 relative rounded-2xl overflow-hidden group">
-            <div class="absolute inset-0 bg-gradient-to-l from-black/70 to-transparent z-10"></div>
-            @if($featuredListing && $featuredListing->images->isNotEmpty())
-                <img alt="{{ $featuredListing->title }}" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" src="{{ url('storage/' . $featuredListing->images->first()->file_path) }}"/>
-            @else
-                <img alt="Hero Banner" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAGbpvjygdH1kviPkLE3nFqQpfKLQHSiB47VVhTAFFWhZMV2CG0UslDc1P5gj_RtA6I3Flvk1vmorLJ7fvmVW0hTMqjqbadzBRdhON74ePElldkk2tsg-M0IrJ8MROpObSfqocakvM3y__X320rrSl-M8FxSiIfZW0UmlwRI2Wp3VSgZYIswkyt-peOeNVZR2lkeOg3hk0d2ZOoRgrx-ibXIetxRostQZtk7LrZiO5pYwY_idrXgaEuP6n_JGah7weF5UIAL8qarb0"/>
-            @endif
-            <div class="absolute bottom-0 right-0 p-8 z-20 max-w-xl text-white">
-                <span class="inline-block px-3 py-1 bg-secondary text-white text-xs font-bold rounded-full mb-4">ویژه</span>
-                @if($featuredListing)
-                    <h2 class="text-3xl md:text-5xl font-black mb-4 leading-tight">{{ $featuredListing->title }}</h2>
-                    <p class="text-gray-200 text-lg mb-6 leading-relaxed">{{ Str::limit($featuredListing->description, 100) }}</p>
-                    <a href="{{ route('listings.show', $featuredListing) }}" class="bg-primary hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-lg transition-all shadow-lg shadow-primary/30 inline-flex items-center gap-2">
-                        <span>شرکت در مزایده</span>
-                        <span class="material-symbols-outlined rtl:rotate-180">arrow_right_alt</span>
-                    </a>
-                @else
-                    <h2 class="text-3xl md:text-5xl font-black mb-4 leading-tight">کلکسیون نفیس فرش دستباف ایرانی</h2>
-                    <p class="text-gray-200 text-lg mb-6 leading-relaxed">مزایده بی‌نظیر آثار استادکاران تبریز و کاشان. شروع قیمت از ۵۰,۰۰۰,۰۰۰ تومان.</p>
-                    <a href="{{ route('listings.index') }}" class="bg-primary hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-lg transition-all shadow-lg shadow-primary/30 inline-flex items-center gap-2">
-                        <span>مشاهده مزایده‌ها</span>
-                        <span class="material-symbols-outlined rtl:rotate-180">arrow_right_alt</span>
-                    </a>
+
+@foreach($blocks as $block)
+@if(!($block['enabled'] ?? true)) @continue @endif
+@php $cfg = $block['config'] ?? []; @endphp
+
+{{-- ===== HERO ===== --}}
+@if($block['type'] === 'hero')
+@php
+    $mode = $cfg['mode'] ?? 'image';
+@endphp
+
+@if($mode === 'listings')
+{{-- حالت اسلایدر محصولات --}}
+@php
+    $lFilter  = $cfg['listings_filter'] ?? 'ending_soon';
+    $lCount   = (int)($cfg['listings_count'] ?? 6);
+    $lBg      = $cfg['listings_bg'] ?? '#1e40af';
+    $lTitle   = $cfg['listings_title'] ?? 'محصولات ویژه';
+    $showSideBanners = $cfg['show_side_banners'] ?? true;
+
+    $heroListings = $allListings->where('status','active');
+    $heroListings = match($lFilter) {
+        'most_bids'     => $heroListings->sortByDesc('bids_count'),
+        'highest_price' => $heroListings->sortByDesc(fn($l) => $l->bids()->max('amount') ?? $l->starting_price),
+        'newest'        => $heroListings->sortByDesc('created_at'),
+        'ending_soon'   => $heroListings->sortBy('ends_at'),
+        default         => $heroListings,
+    };
+    $heroListings = $heroListings->take($lCount)->values();
+    $sliderId = 'hero-slider-' . $block['id'];
+    $lTextPos = $cfg['listings_text_pos'] ?? 'right';
+    $slideContentStyle = match($lTextPos) {
+        'center' => 'position:absolute; bottom:0; left:0; right:0; padding:2rem; color:white; text-align:center; display:flex; flex-direction:column; align-items:center;',
+        'left'   => 'position:absolute; bottom:0; left:0; padding:2rem; color:white; text-align:left; max-width:36rem;',
+        default  => 'position:absolute; bottom:0; right:0; left:0; padding:2rem; color:white;',
+    };
+@endphp
+@php $showSideBanners = $cfg['show_side_banners'] ?? true; @endphp
+<section class="grid grid-cols-1 {{ $showSideBanners ? 'lg:grid-cols-12' : '' }} gap-6 h-auto lg:h-[480px]">
+    {{-- اسلایدر اصلی --}}
+    <div class="{{ $showSideBanners ? 'lg:col-span-8' : 'col-span-full' }} relative rounded-2xl overflow-hidden"
+         style="background-color: {{ $lBg }}">
+
+        @if($heroListings->isNotEmpty())
+        {{-- اسلاید‌ها --}}
+        <div id="{{ $sliderId }}" style="position:relative; width:100%; height:100%; min-height:300px;">
+            @foreach($heroListings as $i => $listing)
+            @php
+                $img = $listing->images->isNotEmpty() ? url('storage/' . $listing->images->first()->file_path) : null;
+                $price = $listing->bids()->orderBy('amount','desc')->value('amount') ?? $listing->starting_price;
+            @endphp
+            <div class="hero-slide" data-slider="{{ $sliderId }}"
+                 style="position:absolute; inset:0; opacity:{{ $i === 0 ? '1' : '0' }}; transition:opacity .6s ease; pointer-events:{{ $i === 0 ? 'auto' : 'none' }};">
+                {{-- تصویر پس‌زمینه --}}
+                @if($img)
+                    <img src="{{ $img }}" alt="{{ $listing->title }}"
+                         style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;">
                 @endif
-            </div>
-        </div>
-        
-        <!-- Side Banners -->
-        <div class="lg:col-span-4 flex flex-col gap-6">
-            <div class="flex-1 relative rounded-2xl overflow-hidden bg-[#e0e7ff] flex flex-col justify-center p-6 items-start">
-                <div class="z-10">
-                    <span class="text-primary font-bold text-sm">محصولات دیجیتال</span>
-                    <h3 class="text-2xl font-black text-gray-900 mt-1 mb-2">گوشی و تبلت</h3>
-                    <p class="text-gray-600 text-sm mb-4">جدیدترین محصولات در مزایده</p>
-                    <a class="text-primary font-bold hover:underline text-sm flex items-center gap-1" href="{{ route('listings.index') }}">
-                        مشاهده جزئیات <span class="material-symbols-outlined text-sm rtl:rotate-180">chevron_right</span>
+                <div style="position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.3) 50%, transparent 100%);"></div>
+
+                {{-- محتوا --}}
+                <div style="{{ $slideContentStyle }}">
+                    @if($listing->category)
+                        <span style="display:inline-block; background:rgba(255,255,255,.2); backdrop-filter:blur(4px); padding:.25rem .75rem; border-radius:999px; font-size:.75rem; font-weight:600; margin-bottom:.75rem;">
+                            {{ $listing->category->name }}
+                        </span>
+                    @endif
+                    <h2 style="font-size:clamp(1.25rem,3vw,2rem); font-weight:900; margin:0 0 .5rem; line-height:1.3;">
+                        {{ $listing->title }}
+                    </h2>
+                    <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.25rem; flex-wrap:wrap; {{ $lTextPos === 'center' ? 'justify-content:center;' : '' }}">
+                        <div style="display:flex; align-items:baseline; gap:.25rem;">
+                            <span style="font-size:1.5rem; font-weight:900; color:#fbbf24;">
+                                {{ \App\Services\PersianNumberService::convertToPersian(number_format($price)) }}
+                            </span>
+                            <span style="font-size:.875rem; opacity:.8;">تومان</span>
+                        </div>
+                        <span style="display:flex; align-items:center; gap:.25rem; font-size:.8rem; opacity:.7;">
+                            <span class="material-symbols-outlined" style="font-size:16px;">gavel</span>
+                            {{ \App\Services\PersianNumberService::convertToPersian($listing->bids_count ?? 0) }} پیشنهاد
+                        </span>
+                    </div>
+                    <a href="{{ route('listings.show', $listing) }}"
+                       style="display:inline-flex; align-items:center; gap:.5rem; background:white; color:#1e40af; padding:.6rem 1.5rem; border-radius:.75rem; font-weight:700; font-size:.95rem; text-decoration:none; transition:transform .2s;"
+                       onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+                        شرکت در مزایده
+                        <span class="material-symbols-outlined" style="font-size:18px; transform:scaleX(-1);">arrow_right_alt</span>
                     </a>
                 </div>
-                <img alt="iPhone" class="absolute -left-12 bottom-0 w-48 h-auto object-contain z-0 opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCags2xX6-Sxa_RQwonxzWuQdz0-ywNB7SJ45FjDrmvzAj-3468rjlChy9ftWbPM9W2QBdKNw4KD67D6g8e7wOhZH2Fez63rGwQw9Q6oj-bnurFafZLcuH9vLehiFxacZTYL6uISeaTBlOJq0AuZJwRgSFYuEjpTIn9WCGiHnwTKO9SUAP9i73R6sfGdEHy3gXOPliWsYevd27_L7z-Y2NuxKRpvk6vRge-e16RjDDXeqXKmEVsTSwmuwEkVa-DjondeIvj0On3cyOB"/>
             </div>
-            <div class="flex-1 relative rounded-2xl overflow-hidden bg-[#fff7ed] flex flex-col justify-center p-6 items-start">
-                <div class="z-10">
-                    <span class="text-secondary font-bold text-sm">ساعت و جواهرات</span>
-                    <h3 class="text-2xl font-black text-gray-900 mt-1 mb-2">ساعت‌های کلاسیک</h3>
-                    <p class="text-gray-600 text-sm mb-4">مزایده برندهای معتبر</p>
-                    <a class="text-secondary font-bold hover:underline text-sm flex items-center gap-1" href="{{ route('listings.index') }}">
-                        مشاهده کاتالوگ <span class="material-symbols-outlined text-sm rtl:rotate-180">chevron_right</span>
-                    </a>
-                </div>
-                <img alt="Watch" class="absolute -left-4 bottom-[-20px] w-40 h-auto object-contain z-0 mix-blend-multiply opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnhjDliz3Y_HeiA2FIdV_WhmSSqa_oOwOl4UdSTdpDRQ_LFrQSXJqwtyRKq1FjUztrx3uzd3itZt3fL3MrywwyB22hEBo6I4qqiP-DVF96Y4zoBSv5N0YbtuY7f2t6vIbAysuMSdyy_0Fe_-g3FzM0GjRF1tC7Z91_SHa6Nr8PUy9Krdynjf7MSkLRifd1CY1sMdl6Zw4w0gs4RIY-UsHIyZIfL9a0QpQzlaAuM5MbtgzSPJRk2ULW4NAOV9iAoJZGiPDakwJ83HE8"/>
-            </div>
-        </div>
-    </section>
-
-    <!-- Categories Section -->
-    <section>
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="text-2xl font-bold text-gray-900">دسته‌بندی‌های محبوب</h2>
-            <a class="text-primary text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all" href="{{ route('listings.index') }}">
-                مشاهده همه <span class="material-symbols-outlined text-lg rtl:rotate-180">arrow_right_alt</span>
-            </a>
-        </div>
-        <div class="flex gap-6 overflow-x-auto no-scrollbar pb-4 snap-x">
-            <!-- Category Item -->
-            <a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="{{ route('listings.index') }}">
-                <div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
-                    <span class="material-symbols-outlined text-3xl">devices</span>
-                </div>
-                <span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">دیجیتال</span>
-            </a>
-            <a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="{{ route('listings.index') }}">
-                <div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
-                    <span class="material-symbols-outlined text-3xl">checkroom</span>
-                </div>
-                <span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">مد و پوشاک</span>
-            </a>
-            <a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="{{ route('listings.index') }}">
-                <div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
-                    <span class="material-symbols-outlined text-3xl">diamond</span>
-                </div>
-                <span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">جواهرات</span>
-            </a>
-            <a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="{{ route('listings.index') }}">
-                <div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
-                    <span class="material-symbols-outlined text-3xl">chair</span>
-                </div>
-                <span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">دکوراسیون</span>
-            </a>
-            <a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="{{ route('listings.index') }}">
-                <div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
-                    <span class="material-symbols-outlined text-3xl">brush</span>
-                </div>
-                <span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">هنر</span>
-            </a>
-            <a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="{{ route('listings.index') }}">
-                <div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
-                    <span class="material-symbols-outlined text-3xl">directions_car</span>
-                </div>
-                <span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">خودرو</span>
-            </a>
-            <a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center cursor-pointer" href="{{ route('listings.index') }}">
-                <div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md">
-                    <span class="material-symbols-outlined text-3xl">sports_esports</span>
-                </div>
-                <span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">سرگرمی</span>
-            </a>
-        </div>
-    </section>
-
-    <!-- Hot Auctions Grid -->
-    @if($hotAuctions->isNotEmpty())
-    <section class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <div class="flex items-center gap-3 mb-8">
-            <div class="p-2 bg-red-100 text-red-600 rounded-lg">
-                <span class="material-symbols-outlined">local_fire_department</span>
-            </div>
-            <div>
-                <h2 class="text-2xl font-black text-gray-900">مزایده‌های داغ</h2>
-                <p class="text-gray-500 text-sm">فرصت‌های استثنایی با زمان محدود</p>
-            </div>
-            <div class="mr-auto hidden sm:flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600">
-                <span class="material-symbols-outlined text-lg">timer</span>
-                <span>پایان تا: ۲۴ ساعت آینده</span>
-            </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            @foreach($hotAuctions as $auction)
-                <x-listing-card :listing="$auction" />
             @endforeach
+
+            {{-- دکمه‌های ناوبری --}}
+            @if($heroListings->count() > 1)
+            <button onclick="slideHero('{{ $sliderId }}', -1)"
+                    style="position:absolute; top:50%; right:1rem; transform:translateY(-50%); z-index:30; background:rgba(255,255,255,.2); backdrop-filter:blur(4px); border:none; color:white; width:44px; height:44px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,.4)'" onmouseout="this.style.background='rgba(255,255,255,.2)'">
+                <span class="material-symbols-outlined" style="font-size:22px;">chevron_right</span>
+            </button>
+            <button onclick="slideHero('{{ $sliderId }}', 1)"
+                    style="position:absolute; top:50%; left:1rem; transform:translateY(-50%); z-index:30; background:rgba(255,255,255,.2); backdrop-filter:blur(4px); border:none; color:white; width:44px; height:44px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .2s;"
+                    onmouseover="this.style.background='rgba(255,255,255,.4)'" onmouseout="this.style.background='rgba(255,255,255,.2)'">
+                <span class="material-symbols-outlined" style="font-size:22px;">chevron_left</span>
+            </button>
+
+            {{-- نقاط ناوبری --}}
+            <div style="position:absolute; bottom:1rem; left:50%; transform:translateX(-50%); display:flex; gap:.4rem; z-index:30;">
+                @foreach($heroListings as $i => $listing)
+                <button onclick="goToSlide('{{ $sliderId }}', {{ $i }})"
+                        class="hero-dot" data-slider="{{ $sliderId }}" data-index="{{ $i }}"
+                        style="width:{{ $i === 0 ? '24px' : '8px' }}; height:8px; border-radius:999px; border:none; cursor:pointer; transition:all .3s; background:{{ $i === 0 ? 'white' : 'rgba(255,255,255,.4)' }};"></button>
+                @endforeach
+            </div>
+            @endif
+
+            {{-- عنوان بخش --}}
+            <div style="position:absolute; top:1rem; right:1rem; z-index:30;">
+                <span style="background:rgba(0,0,0,.4); backdrop-filter:blur(4px); color:white; padding:.3rem .8rem; border-radius:.5rem; font-size:.8rem; font-weight:600;">
+                    {{ $lTitle }}
+                </span>
+            </div>
         </div>
-    </section>
+        @else
+        <div style="display:flex; align-items:center; justify-content:center; height:100%; min-height:300px; color:rgba(255,255,255,.5);">
+            <p>آگهی فعالی وجود ندارد</p>
+        </div>
+        @endif
+    </div>
+
+    {{-- بنرهای کناری --}}
+    @if($showSideBanners)
+    @php
+        $b1Tag   = $cfg['side_banner1_tag']   ?? 'محصولات دیجیتال';
+        $b1Title = $cfg['side_banner1_title']  ?? 'گوشی و تبلت';
+        $b1Desc  = $cfg['side_banner1_desc']   ?? 'جدیدترین محصولات در مزایده';
+        $b1Url   = $cfg['side_banner1_url']    ?? route('listings.index');
+        $b1Bg    = $cfg['side_banner1_bg']     ?? '#e0e7ff';
+        $b1Color = $cfg['side_banner1_color']  ?? '#3b82f6';
+        $b1Img   = $cfg['side_banner1_image']  ?? null;
+        $b2Tag   = $cfg['side_banner2_tag']    ?? 'ساعت و جواهرات';
+        $b2Title = $cfg['side_banner2_title']  ?? 'ساعت‌های کلاسیک';
+        $b2Desc  = $cfg['side_banner2_desc']   ?? 'مزایده برندهای معتبر';
+        $b2Url   = $cfg['side_banner2_url']    ?? route('listings.index');
+        $b2Bg    = $cfg['side_banner2_bg']     ?? '#fff7ed';
+        $b2Color = $cfg['side_banner2_color']  ?? '#f97316';
+        $b2Img   = $cfg['side_banner2_image']  ?? null;
+    @endphp
+    <div class="lg:col-span-4 flex flex-col gap-6">
+        <a href="{{ $b1Url ?: route('listings.index') }}" class="flex-1 relative rounded-2xl overflow-hidden flex items-center group" style="background-color: {{ $b1Bg }}; min-height:0;">
+            <div class="flex-1 p-5 z-10 min-w-0">
+                <span class="font-bold text-sm block mb-1" style="color: {{ $b1Color }}">{{ $b1Tag }}</span>
+                <h3 class="text-lg font-black text-gray-900 mb-1 leading-tight">{{ $b1Title }}</h3>
+                <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ $b1Desc }}</p>
+                <span class="font-bold text-sm flex items-center gap-1" style="color: {{ $b1Color }}">مشاهده <span class="material-symbols-outlined text-sm rtl:rotate-180">chevron_right</span></span>
+            </div>
+            @if($b1Img)<div style="width:100px; flex-shrink:0; align-self:stretch; overflow:hidden;"><img src="{{ url('storage/' . $b1Img) }}" alt="{{ $b1Title }}" style="width:100%; height:100%; object-fit:cover; display:block;"></div>@endif
+        </a>
+        <a href="{{ $b2Url ?: route('listings.index') }}" class="flex-1 relative rounded-2xl overflow-hidden flex items-center group" style="background-color: {{ $b2Bg }}; min-height:0;">
+            <div class="flex-1 p-5 z-10 min-w-0">
+                <span class="font-bold text-sm block mb-1" style="color: {{ $b2Color }}">{{ $b2Tag }}</span>
+                <h3 class="text-lg font-black text-gray-900 mb-1 leading-tight">{{ $b2Title }}</h3>
+                <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ $b2Desc }}</p>
+                <span class="font-bold text-sm flex items-center gap-1" style="color: {{ $b2Color }}">مشاهده <span class="material-symbols-outlined text-sm rtl:rotate-180">chevron_right</span></span>
+            </div>
+            @if($b2Img)<div style="width:100px; flex-shrink:0; align-self:stretch; overflow:hidden;"><img src="{{ url('storage/' . $b2Img) }}" alt="{{ $b2Title }}" style="width:100%; height:100%; object-fit:cover; display:block;"></div>@endif
+        </a>
+    </div>
     @endif
+</section>
 
-    <!-- Trust Badges -->
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-6 py-8 border-t border-gray-200">
-        <div class="flex items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div class="w-12 h-12 bg-blue-50 text-primary rounded-full flex items-center justify-center">
-                <span class="material-symbols-outlined text-3xl">verified_user</span>
-            </div>
-            <div>
-                <h3 class="font-bold text-gray-900">ضمانت اصالت کالا</h3>
-                <p class="text-xs text-gray-500 mt-1">تایید کارشناسی تمامی کالاها قبل از مزایده</p>
-            </div>
+@else
+{{-- حالت تصویری --}}
+@php
+    $bgColor         = $cfg['bg_color'] ?? '#1e40af';
+    $customImage     = $cfg['custom_image'] ?? null;
+    $showSideBanners = $cfg['show_side_banners'] ?? true;
+    $textPos         = $cfg['text_position'] ?? 'right';
+    $textColor       = $cfg['text_color'] ?? '#ffffff';
+    $btnBg           = $cfg['btn_bg'] ?? '#3b82f6';
+    $btnTextColor    = $cfg['btn_text_color'] ?? '#ffffff';
+
+    // موقعیت container متن
+    $textContainerStyle = match($textPos) {
+        'center' => 'position:absolute; bottom:0; left:0; right:0; padding:2rem; z-index:20; display:flex; flex-direction:column; align-items:center; text-align:center;',
+        'left'   => 'position:absolute; bottom:0; left:0; padding:2rem; z-index:20; max-width:36rem; display:flex; flex-direction:column; align-items:flex-start; text-align:left;',
+        default  => 'position:absolute; bottom:0; right:0; padding:2rem; z-index:20; max-width:36rem; display:flex; flex-direction:column; align-items:flex-start; text-align:right;',
+    };
+@endphp
+<section class="grid grid-cols-1 {{ $showSideBanners ? 'lg:grid-cols-12' : '' }} gap-6 h-auto lg:h-[480px]">
+    <div class="{{ $showSideBanners ? 'lg:col-span-8' : 'col-span-full' }} relative rounded-2xl overflow-hidden group"
+         style="background-color: {{ $bgColor }}">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10"></div>
+        @if($customImage)
+            <img alt="hero" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 min-h-[300px]"
+                 src="{{ url('storage/' . $customImage) }}"/>
+        @else
+            <div class="w-full min-h-[300px]" style="background-color: {{ $bgColor }}"></div>
+        @endif
+        <div style="{{ $textContainerStyle }}">
+            <h2 style="font-size:clamp(1.5rem,4vw,3rem); font-weight:900; margin:0 0 1rem; line-height:1.2; color:{{ $textColor }};">
+                {{ $cfg['title'] ?? 'بهترین مزایده‌های آنلاین' }}
+            </h2>
+            @if(!empty($cfg['subtitle']))
+                <p style="font-size:1.1rem; margin:0 0 1.5rem; opacity:.85; color:{{ $textColor }};">{{ $cfg['subtitle'] }}</p>
+            @endif
+            @if(!empty($cfg['button_text']))
+            <a href="{{ !empty($cfg['button_url']) ? $cfg['button_url'] : route('listings.index') }}"
+               style="display:inline-flex; align-items:center; gap:8px; padding:.75rem 2rem; border-radius:.75rem; font-weight:700; font-size:1.1rem; text-decoration:none; transition:opacity .2s; background-color:{{ $btnBg }}; color:{{ $btnTextColor }};"
+               onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                <span>{{ $cfg['button_text'] }}</span>
+                <span class="material-symbols-outlined" style="font-size:20px; transform:scaleX(-1);">arrow_right_alt</span>
+            </a>
+            @endif
         </div>
-        <div class="flex items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div class="w-12 h-12 bg-blue-50 text-primary rounded-full flex items-center justify-center">
-                <span class="material-symbols-outlined text-3xl">local_shipping</span>
+    </div>
+    @if($showSideBanners)
+    <div class="lg:col-span-4 flex flex-col gap-6">
+        @php
+            $b1Tag   = $cfg['side_banner1_tag']   ?? 'محصولات دیجیتال';
+            $b1Title = $cfg['side_banner1_title']  ?? 'گوشی و تبلت';
+            $b1Desc  = $cfg['side_banner1_desc']   ?? 'جدیدترین محصولات در مزایده';
+            $b1Url   = $cfg['side_banner1_url']    ?? route('listings.index');
+            $b1Bg    = $cfg['side_banner1_bg']     ?? '#e0e7ff';
+            $b1Color = $cfg['side_banner1_color']  ?? '#3b82f6';
+            $b1Img   = $cfg['side_banner1_image']  ?? null;
+
+            $b2Tag   = $cfg['side_banner2_tag']    ?? 'ساعت و جواهرات';
+            $b2Title = $cfg['side_banner2_title']  ?? 'ساعت‌های کلاسیک';
+            $b2Desc  = $cfg['side_banner2_desc']   ?? 'مزایده برندهای معتبر';
+            $b2Url   = $cfg['side_banner2_url']    ?? route('listings.index');
+            $b2Bg    = $cfg['side_banner2_bg']     ?? '#fff7ed';
+            $b2Color = $cfg['side_banner2_color']  ?? '#f97316';
+            $b2Img   = $cfg['side_banner2_image']  ?? null;
+        @endphp
+
+        {{-- بنر کناری ۱ --}}
+        <a href="{{ $b1Url ?: route('listings.index') }}"
+           class="flex-1 relative rounded-2xl overflow-hidden flex items-center group"
+           style="background-color: {{ $b1Bg }}; min-height:0;">
+            <div class="flex-1 p-5 z-10 min-w-0">
+                <span class="font-bold text-sm block mb-1" style="color: {{ $b1Color }}">{{ $b1Tag }}</span>
+                <h3 class="text-lg font-black text-gray-900 mb-1 leading-tight">{{ $b1Title }}</h3>
+                <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ $b1Desc }}</p>
+                <span class="font-bold text-sm flex items-center gap-1" style="color: {{ $b1Color }}">
+                    مشاهده <span class="material-symbols-outlined text-sm rtl:rotate-180">chevron_right</span>
+                </span>
             </div>
-            <div>
-                <h3 class="font-bold text-gray-900">ارسال سریع و بیمه شده</h3>
-                <p class="text-xs text-gray-500 mt-1">ارسال به سراسر کشور با بسته بندی ایمن</p>
+            @if($b1Img)
+                <div style="width:100px; flex-shrink:0; align-self:stretch; overflow:hidden;">
+                    <img src="{{ url('storage/' . $b1Img) }}" alt="{{ $b1Title }}"
+                         style="width:100%; height:100%; object-fit:cover; display:block; transition:transform .5s;"
+                         class="group-hover:scale-105">
+                </div>
+            @endif
+        </a>
+
+        {{-- بنر کناری ۲ --}}
+        <a href="{{ $b2Url ?: route('listings.index') }}"
+           class="flex-1 relative rounded-2xl overflow-hidden flex items-center group"
+           style="background-color: {{ $b2Bg }}; min-height:0;">
+            <div class="flex-1 p-5 z-10 min-w-0">
+                <span class="font-bold text-sm block mb-1" style="color: {{ $b2Color }}">{{ $b2Tag }}</span>
+                <h3 class="text-lg font-black text-gray-900 mb-1 leading-tight">{{ $b2Title }}</h3>
+                <p class="text-gray-600 text-sm mb-3 line-clamp-2">{{ $b2Desc }}</p>
+                <span class="font-bold text-sm flex items-center gap-1" style="color: {{ $b2Color }}">
+                    مشاهده <span class="material-symbols-outlined text-sm rtl:rotate-180">chevron_right</span>
+                </span>
             </div>
+            @if($b2Img)
+                <div style="width:100px; flex-shrink:0; align-self:stretch; overflow:hidden;">
+                    <img src="{{ url('storage/' . $b2Img) }}" alt="{{ $b2Title }}"
+                         style="width:100%; height:100%; object-fit:cover; display:block; transition:transform .5s;"
+                         class="group-hover:scale-105">
+                </div>
+            @endif
+        </a>
+    </div>
+    @endif
+</section>
+@endif
+@endif
+
+{{-- ===== CATEGORIES ===== --}}
+@if($block['type'] === 'categories')
+@php
+    $dbCats = \App\Models\Category::whereNull('parent_id')->take((int)($cfg['count'] ?? 8))->get();
+    $catStyle = $cfg['style'] ?? 'circle';
+@endphp
+<section>
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-900">{{ $cfg['title'] ?? 'دسته‌بندی‌ها' }}</h2>
+        <a class="text-primary text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all" href="{{ route('categories.index') }}">
+            مشاهده همه <span class="material-symbols-outlined text-lg rtl:rotate-180">arrow_right_alt</span>
+        </a>
+    </div>
+    <div class="flex gap-6 overflow-x-auto no-scrollbar pb-4 snap-x">
+        @forelse($dbCats as $cat)
+        <a href="{{ route('listings.index', ['category' => $cat->slug]) }}"
+           class="group snap-center cursor-pointer flex-shrink-0"
+           @if($catStyle === 'card') style="width:120px;" @else style="min-width:100px;" @endif>
+            @if($catStyle === 'circle')
+                <div class="flex flex-col items-center gap-3">
+                    <div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
+                        <span class="material-symbols-outlined text-3xl">{{ $cat->icon ?? 'category' }}</span>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors text-center leading-tight">{{ $cat->name }}</span>
+                </div>
+            @elseif($catStyle === 'card')
+                <div class="w-full rounded-xl bg-blue-50 group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm overflow-hidden">
+                    <div class="flex items-center justify-center pt-4 pb-2 text-primary group-hover:text-white">
+                        <span class="material-symbols-outlined text-2xl">{{ $cat->icon ?? 'category' }}</span>
+                    </div>
+                    <div class="px-2 pb-3 text-center">
+                        <span class="text-xs font-semibold text-gray-700 group-hover:text-white leading-tight block">{{ $cat->name }}</span>
+                    </div>
+                </div>
+            @else
+                <div class="px-4 py-2 rounded-full bg-blue-50 text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 text-sm font-medium whitespace-nowrap">
+                    {{ $cat->name }}
+                </div>
+            @endif
+        </a>
+        @empty
+        @foreach([['devices','دیجیتال'],['checkroom','مد'],['diamond','جواهرات'],['chair','دکوراسیون'],['brush','هنر'],['directions_car','خودرو']] as [$ico,$nm])
+        <a class="group flex flex-col items-center gap-3 min-w-[100px] snap-center" href="{{ route('listings.index') }}">
+            <div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shadow-sm">
+                <span class="material-symbols-outlined text-3xl">{{ $ico }}</span>
+            </div>
+            <span class="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">{{ $nm }}</span>
+        </a>
+        @endforeach
+        @endforelse
+    </div>
+</section>
+@endif
+
+{{-- ===== AUCTION LIST ===== --}}
+@if($block['type'] === 'auction_list')
+@php
+    $fFilter   = $cfg['filter'] ?? 'ending_soon';
+    $fCount    = (int)($cfg['count'] ?? 6);
+    $fCols     = (int)($cfg['columns'] ?? 3);
+    $fBg       = $cfg['bg_color'] ?? '#1e40af';
+    $fTextDark = ($cfg['text_color'] ?? 'white') === 'dark';
+    $fTitle    = $cfg['title'] ?? 'آگهی‌های ویژه';
+    $fCatIds   = array_filter((array)($cfg['category_ids'] ?? []));
+    // همه به integer تبدیل کن
+    $fCatIds = array_values(array_map('intval', $fCatIds));
+
+    // اگر دسته‌بندی انتخاب شده، مستقیم از DB بخون تا دقیق‌تر باشه
+    if (!empty($fCatIds)) {
+        // جمع‌آوری همه ID های زیردسته‌ها
+        $allCatIds = $fCatIds;
+        foreach ($fCatIds as $catId) {
+            $childIds = \App\Models\Category::where('parent_id', $catId)->pluck('id')->toArray();
+            $allCatIds = array_merge($allCatIds, array_map('intval', $childIds));
+            foreach ($childIds as $childId) {
+                $grandChildIds = \App\Models\Category::where('parent_id', $childId)->pluck('id')->toArray();
+                $allCatIds = array_merge($allCatIds, array_map('intval', $grandChildIds));
+            }
+        }
+        $allCatIds = array_unique($allCatIds);
+
+        $fQuery = \App\Models\Listing::whereIn('status', ['active', 'ended', 'completed'])
+            ->whereIn('category_id', $allCatIds)
+            ->with('images', 'category', 'seller')
+            ->withCount('bids');
+
+        // active اول، بعد ended/completed
+        $activeFirst = "CASE WHEN status = 'active' AND (ends_at IS NULL OR ends_at > NOW()) THEN 0 ELSE 1 END";
+
+        $fListings = match($fFilter) {
+            'most_bids'     => $fQuery->orderByRaw($activeFirst)->orderByDesc('bids_count'),
+            'highest_price' => $fQuery->orderByRaw($activeFirst)->orderByRaw('COALESCE((SELECT MAX(amount) FROM bids WHERE bids.listing_id = listings.id), starting_price) DESC'),
+            'lowest_price'  => $fQuery->orderByRaw($activeFirst)->orderByRaw('COALESCE((SELECT MAX(amount) FROM bids WHERE bids.listing_id = listings.id), starting_price) ASC'),
+            'newest'        => $fQuery->orderByRaw($activeFirst)->orderByDesc('created_at'),
+            'ending_soon'   => $fQuery->orderByRaw($activeFirst)->orderBy('ends_at'),
+            default         => $fQuery->orderByRaw($activeFirst)->orderBy('ends_at'),
+        };
+        $fListings = $fListings->take($fCount)->get();
+    } else {
+        // بدون فیلتر دسته‌بندی از collection موجود استفاده کن
+        // active اول، بعد ended/completed
+        $fListings = $allListings->whereIn('status', ['active', 'ended', 'completed']);
+        $fListings = $fListings->sortBy(function($l) use ($fFilter) {
+            $isActive = $l->status === 'active' && ($l->ends_at === null || \Carbon\Carbon::parse($l->ends_at)->isFuture());
+            $priority = $isActive ? 0 : 1;
+            $secondary = match($fFilter) {
+                'most_bids'     => -((int)($l->bids_count ?? 0)),
+                'highest_price' => -(float)($l->starting_price ?? 0),
+                'lowest_price'  => (float)($l->starting_price ?? 0),
+                'newest'        => -strtotime($l->created_at ?? ''),
+                default         => strtotime($l->ends_at ?? '9999-12-31'),
+            };
+            return [$priority, $secondary];
+        });
+        $fListings = $fListings->values()->take($fCount);
+    }
+    $fColsMap = [2=>'grid-cols-1 sm:grid-cols-2', 3=>'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', 4=>'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'];
+
+    // ساخت URL داینامیک برای دکمه مشاهده بیشتر
+    $viewMoreParams = ['sort' => $fFilter];
+    if (!empty($fCatIds)) {
+        if (count($fCatIds) === 1) {
+            // یک دسته - از slug استفاده کن
+            $singleCat = \App\Models\Category::find($fCatIds[0]);
+            if ($singleCat) $viewMoreParams['category'] = $singleCat->slug;
+        } else {
+            // چند دسته - از category_ids[] استفاده کن
+            $viewMoreParams['category_ids'] = $fCatIds;
+        }
+    }
+    $viewMoreUrl = route('listings.index', $viewMoreParams);
+@endphp
+@if($fListings->isNotEmpty())
+<section class="rounded-2xl overflow-hidden p-6" style="background-color: {{ $fBg }}">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-2xl font-black {{ $fTextDark ? 'text-gray-900' : 'text-white' }}">{{ $fTitle }}</h2>
+            @if(!empty($cfg['subtitle']))
+                <p class="{{ $fTextDark ? 'text-gray-600' : 'text-white/70' }} text-sm mt-1">{{ $cfg['subtitle'] }}</p>
+            @endif
         </div>
-        <div class="flex items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div class="w-12 h-12 bg-blue-50 text-primary rounded-full flex items-center justify-center">
-                <span class="material-symbols-outlined text-3xl">support_agent</span>
-            </div>
-            <div>
-                <h3 class="font-bold text-gray-900">پشتیبانی ۲۴ ساعته</h3>
-                <p class="text-xs text-gray-500 mt-1">پاسخگویی به سوالات شما در تمام مراحل</p>
-            </div>
+        <a href="{{ $viewMoreUrl }}" class="mr-auto text-primary text-sm font-bold flex items-center gap-1" style="text-decoration:none;">
+            مشاهده همه <span class="material-symbols-outlined text-sm rtl:rotate-180">arrow_right_alt</span>
+        </a>
+    </div>
+    <div class="grid {{ $fColsMap[$fCols] ?? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' }} gap-4">
+        @foreach($fListings as $listing)
+            <x-listing-card :listing="$listing" />
+        @endforeach
+    </div>
+</section>
+@endif
+@endif
+
+{{-- ===== TRUST BADGES ===== --}}
+@if($block['type'] === 'trust_badges')
+@php
+    $badges = collect($cfg['badges'] ?? []);
+    $badgeCount = $badges->count();
+    // max 4 per row on desktop, responsive on smaller screens
+    $badgeCols = min($badgeCount, 4);
+@endphp
+@if($badges->isNotEmpty())
+<section style="display:grid; grid-template-columns:repeat({{ $badgeCols }}, 1fr); gap:1.5rem; padding:2rem 0; border-top:1px solid #e5e7eb;"
+         class="trust-badges-grid">
+    @foreach($badges as $badge)
+    <div class="flex items-center gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div class="w-12 h-12 bg-blue-50 text-primary rounded-full flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-3xl">{{ $badge['icon'] ?? 'verified' }}</span>
         </div>
-    </section>
+        <div>
+            <h3 class="font-bold text-gray-900">{{ $badge['title'] ?? '' }}</h3>
+            <p class="text-xs text-gray-500 mt-1">{{ $badge['desc'] ?? '' }}</p>
+        </div>
+    </div>
+    @endforeach
+</section>
+@endif
+@endif
+
+{{-- ===== STATS ===== --}}
+@if($block['type'] === 'stats')
+@php
+    $statItems = collect($cfg['items'] ?? []);
+    $statCount = $statItems->count();
+    $statCols = min($statCount, 6);
+@endphp
+@if($statItems->isNotEmpty())
+<section style="display:grid; grid-template-columns:repeat({{ $statCols }}, 1fr); gap:1.5rem;"
+         class="stats-grid">
+    @foreach($statItems as $stat)
+    <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
+        <div class="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-3">
+            <span class="material-symbols-outlined text-2xl">{{ $stat['icon'] ?? 'star' }}</span>
+        </div>
+        <div class="text-3xl font-black text-gray-900 mb-1">{{ $stat['value'] ?? '' }}</div>
+        <div class="text-sm text-gray-500">{{ $stat['label'] ?? '' }}</div>
+    </div>
+    @endforeach
+</section>
+@endif
+@endif
+
+{{-- ===== NEWSLETTER ===== --}}
+@if($block['type'] === 'newsletter')
+@php
+    $nlTitle = $cfg['title'] ?? 'عضویت در خبرنامه';
+    $nlSubtitle = $cfg['subtitle'] ?? 'از جدیدترین مزایده‌ها باخبر شوید';
+    $nlBg = $cfg['bg_color'] ?? '#1e40af';
+@endphp
+<section class="newsletter-section rounded-2xl overflow-hidden" style="background:linear-gradient(135deg, {{ $nlBg }} 0%, {{ $nlBg }}dd 100%);">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center p-8 md:p-12">
+        <div class="text-white">
+            <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-4">
+                <span class="material-symbols-outlined text-lg">mail</span>
+                <span class="text-sm font-semibold">خبرنامه</span>
+            </div>
+            <h2 class="text-3xl md:text-4xl font-black mb-3 leading-tight">{{ $nlTitle }}</h2>
+            <p class="text-white/90 text-base md:text-lg">{{ $nlSubtitle }}</p>
+        </div>
+        <div>
+            <form id="newsletter-form-{{ $block['id'] }}" class="flex flex-col sm:flex-row gap-3" onsubmit="subscribeNewsletter(event, '{{ $block['id'] }}')">
+                @csrf
+                <input type="email" name="email" required placeholder="ایمیل شما"
+                       class="flex-1 px-5 py-4 rounded-xl text-gray-900 border-2 border-transparent focus:outline-none focus:border-white/50 shadow-lg">
+                <button type="submit" class="bg-white text-gray-900 font-bold px-8 py-4 rounded-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                    <span>عضویت</span>
+                    <span class="material-symbols-outlined text-lg">arrow_left</span>
+                </button>
+            </form>
+            <div id="newsletter-message-{{ $block['id'] }}" class="mt-3 text-sm text-white/90 hidden"></div>
+        </div>
+    </div>
+</section>
+@endif
+
+{{-- ===== BANNER ===== --}}
+@if($block['type'] === 'banner')
+@php
+    $bannerItems = $cfg['banners'] ?? [];
+    // backward compat: اگه config قدیمی بود، یه بنر از اون بساز
+    if (empty($bannerItems) && (!empty($cfg['title']) || !empty($cfg['custom_image']))) {
+        $bannerItems = [[
+            'title'       => $cfg['title'] ?? '',
+            'subtitle'    => $cfg['subtitle'] ?? '',
+            'button_text' => $cfg['button_text'] ?? '',
+            'button_url'  => $cfg['button_url'] ?? '',
+            'bg_color'    => $cfg['bg_color'] ?? '#f59e0b',
+            'custom_image'=> $cfg['custom_image'] ?? '',
+        ]];
+    }
+    $bannerCount = count($bannerItems);
+@endphp
+@if($bannerCount > 0)
+@php
+    // max 4 per row on desktop
+    $bannerCols = min($bannerCount, 4);
+@endphp
+<section style="display:grid; grid-template-columns:repeat({{ $bannerCols }}, 1fr); gap:1rem;" class="banner-grid">
+    @foreach($bannerItems as $bn)
+    @php
+        $bnBg    = $bn['bg_color'] ?? '#f59e0b';
+        $bnImg   = $bn['custom_image'] ?? '';
+        $bnTitle = $bn['title'] ?? '';
+        $bnSub   = $bn['subtitle'] ?? '';
+        $bnBtnTxt= $bn['button_text'] ?? '';
+        $bnBtnUrl= $bn['button_url'] ?? route('listings.index');
+    @endphp
+    {{-- کل بنر کلیک‌پذیره اگه لینک داشت --}}
+    <a href="{{ $bnBtnUrl ?: route('listings.index') }}"
+       class="rounded-2xl overflow-hidden relative flex items-center justify-between p-6 min-h-[140px] group cursor-pointer"
+       style="background-color: {{ $bnBg }}; text-decoration:none;">
+        @if($bnImg)
+            <img src="{{ url('storage/' . $bnImg) }}" class="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity">
+        @endif
+        <div class="text-white relative z-10 flex-1 min-w-0">
+            <h2 class="text-2xl font-black mb-1 leading-tight">{{ $bnTitle }}</h2>
+            @if($bnSub)<p class="text-white/80">{{ $bnSub }}</p>@endif
+        </div>
+        @if($bnBtnTxt)
+        <span class="bg-white text-gray-900 font-bold px-6 py-2.5 rounded-xl hover:shadow-lg transition-all flex-shrink-0 relative z-10 mr-4 text-sm whitespace-nowrap">
+            {{ $bnBtnTxt }}
+        </span>
+        @endif
+    </a>
+    @endforeach
+</section>
+@endif
+@endif
+
+{{-- ===== TEXT BLOCK ===== --}}
+@if($block['type'] === 'text_block')
+<section class="py-4" style="text-align: {{ $cfg['align'] ?? 'center' }}">
+    <div class="prose max-w-none text-gray-700">{!! nl2br(e($cfg['content'] ?? '')) !!}</div>
+</section>
+@endif
+
+{{-- ===== DIVIDER ===== --}}
+@if($block['type'] === 'divider')
+<hr style="border-color: {{ $cfg['color'] ?? '#e5e7eb' }}">
+@endif
+
+@endforeach
+
 </div>
+
+@push('scripts')
+<script>
+// اسلایدر hero
+const _sliderState = {};
+
+function slideHero(id, dir) {
+    const slides = document.querySelectorAll(`.hero-slide[data-slider="${id}"]`);
+    const dots   = document.querySelectorAll(`.hero-dot[data-slider="${id}"]`);
+    if (!slides.length) return;
+
+    if (!_sliderState[id]) _sliderState[id] = 0;
+    let cur = _sliderState[id];
+
+    // پنهان کردن اسلاید فعلی
+    slides[cur].style.opacity = '0';
+    slides[cur].style.pointerEvents = 'none';
+    if (dots[cur]) { dots[cur].style.width = '8px'; dots[cur].style.background = 'rgba(255,255,255,.4)'; }
+
+    // محاسبه اسلاید بعدی
+    cur = (cur + dir + slides.length) % slides.length;
+    _sliderState[id] = cur;
+
+    // نمایش اسلاید جدید
+    slides[cur].style.opacity = '1';
+    slides[cur].style.pointerEvents = 'auto';
+    if (dots[cur]) { dots[cur].style.width = '24px'; dots[cur].style.background = 'white'; }
+}
+
+function goToSlide(id, index) {
+    const slides = document.querySelectorAll(`.hero-slide[data-slider="${id}"]`);
+    const dots   = document.querySelectorAll(`.hero-dot[data-slider="${id}"]`);
+    if (!slides.length) return;
+
+    const cur = _sliderState[id] || 0;
+    slides[cur].style.opacity = '0';
+    slides[cur].style.pointerEvents = 'none';
+    if (dots[cur]) { dots[cur].style.width = '8px'; dots[cur].style.background = 'rgba(255,255,255,.4)'; }
+
+    _sliderState[id] = index;
+    slides[index].style.opacity = '1';
+    slides[index].style.pointerEvents = 'auto';
+    if (dots[index]) { dots[index].style.width = '24px'; dots[index].style.background = 'white'; }
+}
+
+// auto-play هر ۵ ثانیه
+document.querySelectorAll('[id^="hero-slider-"]').forEach(el => {
+    const id = el.id;
+    const slides = el.querySelectorAll('.hero-slide');
+    if (slides.length > 1) {
+        setInterval(() => slideHero(id, 1), 5000);
+    }
+});
+</script>
+
+<script>
+function subscribeNewsletter(e, blockId) {
+    e.preventDefault();
+    const form = document.getElementById('newsletter-form-' + blockId);
+    const msg = document.getElementById('newsletter-message-' + blockId);
+    const btn = form.querySelector('button[type=submit]');
+    const email = form.querySelector('input[name=email]').value;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-lg">refresh</span>';
+
+    fetch('{{ route("newsletter.subscribe") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'},
+        body: JSON.stringify({email})
+    })
+    .then(r => r.json())
+    .then(data => {
+        msg.textContent = data.message;
+        msg.classList.remove('hidden');
+        if (data.success) {
+            form.reset();
+            msg.style.color = '#86efac';
+        } else {
+            msg.style.color = '#fca5a5';
+        }
+    })
+    .catch(() => {
+        msg.textContent = 'خطا در ارسال. لطفاً دوباره تلاش کنید.';
+        msg.classList.remove('hidden');
+        msg.style.color = '#fca5a5';
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<span>عضویت</span><span class="material-symbols-outlined text-lg">arrow_left</span>';
+    });
+}
+</script>
+
+@push('styles')
+<style>
+/* Trust badges responsive */
+@media (max-width: 768px) {
+    .trust-badges-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 480px) {
+    .trust-badges-grid { grid-template-columns: 1fr !important; }
+}
+/* Stats responsive */
+@media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 480px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+/* Banner responsive */
+@media (max-width: 768px) {
+    .banner-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 480px) {
+    .banner-grid { grid-template-columns: 1fr !important; }
+}
+</style>
+@endpush
+
+@endpush
+
 @endsection
-
-

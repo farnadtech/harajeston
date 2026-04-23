@@ -28,30 +28,31 @@ class ListingController extends Controller
         // Check if any filter is applied
         $hasFilters = $request->has('category') || $request->has('tag') || 
                      $request->has('search') || $request->has('seller_id') || 
-                     $request->has('buy_now') || $request->has('sort');
+                     $request->has('buy_now') || $request->has('sort') ||
+                     $request->has('category_ids');
 
         // If no filters, show home page
         if (!$hasFilters) {
             $query = Listing::query();
             
             if ($showPendingListings) {
-                // نمایش حراجی‌های active و pending که تایید شده‌اند (approved_at دارند)
+                // نمایش حراجی‌های active، ended، completed و pending که تایید شده‌اند
                 $query->where(function($q) {
-                    $q->whereIn('status', ['active', 'suspended'])
+                    $q->whereIn('status', ['active', 'suspended', 'ended', 'completed'])
                       ->orWhere(function($q2) {
                           $q2->where('status', 'pending')->whereNotNull('approved_at');
                       });
                 });
             } else {
-                // نمایش active و suspended
-                $query->whereIn('status', ['active', 'suspended']);
+                // نمایش active، suspended، ended، completed
+                $query->whereIn('status', ['active', 'suspended', 'ended', 'completed']);
             }
             
             $listings = $query->with('seller', 'images')
                 ->withCount('bids')
                 ->orderBy('ends_at', 'asc')
-                ->paginate(20);
-            
+                ->get(); // همه رو می‌گیریم، فیلتر در view انجام میشه
+
             return view('listings.index', compact('listings'));
         }
 
@@ -71,26 +72,34 @@ class ListingController extends Controller
             $query->whereIn('status', ['active', 'completed', 'suspended']);
         }
 
-        // Filter by category
-        if ($request->has('category') && $request->category) {
+        // Filter by category (single slug یا multiple IDs)
+        if ($request->has('category_ids') && is_array($request->category_ids)) {
+            // چند دسته‌بندی با ID
+            $multiCatIds = array_map('intval', $request->category_ids);
+            $allCatIds = collect($multiCatIds);
+            foreach ($multiCatIds as $catId) {
+                $children = \App\Models\Category::where('parent_id', $catId)->pluck('id');
+                $allCatIds = $allCatIds->merge($children);
+                foreach ($children as $childId) {
+                    $grandChildren = \App\Models\Category::where('parent_id', $childId)->pluck('id');
+                    $allCatIds = $allCatIds->merge($grandChildren);
+                }
+            }
+            $query->whereIn('category_id', $allCatIds->unique()->values());
+        } elseif ($request->has('category') && $request->category) {
             $category = \App\Models\Category::where('slug', $request->category)->first();
             if ($category) {
                 // جمع‌آوری تمام ID های دسته و زیردسته‌ها (تا سطح 3)
                 $categoryIds = collect([$category->id]);
                 
-                // اگر دسته سطح 1 است، همه فرزندان سطح 2 و 3 را اضافه کن
                 if ($category->parent_id === null) {
                     $level2Children = $category->children()->pluck('id');
                     $categoryIds = $categoryIds->merge($level2Children);
-                    
-                    // برای هر فرزند سطح 2، فرزندان سطح 3 را هم اضافه کن
                     foreach ($level2Children as $level2Id) {
                         $level3Children = \App\Models\Category::where('parent_id', $level2Id)->pluck('id');
                         $categoryIds = $categoryIds->merge($level3Children);
                     }
-                }
-                // اگر دسته سطح 2 است، فرزندان سطح 3 را اضافه کن
-                elseif ($category->parent_id !== null && $category->children()->count() > 0) {
+                } elseif ($category->parent_id !== null && $category->children()->count() > 0) {
                     $level3Children = $category->children()->pluck('id');
                     $categoryIds = $categoryIds->merge($level3Children);
                 }
@@ -128,11 +137,30 @@ class ListingController extends Controller
             );
             
             // Get available attributes
-            $availableAttributes = [];
+            $availableAttributes = collect();
             if ($items->isNotEmpty()) {
-                $categoryIds = $items->pluck('category_id')->unique();
-                if ($categoryIds->count() === 1) {
-                    $availableAttributes = \App\Models\CategoryAttribute::where('category_id', $categoryIds->first())
+                $catIds = $items->pluck('category_id')->unique()->values()->toArray();
+                if (!empty($catIds)) {
+                    // همه ID های مرتبط: خود + والدها + فرزندها
+                    $allAttrCatIds = collect($catIds);
+                    foreach ($catIds as $cid) {
+                        $cat = \App\Models\Category::find($cid);
+                        if ($cat && $cat->parent_id) {
+                            $allAttrCatIds->push($cat->parent_id);
+                            $parent = \App\Models\Category::find($cat->parent_id);
+                            if ($parent && $parent->parent_id) {
+                                $allAttrCatIds->push($parent->parent_id);
+                            }
+                        }
+                        $children = \App\Models\Category::where('parent_id', $cid)->pluck('id');
+                        $allAttrCatIds = $allAttrCatIds->merge($children);
+                        foreach ($children as $childId) {
+                            $allAttrCatIds = $allAttrCatIds->merge(
+                                \App\Models\Category::where('parent_id', $childId)->pluck('id')
+                            );
+                        }
+                    }
+                    $availableAttributes = \App\Models\CategoryAttribute::whereIn('category_id', $allAttrCatIds->unique()->values()->toArray())
                         ->where('is_filterable', true)->orderBy('order')->get();
                 }
             }
@@ -186,11 +214,16 @@ class ListingController extends Controller
             }
         }
 
-        // Sorting - pending first (starting soon), then active (ending soon), then completed
+        // Sorting - active اول، بعد ended/completed، بعد بقیه
+        // آگهی‌های active که ends_at گذشته مثل ended رفتار می‌کنن
+        $activeFirst = "CASE 
+            WHEN status = 'active' AND (ends_at IS NULL OR ends_at > NOW()) THEN 0 
+            WHEN status IN ('ended','completed') OR (status = 'active' AND ends_at <= NOW()) THEN 1 
+            ELSE 2 
+        END";
         $sort = $request->get('sort', 'ending_soon');
         switch ($sort) {
             case 'starting_soon':
-                // حراجی‌های pending که زودتر شروع می‌شوند اول، بعد active که زودتر تمام می‌شوند
                 $query->orderByRaw("CASE 
                     WHEN status = 'pending' THEN 0 
                     WHEN status = 'active' THEN 1 
@@ -200,24 +233,26 @@ class ListingController extends Controller
                       ->orderBy('ends_at', 'asc');
                 break;
             case 'ending_soon':
-                $query->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
-                      ->orderBy('ends_at', 'asc');
-                break;
-            case 'price_low':
-                $query->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
-                      ->orderBy('starting_price', 'asc');
-                break;
-            case 'price_high':
-                $query->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
-                      ->orderBy('starting_price', 'desc');
+                $query->orderByRaw($activeFirst)->orderBy('ends_at', 'asc');
                 break;
             case 'newest':
-                $query->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
-                      ->orderBy('created_at', 'desc');
+                $query->orderByRaw($activeFirst)->orderBy('created_at', 'desc');
+                break;
+            case 'most_bids':
+                $query->orderByRaw($activeFirst)->orderBy('bids_count', 'desc');
+                break;
+            case 'highest_price':
+            case 'price_high':
+                $query->orderByRaw($activeFirst)
+                      ->orderByRaw('COALESCE((SELECT MAX(amount) FROM bids WHERE bids.listing_id = listings.id), starting_price) DESC');
+                break;
+            case 'lowest_price':
+            case 'price_low':
+                $query->orderByRaw($activeFirst)
+                      ->orderByRaw('COALESCE((SELECT MAX(amount) FROM bids WHERE bids.listing_id = listings.id), starting_price) ASC');
                 break;
             default:
-                $query->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
-                      ->orderBy('ends_at', 'asc');
+                $query->orderByRaw($activeFirst)->orderBy('ends_at', 'asc');
                 break;
         }
 
@@ -227,37 +262,53 @@ class ListingController extends Controller
             ->appends($request->except('page'));
 
         // Get available attributes for filtering
-        $availableAttributes = [];
-        if ($request->has('category') && $request->category && isset($category)) {
-            // If category is selected, get its attributes
-            $availableAttributes = \App\Models\CategoryAttribute::where('category_id', $category->id)
-                ->where('is_filterable', true)
-                ->orderBy('order')
-                ->get();
-        } elseif ($request->has('tag') && $request->tag && $listings->isNotEmpty()) {
-            // If tag is selected, get attributes from the most common category in results
-            $categoryIds = $listings->pluck('category_id')->unique();
-            if ($categoryIds->count() === 1) {
-                // All listings are from the same category, show its filters
-                $availableAttributes = \App\Models\CategoryAttribute::where('category_id', $categoryIds->first())
-                    ->where('is_filterable', true)
-                    ->orderBy('order')
-                    ->get();
-            } elseif ($categoryIds->count() > 1) {
-                // Multiple categories, find the most common one
-                $mostCommonCategoryId = $listings->groupBy('category_id')
-                    ->sortByDesc(function ($group) {
-                        return $group->count();
-                    })
-                    ->keys()
-                    ->first();
-                
-                if ($mostCommonCategoryId) {
-                    $availableAttributes = \App\Models\CategoryAttribute::where('category_id', $mostCommonCategoryId)
-                        ->where('is_filterable', true)
-                        ->orderBy('order')
-                        ->get();
+        $availableAttributes = collect();
+
+        // تابع کمکی برای گرفتن همه ID های مرتبط (خود + والدها + فرزندها)
+        $getAllRelatedCatIds = function(array $ids) {
+            $all = collect($ids);
+            foreach ($ids as $id) {
+                // والدها
+                $cat = \App\Models\Category::find($id);
+                if ($cat && $cat->parent_id) {
+                    $all->push($cat->parent_id);
+                    $parent = \App\Models\Category::find($cat->parent_id);
+                    if ($parent && $parent->parent_id) {
+                        $all->push($parent->parent_id);
+                    }
                 }
+                // فرزندها
+                $children = \App\Models\Category::where('parent_id', $id)->pluck('id')->toArray();
+                $all = $all->merge($children);
+                foreach ($children as $childId) {
+                    $grandChildren = \App\Models\Category::where('parent_id', $childId)->pluck('id')->toArray();
+                    $all = $all->merge($grandChildren);
+                }
+            }
+            return $all->unique()->values()->toArray();
+        };
+
+        // تابع کمکی برای گرفتن فقط زیردسته‌ها (بدون والد)
+        $getAllCatIds = function(array $ids) use ($getAllRelatedCatIds) {
+            return $getAllRelatedCatIds($ids);
+        };
+
+        if ($request->has('category_ids') && is_array($request->category_ids)) {
+            $multiCatIds = array_map('intval', $request->category_ids);
+            $allIds = $getAllRelatedCatIds($multiCatIds);
+            $availableAttributes = \App\Models\CategoryAttribute::whereIn('category_id', $allIds)
+                ->where('is_filterable', true)->orderBy('order')->get();
+        } elseif ($request->has('category') && $request->category && isset($category)) {
+            $allIds = $getAllRelatedCatIds([$category->id]);
+            $availableAttributes = \App\Models\CategoryAttribute::whereIn('category_id', $allIds)
+                ->where('is_filterable', true)->orderBy('order')->get();
+        } elseif ($listings->isNotEmpty()) {
+            $listingItems = method_exists($listings, 'getCollection') ? $listings->getCollection() : $listings;
+            $catIds = $listingItems->pluck('category_id')->unique()->values()->toArray();
+            if (!empty($catIds)) {
+                $allIds = $getAllRelatedCatIds($catIds);
+                $availableAttributes = \App\Models\CategoryAttribute::whereIn('category_id', $allIds)
+                    ->where('is_filterable', true)->orderBy('order')->get();
             }
         }
 
@@ -349,7 +400,7 @@ class ListingController extends Controller
         // Get listings with user's bid info
         $listings = $query->with(['category', 'images', 'seller'])
             ->withCount('bids')
-            ->orderBy('ends_at', 'asc')
+            ->orderByDesc('created_at')
             ->paginate(20)
             ->appends($request->except('page'));
 
@@ -369,7 +420,11 @@ class ListingController extends Controller
      */
     public function create()
     {
-        // بررسی نقش فروشنده
+        // بررسی احراز هویت
+        if (!auth()->user()->isVerified()) {
+            return redirect()->route('dashboard')
+                ->with('error', 'برای ایجاد حراجی باید ابتدا شماره تلفن یا ایمیل خود را تایید کنید.');
+        }
         if (!auth()->user()->isSeller()) {
             return redirect()->route('dashboard')
                 ->with('error', 'فقط فروشندگان می‌توانند حراجی ایجاد کنند.');
@@ -540,6 +595,12 @@ class ListingController extends Controller
      */
     public function participate(ParticipateAuctionRequest $request, Listing $listing)
     {
+        // بررسی احراز هویت
+        if (!auth()->user()->isVerified()) {
+            return redirect()->route('listings.show', $listing)
+                ->with('error', 'برای شرکت در حراجی باید ابتدا شماره تلفن یا ایمیل خود را تایید کنید. به داشبورد خود مراجعه کنید.');
+        }
+
         // Check if this is a buy now request
         if ($request->has('buy_now') && $request->buy_now == 1) {
             // Validate buy now is available
@@ -601,9 +662,10 @@ class ListingController extends Controller
                             throw new \Exception('موجودی کیف پول شما برای خرید فوری کافی نیست. مبلغ مورد نیاز: ' . number_format($amountToPay) . ' تومان (اختلاف قیمت خرید فوری + هزینه ارسال و سپرده بلاک شده)');
                         }
                         
-                        // Unfreeze the deposit first
-                        $wallet->frozen -= $depositAmount;
-                        $wallet->balance += $depositAmount;
+                        // Unfreeze the deposit first - safe check
+                        $actualFrozen = min($depositAmount, max(0, $wallet->frozen));
+                        $wallet->frozen -= $actualFrozen;
+                        $wallet->balance += $actualFrozen;
                         
                         // Now freeze the full amount (buy_now + shipping)
                         $wallet->balance -= $totalAmount;

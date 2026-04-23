@@ -163,12 +163,21 @@
 </head>
 <body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex overflow-hidden">
     <!-- Sidebar -->
-    <aside class="w-64 bg-white border-l border-gray-200 hidden lg:flex flex-col h-screen fixed right-0 top-0 z-30">
+    <aside class="w-64 border-l border-gray-200 hidden lg:flex flex-col h-screen fixed right-0 top-0 z-30" style="background:<?php echo e(\App\Models\SiteSetting::get('theme_dashboard_sidebar_bg', '#ffffff')); ?>;">
         <div class="h-20 flex items-center gap-3 px-6 border-b border-gray-100">
-            <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-2xl">gavel</span>
-            </div>
-            <h1 class="text-xl font-black tracking-tight text-[#0d121b]">پرشین<span class="text-primary">آدمین</span></h1>
+            <?php
+                $adLogo = \App\Models\SiteSetting::get('theme_dashboard_logo', '');
+                $adText = \App\Models\SiteSetting::get('theme_dashboard_logo_text', 'پرشینآدمین');
+                $adIcon = \App\Models\SiteSetting::get('theme_dashboard_logo_icon', 'gavel');
+            ?>
+            <?php if($adLogo): ?>
+                <img src="<?php echo e(url('storage/'.$adLogo)); ?>" class="h-10 w-auto object-contain" alt="<?php echo e($adText); ?>">
+            <?php else: ?>
+                <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-2xl"><?php echo e($adIcon); ?></span>
+                </div>
+            <?php endif; ?>
+            <h1 class="text-xl font-black tracking-tight text-[#0d121b]"><?php echo e($adText); ?></h1>
         </div>
         
         <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1">
@@ -273,6 +282,21 @@
             <a class="flex items-center gap-3 px-4 py-3 <?php echo e(request()->routeIs('admin.settings.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50'); ?> rounded-xl font-<?php echo e(request()->routeIs('admin.settings.*') ? 'bold' : 'medium'); ?> transition-colors group" href="<?php echo e(route('admin.settings.index')); ?>">
                 <span class="material-symbols-outlined group-hover:text-primary transition-colors">settings</span>
                 <span>تنظیمات سایت</span>
+            </a>
+
+            <a class="flex items-center gap-3 px-4 py-3 <?php echo e(request()->routeIs('admin.homepage.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50'); ?> rounded-xl font-<?php echo e(request()->routeIs('admin.homepage.*') ? 'bold' : 'medium'); ?> transition-colors group" href="<?php echo e(route('admin.homepage.index')); ?>">
+                <span class="material-symbols-outlined group-hover:text-primary transition-colors">dashboard_customize</span>
+                <span>طراحی صفحه اصلی</span>
+            </a>
+
+            <a class="flex items-center gap-3 px-4 py-3 <?php echo e(request()->routeIs('admin.theme.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50'); ?> rounded-xl font-<?php echo e(request()->routeIs('admin.theme.*') ? 'bold' : 'medium'); ?> transition-colors group" href="<?php echo e(route('admin.theme.index')); ?>">
+                <span class="material-symbols-outlined group-hover:text-primary transition-colors">style</span>
+                <span>هدر و فوتر</span>
+            </a>
+
+            <a class="flex items-center gap-3 px-4 py-3 <?php echo e(request()->routeIs('admin.newsletter.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50'); ?> rounded-xl font-<?php echo e(request()->routeIs('admin.newsletter.*') ? 'bold' : 'medium'); ?> transition-colors group" href="<?php echo e(route('admin.newsletter.index')); ?>">
+                <span class="material-symbols-outlined group-hover:text-primary transition-colors">mail</span>
+                <span>خبرنامه</span>
             </a>
         </nav>
         

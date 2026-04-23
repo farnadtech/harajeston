@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\{
 */
 
 Route::get('/', [ListingController::class, 'index'])->name('home');
+Route::get('/categories', [\App\Http\Controllers\CategoryPageController::class, 'index'])->name('categories.index');
 
 // Authentication Routes
 Route::get('/login', function () { return view('auth.login'); })->name('login');
@@ -152,6 +153,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{order}/review', [\App\Http\Controllers\SellerReviewController::class, 'create'])->name('seller-reviews.create');
     Route::post('/orders/{order}/review', [\App\Http\Controllers\SellerReviewController::class, 'store'])->name('seller-reviews.store');
     
+    // Email Verification
+    Route::post('/email/verify/send', [\App\Http\Controllers\Auth\EmailVerificationController::class, 'send'])->name('email.verify.send');
+    Route::post('/email/verify', [\App\Http\Controllers\Auth\EmailVerificationController::class, 'verify'])->name('email.verify');
+
+    // Phone Verification (AJAX)
+    Route::post('/phone/verify/send', [\App\Http\Controllers\Auth\PhoneVerificationController::class, 'send'])->name('phone.verify.send');
+    Route::post('/phone/verify', [\App\Http\Controllers\Auth\PhoneVerificationController::class, 'verify'])->name('phone.verify');
+
     // Tickets
     Route::get('/tickets', [\App\Http\Controllers\TicketController::class, 'index'])->name('tickets.index');
     Route::get('/tickets/create', [\App\Http\Controllers\TicketController::class, 'create'])->name('tickets.create');
@@ -175,6 +184,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/deposit', [SettingsController::class, 'updateDeposit'])->name('admin.settings.deposit.update');
         Route::put('/settings/commission', [SettingsController::class, 'updateCommission'])->name('admin.settings.commission.update');
         Route::put('/settings/seller', [SettingsController::class, 'updateSeller'])->name('admin.settings.seller.update');
+        Route::put('/settings/verification', [SettingsController::class, 'updateVerification'])->name('admin.settings.verification.update');
         Route::put('/settings/auction-duration', [SettingsController::class, 'updateAuctionDuration'])->name('admin.settings.auction-duration.update');
         Route::put('/settings/wallet', [SettingsController::class, 'updateWallet'])->name('admin.settings.wallet.update');
         Route::put('/settings/cancellation-penalty', [SettingsController::class, 'updateCancellationPenalty'])->name('admin.settings.cancellation-penalty.update');
@@ -309,5 +319,28 @@ Route::middleware('auth')->group(function () {
         Route::put('/orders/{order}/shipping', [\App\Http\Controllers\Admin\OrderController::class, 'updateShipping'])->name('admin.orders.updateShipping');
         Route::post('/shipping-methods/{shippingMethod}/toggle', [ShippingMethodController::class, 'toggle'])->name('admin.shipping-methods.toggle');
         Route::resource('orders', AdminOrderController::class, ['as' => 'admin'])->only(['index', 'show']);
+
+        // Homepage Builder
+        Route::get('/homepage', [\App\Http\Controllers\Admin\HomepageController::class, 'index'])->name('admin.homepage.index');
+        Route::post('/homepage/blocks', [\App\Http\Controllers\Admin\HomepageController::class, 'saveBlocks'])->name('admin.homepage.blocks.save');
+        Route::post('/homepage/blocks/add', [\App\Http\Controllers\Admin\HomepageController::class, 'addBlock'])->name('admin.homepage.blocks.add');
+        Route::delete('/homepage/blocks/{blockId}', [\App\Http\Controllers\Admin\HomepageController::class, 'deleteBlock'])->name('admin.homepage.blocks.delete');
+        Route::post('/homepage/blocks/{blockId}', [\App\Http\Controllers\Admin\HomepageController::class, 'updateBlock'])->name('admin.homepage.blocks.update');
+        Route::post('/homepage/blocks/{blockId}/upload', [\App\Http\Controllers\Admin\HomepageController::class, 'uploadBlockImage'])->name('admin.homepage.blocks.upload');
+        Route::post('/homepage/card-style', [\App\Http\Controllers\Admin\HomepageController::class, 'updateCardStyle'])->name('admin.homepage.card-style');
+
+        // Newsletter
+        Route::get('/newsletter', [\App\Http\Controllers\Admin\NewsletterController::class, 'index'])->name('admin.newsletter.index');
+        Route::delete('/newsletter/{subscriber}', [\App\Http\Controllers\Admin\NewsletterController::class, 'destroy'])->name('admin.newsletter.destroy');
+        Route::post('/newsletter/{subscriber}/toggle', [\App\Http\Controllers\Admin\NewsletterController::class, 'toggleStatus'])->name('admin.newsletter.toggle');
+        Route::post('/newsletter/send', [\App\Http\Controllers\Admin\NewsletterController::class, 'sendEmail'])->name('admin.newsletter.send');
+
+        // Theme / Header & Footer
+        Route::get('/theme', [\App\Http\Controllers\Admin\ThemeController::class, 'index'])->name('admin.theme.index');
+        Route::post('/theme', [\App\Http\Controllers\Admin\ThemeController::class, 'save'])->name('admin.theme.save');
     });
 });
+
+// Newsletter public routes
+Route::post('/newsletter/subscribe', [\App\Http\Controllers\NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
+Route::get('/newsletter/unsubscribe/{token}', [\App\Http\Controllers\NewsletterController::class, 'unsubscribe'])->name('newsletter.unsubscribe');

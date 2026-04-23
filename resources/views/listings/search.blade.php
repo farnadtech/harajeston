@@ -13,7 +13,6 @@
                     فیلترها
                 </h2>
 
-                @if(!empty($availableAttributes) && $availableAttributes->count() > 0)
                 <form method="GET" action="{{ route('listings.index') }}" class="space-y-4">
                     <!-- حفظ پارامترهای موجود -->
                     @if(request('category'))
@@ -25,7 +24,16 @@
                     @if(request('tag'))
                         <input type="hidden" name="tag" value="{{ request('tag') }}">
                     @endif
+                    @if(request('sort'))
+                        <input type="hidden" name="sort" value="{{ request('sort') }}">
+                    @endif
+                    @if(request('category_ids') && is_array(request('category_ids')))
+                        @foreach(request('category_ids') as $cid)
+                            <input type="hidden" name="category_ids[]" value="{{ $cid }}">
+                        @endforeach
+                    @endif
 
+                    @if(!empty($availableAttributes) && $availableAttributes->count() > 0)
                     @foreach($availableAttributes as $attribute)
                     <div class="border-b border-gray-100 pb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">{{ $attribute->name }}</label>
@@ -58,12 +66,12 @@
                         @endif
                     </div>
                     @endforeach
+                    @endif
 
                     <button type="submit" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors font-medium">
                         اعمال فیلترها
                     </button>
                 </form>
-                @endif
 
                 @if(request()->hasAny(['category', 'tag', 'search', 'attr']))
                 @php
@@ -100,6 +108,11 @@
                                     $categoryObj = \App\Models\Category::where('slug', request('category'))->first();
                                 @endphp
                                 دسته‌بندی: <span class="text-primary">{{ $categoryObj ? $categoryObj->name : request('category') }}</span>
+                            @elseif(request('category_ids') && is_array(request('category_ids')))
+                                @php
+                                    $catNames = \App\Models\Category::whereIn('id', request('category_ids'))->pluck('name')->implode('، ');
+                                @endphp
+                                دسته‌بندی‌ها: <span class="text-primary">{{ $catNames }}</span>
                             @else
                                 همه مزایده‌ها
                             @endif
@@ -112,21 +125,33 @@
                     <!-- Sort Options -->
                     <div class="flex items-center gap-3">
                         <span class="text-sm text-gray-600 font-medium">مرتب‌سازی:</span>
+                        @php
+                            $currentSort = request('sort', 'ending_soon');
+                            // normalize - highest_price = price_high, lowest_price = price_low
+                            $normalizedSort = match($currentSort) {
+                                'highest_price' => 'price_high',
+                                'lowest_price'  => 'price_low',
+                                default         => $currentSort,
+                            };
+                        @endphp
                         <select onchange="window.location.href=this.value" class="border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary">
-                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'starting_soon']) }}" {{ request('sort') == 'starting_soon' ? 'selected' : '' }}>
+                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'starting_soon']) }}" {{ $normalizedSort == 'starting_soon' ? 'selected' : '' }}>
                                 زودتر شروع می‌شود
                             </option>
-                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'ending_soon']) }}" {{ request('sort') == 'ending_soon' || !request('sort') ? 'selected' : '' }}>
+                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'ending_soon']) }}" {{ $normalizedSort == 'ending_soon' || !request('sort') ? 'selected' : '' }}>
                                 زودتر به پایان می‌رسد
                             </option>
-                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'newest']) }}" {{ request('sort') == 'newest' ? 'selected' : '' }}>
+                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'newest']) }}" {{ $normalizedSort == 'newest' ? 'selected' : '' }}>
                                 جدیدترین
                             </option>
-                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'price_low']) }}" {{ request('sort') == 'price_low' ? 'selected' : '' }}>
-                                ارزان‌ترین
+                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'most_bids']) }}" {{ $normalizedSort == 'most_bids' ? 'selected' : '' }}>
+                                بیشترین پیشنهاد
                             </option>
-                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'price_high']) }}" {{ request('sort') == 'price_high' ? 'selected' : '' }}>
-                                گران‌ترین
+                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'price_high']) }}" {{ $normalizedSort == 'price_high' ? 'selected' : '' }}>
+                                بالاترین قیمت
+                            </option>
+                            <option value="{{ request()->fullUrlWithQuery(['sort' => 'price_low']) }}" {{ $normalizedSort == 'price_low' ? 'selected' : '' }}>
+                                پایین‌ترین قیمت
                             </option>
                         </select>
                     </div>

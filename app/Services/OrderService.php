@@ -420,11 +420,12 @@ class OrderService
             }
 
             // Unfreeze buyer's money and refund
-            $buyerWallet = $order->buyer->wallet;
+            $buyerWallet = \App\Models\Wallet::where('user_id', $order->buyer_id)->lockForUpdate()->first();
             $frozenAmount = $order->total;
+            $actualFrozen = min($frozenAmount, max(0, $buyerWallet->frozen));
             
-            $buyerWallet->frozen -= $frozenAmount;
-            $buyerWallet->balance += $frozenAmount;
+            $buyerWallet->frozen = max(0, $buyerWallet->frozen - $actualFrozen);
+            $buyerWallet->balance += $actualFrozen;
             $buyerWallet->save();
 
             \App\Models\WalletTransaction::create([

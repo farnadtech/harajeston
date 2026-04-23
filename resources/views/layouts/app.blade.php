@@ -101,21 +101,39 @@
     @stack('styles')
 </head>
 <body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex flex-col">
+    @php
+        $thBg     = \App\Models\SiteSetting::get('theme_header_bg', '#ffffff');
+        $thHeight = \App\Models\SiteSetting::get('theme_header_height', '80');
+        $thSticky = \App\Models\SiteSetting::get('theme_header_sticky', '1');
+        $thLogo   = \App\Models\SiteSetting::get('theme_header_logo', '');
+        $thText   = \App\Models\SiteSetting::get('theme_header_logo_text', 'پرشینآکشن');
+        $thIcon   = \App\Models\SiteSetting::get('theme_header_logo_icon', 'gavel');
+        $thLogoSz = max(20, (int)\App\Models\SiteSetting::get('theme_header_logo_size', '40'));
+        $thSearch = \App\Models\SiteSetting::get('theme_header_show_search', '1');
+        $thCats   = \App\Models\SiteSetting::get('theme_header_show_cats', '1');
+        $thNavRaw = \App\Models\SiteSetting::get('theme_header_nav_links', '[]');
+        $thNav    = is_array($thNavRaw) ? $thNavRaw : (json_decode($thNavRaw, true) ?? []);
+    @endphp
     <!-- Sticky Header -->
-    <header class="sticky top-0 z-50 bg-white border-b border-[#e7ebf3] shadow-sm">
+    <header class="{{ $thSticky ? 'sticky top-0' : '' }} z-50 border-b border-[#e7ebf3] shadow-sm" style="background:{{ $thBg }};">
         <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-20 gap-4">
+            <div class="flex items-center justify-between gap-4" style="height:{{ $thHeight }}px;">
                 <!-- Right Side: Logo -->
                 <div class="flex items-center gap-3 shrink-0">
                     <a href="{{ route('listings.index') }}" class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                            <span class="material-symbols-outlined text-2xl">gavel</span>
-                        </div>
-                        <h1 class="text-2xl font-black tracking-tight text-[#0d121b]">پرشین<span class="text-primary">آکشن</span></h1>
+                        @if($thLogo)
+                            <img src="{{ url('storage/'.$thLogo) }}" style="height:{{ $thLogoSz }}px;width:auto;object-fit:contain;" alt="{{ $thText }}">
+                        @else
+                            <div style="width:{{ $thLogoSz }}px;height:{{ $thLogoSz }}px;" class="bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                                <span class="material-symbols-outlined" style="font-size:{{ round($thLogoSz*0.6) }}px;">{{ $thIcon }}</span>
+                            </div>
+                        @endif
+                        <h1 class="text-2xl font-black tracking-tight text-[#0d121b]">{{ $thText }}</h1>
                     </a>
                 </div>
                 
                 <!-- Center: Search Bar (Hidden on mobile, visible on desktop) -->
+                @if($thSearch)
                 <div class="hidden md:flex flex-1 max-w-2xl px-8">
                     <div class="relative w-full group">
                         <form method="GET" action="{{ route('listings.index') }}" class="relative w-full" id="searchForm">
@@ -139,6 +157,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
                 
                 <script>
                     document.addEventListener('DOMContentLoaded', function() {
@@ -501,18 +520,27 @@
         </div>
         
         <!-- Mega Menu (Categories) -->
+        @if($thCats || count($thNav) > 0)
         <div class="border-t border-[#e7ebf3] bg-white hidden md:block">
             <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
                 <nav class="flex items-center gap-4 h-12">
-                    <x-category-megamenu />
-                    
+                    @if($thCats)<x-category-megamenu />@endif
+                    @foreach($thNav as $navLink)
+                    <a href="{{ $navLink['url'] ?? '#' }}" class="flex items-center gap-1 text-sm text-gray-600 hover:text-primary transition-colors px-2 h-full whitespace-nowrap">
+                        @if(!empty($navLink['icon']))<span class="material-symbols-outlined text-base">{{ $navLink['icon'] }}</span>@endif
+                        {{ $navLink['label'] ?? '' }}
+                    </a>
+                    @endforeach
+                    @if($thCats)
                     <a class="text-red-500 hover:bg-red-50 whitespace-nowrap h-full flex items-center gap-1 px-4 rounded-lg transition-colors mr-auto" href="{{ route('listings.index', ['special' => 'discount']) }}">
                         <span class="material-symbols-outlined text-[18px]">local_offer</span>
                         <span>تخفیف‌های ویژه</span>
                     </a>
+                    @endif
                 </nav>
             </div>
         </div>
+        @endif
     </header>
 
     <main class="flex-grow">
@@ -520,71 +548,134 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t border-[#e7ebf3] pt-12 pb-8 mt-auto">
-        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-                <div>
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-                            <span class="material-symbols-outlined">gavel</span>
-                        </div>
-                        <h2 class="text-xl font-black text-[#0d121b]">پرشین<span class="text-primary">آکشن</span></h2>
-                    </div>
-                    <p class="text-sm text-gray-500 leading-relaxed mb-4">اولین و بزرگترین پلتفرم برگزاری مزایدات آنلاین در ایران. با ما تجربه‌ای امن و هیجان‌انگیز از خرید و فروش کالاهای خاص داشته باشید.</p>
-                    <div class="flex gap-3">
-                        <a class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-primary hover:text-white transition-colors" href="#">
-                            <i class="material-symbols-outlined text-sm">alternate_email</i>
-                        </a>
-                        <a class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-primary hover:text-white transition-colors" href="#">
-                            <i class="material-symbols-outlined text-sm">public</i>
-                        </a>
-                    </div>
-                </div>
-                
-                <div>
-                    <h3 class="font-bold text-gray-900 mb-4">دسترسی سریع</h3>
-                    <ul class="space-y-2 text-sm text-gray-600">
-                        <li><a class="hover:text-primary transition-colors" href="{{ route('listings.index') }}">خانه</a></li>
-                        <li><a class="hover:text-primary transition-colors" href="{{ route('listings.index', ['type' => 'auction']) }}">مزایده‌های جاری</a></li>
-                        <li><a class="hover:text-primary transition-colors" href="{{ route('listings.index', ['type' => 'direct_sale']) }}">فروش مستقیم</a></li>
-                        @auth
-                            <li><a class="hover:text-primary transition-colors" href="{{ route('dashboard') }}">داشبورد</a></li>
+    @php
+        $tfShow   = \App\Models\SiteSetting::get('theme_footer_show', '1');
+        $tfBg     = \App\Models\SiteSetting::get('theme_footer_bg', '#ffffff');
+        $tfColor  = \App\Models\SiteSetting::get('theme_footer_text_color', '#6b7280');
+        $tfLogo   = \App\Models\SiteSetting::get('theme_footer_logo', '');
+        $tfText   = \App\Models\SiteSetting::get('theme_footer_logo_text', 'پرشینآکشن');
+        $tfIcon   = \App\Models\SiteSetting::get('theme_footer_logo_icon', 'gavel');
+        $tfLogoSz = max(16, (int)\App\Models\SiteSetting::get('theme_footer_logo_size', '32'));
+        $tfDesc   = \App\Models\SiteSetting::get('theme_footer_description', 'اولین و بزرگترین پلتفرم برگزاری مزایدات آنلاین در ایران.');
+        $tfCopy   = \App\Models\SiteSetting::get('theme_footer_copyright', 'تمامی حقوق این وبسایت محفوظ است © ۱۴۰۳');
+        $tfPrivTxt= \App\Models\SiteSetting::get('theme_footer_privacy_text', 'حریم خصوصی');
+        $tfPrivUrl= \App\Models\SiteSetting::get('theme_footer_privacy_url', '#');
+        $tfTrmTxt = \App\Models\SiteSetting::get('theme_footer_terms_text', 'شرایط استفاده');
+        $tfTrmUrl = \App\Models\SiteSetting::get('theme_footer_terms_url', '#');
+        $tfBtmRaw = \App\Models\SiteSetting::get('theme_footer_bottom_links', '[]');
+        $tfBtmLinks = is_array($tfBtmRaw) ? $tfBtmRaw : (json_decode($tfBtmRaw, true) ?? []);
+        if (empty($tfBtmLinks)) {
+            $tfBtmLinks = [
+                ['label' => $tfPrivTxt, 'url' => $tfPrivUrl],
+                ['label' => $tfTrmTxt, 'url' => $tfTrmUrl],
+            ];
+        }
+        $tfTrustHtml = \App\Models\SiteSetting::get('theme_footer_trust_html', '');
+        $tfTrustImg  = \App\Models\SiteSetting::get('theme_footer_trust_image', '');
+        $tfColsRaw= \App\Models\SiteSetting::get('theme_footer_columns', '[]');
+        $tfCols   = is_array($tfColsRaw) ? $tfColsRaw : (json_decode($tfColsRaw, true) ?? []);
+        $tfSocRaw = \App\Models\SiteSetting::get('theme_footer_social', '[]');
+        $tfSoc    = is_array($tfSocRaw) ? $tfSocRaw : (json_decode($tfSocRaw, true) ?? []);
+    @endphp
+    @if($tfShow)
+    <footer class="mt-auto" style="background:{{ $tfBg }};">
+
+        {{-- Top section with gradient separator --}}
+        <div class="h-px w-full" style="background:linear-gradient(to left, transparent, rgba(59,130,246,0.3), transparent);"></div>
+
+        {{-- Main content --}}
+        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-10">
+
+                {{-- Brand column - wider --}}
+                <div class="md:col-span-4">
+                    <a href="{{ route('listings.index') }}" class="inline-flex items-center gap-3 mb-5 group">
+                        @if($tfLogo)
+                            <img src="{{ url('storage/'.$tfLogo) }}" style="height:{{ $tfLogoSz }}px;width:auto;object-fit:contain;" alt="{{ $tfText }}">
                         @else
-                            <li><a class="hover:text-primary transition-colors" href="{{ route('login') }}">ورود / ثبت نام</a></li>
-                        @endauth
-                    </ul>
-                </div>
-                
-                <div>
-                    <h3 class="font-bold text-gray-900 mb-4">راهنمای مشتریان</h3>
-                    <ul class="space-y-2 text-sm text-gray-600">
-                        <li><a class="hover:text-primary transition-colors" href="#">قوانین و مقررات</a></li>
-                        <li><a class="hover:text-primary transition-colors" href="#">رویه‌های ارسال سفارش</a></li>
-                        <li><a class="hover:text-primary transition-colors" href="#">شیوه‌های پرداخت</a></li>
-                        <li><a class="hover:text-primary transition-colors" href="#">پاسخ به پرسش‌های متداول</a></li>
-                    </ul>
-                </div>
-                
-                <div>
-                    <h3 class="font-bold text-gray-900 mb-4">نماد اعتماد</h3>
-                    <div class="bg-gray-50 p-4 rounded-xl border border-dashed border-gray-200 text-center">
-                        <p class="text-xs text-gray-400 mb-2">محل قرارگیری نماد اعتماد الکترونیک</p>
-                        <div class="w-16 h-16 bg-gray-200 rounded-lg mx-auto flex items-center justify-center">
-                            <span class="material-symbols-outlined text-gray-400">verified</span>
-                        </div>
+                            <div style="width:{{ $tfLogoSz }}px;height:{{ $tfLogoSz }}px;" class="bg-primary/10 rounded-2xl flex items-center justify-center text-primary flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                                <span class="material-symbols-outlined" style="font-size:{{ round($tfLogoSz*0.6) }}px;">{{ $tfIcon }}</span>
+                            </div>
+                        @endif
+                        <span class="text-2xl font-black text-gray-900">{{ $tfText }}</span>
+                    </a>
+                    <p class="text-sm leading-7 mb-6 max-w-xs" style="color:{{ $tfColor }};">{{ $tfDesc }}</p>
+
+                    {{-- Social links --}}
+                    @if(count($tfSoc) > 0)
+                    <div class="flex gap-2">
+                        @foreach($tfSoc as $soc)
+                        <a href="{{ $soc['url'] ?? '#' }}" target="_blank" rel="noopener"
+                           class="w-10 h-10 rounded-2xl border flex items-center justify-center transition-all duration-200 hover:border-primary hover:text-primary hover:bg-primary/5"
+                           style="border-color:rgba(0,0,0,0.1); color:{{ $tfColor }};">
+                            <span class="material-symbols-outlined text-lg">{{ $soc['icon'] ?? 'link' }}</span>
+                        </a>
+                        @endforeach
                     </div>
+                    @endif
                 </div>
+
+                {{-- Links columns --}}
+                <div class="md:col-span-{{ ($tfTrustHtml || $tfTrustImg) ? '5' : '8' }} grid grid-cols-2 {{ count($tfCols) > 0 ? 'sm:grid-cols-'.min(count($tfCols)+1, 3) : '' }} gap-8">
+
+                    {{-- Default quick links --}}
+                    <div>
+                        <h5 class="font-bold text-gray-900 mb-5 text-sm">دسترسی سریع</h5>
+                        <ul class="space-y-3">
+                            <li><a href="{{ route('listings.index') }}" class="text-sm hover:text-primary transition-colors" style="color:{{ $tfColor }};">خانه</a></li>
+                            <li><a href="{{ route('listings.index') }}" class="text-sm hover:text-primary transition-colors" style="color:{{ $tfColor }};">مزایده‌ها</a></li>
+                            @auth
+                            <li><a href="{{ route('dashboard') }}" class="text-sm hover:text-primary transition-colors" style="color:{{ $tfColor }};">داشبورد</a></li>
+                            @else
+                            <li><a href="{{ route('login') }}" class="text-sm hover:text-primary transition-colors" style="color:{{ $tfColor }};">ورود / ثبت نام</a></li>
+                            @endauth
+                        </ul>
+                    </div>
+
+                    {{-- Custom columns --}}
+                    @foreach($tfCols as $col)
+                    <div>
+                        <h5 class="font-bold text-gray-900 mb-5 text-sm">{{ $col['title'] ?? '' }}</h5>
+                        <ul class="space-y-3">
+                            @foreach($col['links'] ?? [] as $link)
+                            <li><a href="{{ $link['url'] ?? '#' }}" class="text-sm hover:text-primary transition-colors" style="color:{{ $tfColor }};">{{ $link['label'] ?? '' }}</a></li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @endforeach
+                </div>
+
+                {{-- Trust Badge --}}
+                @if($tfTrustHtml || $tfTrustImg)
+                <div class="md:col-span-3">
+                    <h5 class="font-bold text-gray-900 mb-5 text-sm">نماد اعتماد</h5>
+                    @if($tfTrustHtml)
+                        <div>{!! $tfTrustHtml !!}</div>
+                    @elseif($tfTrustImg)
+                        <img src="{{ url('storage/'.$tfTrustImg) }}" class="max-w-full h-auto max-h-32 object-contain" alt="نماد اعتماد">
+                    @endif
+                </div>
+                @endif
+
             </div>
-            
-            <div class="border-t border-gray-100 pt-6 text-center text-sm text-gray-500 flex flex-col md:flex-row justify-between items-center gap-4">
-                <p>تمامی حقوق این وبسایت محفوظ است © ۱۴۰۳</p>
-                <div class="flex gap-6">
-                    <a class="hover:text-gray-900" href="#">حریم خصوصی</a>
-                    <a class="hover:text-gray-900" href="#">شرایط استفاده</a>
+        </div>
+
+        {{-- Bottom bar --}}
+        <div style="border-top:1px solid rgba(0,0,0,0.06);">
+            <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p class="text-xs" style="color:{{ $tfColor }};">{{ $tfCopy }}</p>
+                @if(count($tfBtmLinks) > 0)
+                <div class="flex items-center gap-1">
+                    @foreach($tfBtmLinks as $i => $bl)
+                    @if($i > 0)<span class="text-gray-300 text-xs">·</span>@endif
+                    <a href="{{ $bl['url'] ?? '#' }}" class="text-xs hover:text-primary transition-colors px-1" style="color:{{ $tfColor }};">{{ $bl['label'] ?? '' }}</a>
+                    @endforeach
                 </div>
+                @endif
             </div>
         </div>
     </footer>
+    @endif
 
     @livewireScripts
     <script defer src="/haraj/public/js/alpine.min.js"></script>

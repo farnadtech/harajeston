@@ -172,12 +172,14 @@ class OtpController extends Controller
         }
 
         $user = User::create([
-            'name'          => $validated['name'],
-            'phone'         => $validated['phone'],
-            'email'         => $validated['email'],
-            'password'      => bcrypt($validated['password']),
-            'role'          => 'buyer',
-            'seller_status' => 'none',
+            'name'               => $validated['name'],
+            'phone'              => $validated['phone'],
+            'email'              => $validated['email'],
+            'password'           => bcrypt($validated['password']),
+            'role'               => 'buyer',
+            'seller_status'      => 'none',
+            // شماره تلفن با OTP تایید شده
+            'phone_verified_at'  => now(),
         ]);
 
         Wallet::create([

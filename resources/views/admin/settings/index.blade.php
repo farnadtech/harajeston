@@ -151,6 +151,37 @@
             </form>
         </div>
 
+        <!-- تنظیمات احراز هویت کاربران -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">احراز هویت کاربران</h2>
+
+            <form action="{{ route('admin.settings.verification.update') }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="mb-6">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox"
+                               name="require_user_verification"
+                               value="1"
+                               {{ \App\Models\SiteSetting::get('require_user_verification', true) ? 'checked' : '' }}
+                               class="ml-2 w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                        <div>
+                            <span class="font-bold text-gray-700">الزام احراز هویت برای کاربران</span>
+                            <p class="text-sm text-gray-600 mt-1">
+                                اگر فعال باشد، کاربران باید قبل از شرکت در حراجی یا ایجاد آگهی، شماره تلفن یا ایمیل خود را تایید کنند.
+                                در صورت غیرفعال کردن، همه کاربران بدون نیاز به احراز هویت به تمام امکانات دسترسی خواهند داشت.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    ذخیره تنظیمات احراز هویت
+                </button>
+            </form>
+        </div>
+
         <!-- تنظیمات آگهی‌ها -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 class="text-2xl font-bold mb-6 text-gray-800">تنظیمات آگهی‌ها</h2>

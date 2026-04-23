@@ -95,16 +95,6 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">نوع</label>
-                <select name="type" class="w-full border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary">
-                    <option value="">همه</option>
-                    <option value="auction" {{ request('type') === 'auction' ? 'selected' : '' }}>مزایده</option>
-                    <option value="direct_sale" {{ request('type') === 'direct_sale' ? 'selected' : '' }}>فروش مستقیم</option>
-                    <option value="both" {{ request('type') === 'both' ? 'selected' : '' }}>ترکیبی</option>
-                </select>
-            </div>
-
-            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">وضعیت</label>
                 <select name="status" class="w-full border-gray-300 rounded-lg text-sm focus:ring-primary focus:border-primary">
                     <option value="">همه</option>
@@ -145,7 +135,6 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">آگهی</th>
-                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">نوع</th>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">فروشنده</th>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">وضعیت</th>
                         <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">تغییرات</th>
@@ -173,15 +162,6 @@
                                     <div class="text-xs text-gray-500">شناسه: {{ \App\Services\PersianNumberService::convertToPersian($listing->id) }}</div>
                                 </div>
                             </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            @if($listing->type === 'auction')
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800">مزایده</span>
-                            @elseif($listing->type === 'direct_sale')
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">فروش مستقیم</span>
-                            @else
-                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">ترکیبی</span>
-                            @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <a href="{{ route('admin.users.show', $listing->seller) }}" class="text-sm text-primary hover:underline">
