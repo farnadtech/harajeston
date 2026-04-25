@@ -17,15 +17,15 @@
     <link rel="shortcut icon" href="{{ $faviconUrl }}">
     @endif
     
-    <link href="/haraj/public/css/app.css" rel="stylesheet"/>
-    <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
+    <link href="{{ asset('css/app.css') }}" rel="stylesheet"/>
+    <link href="{{ asset('css/vazirmatn-local.css') }}" rel="stylesheet"/>
     <style>
     @font-face {
         font-family: 'Material Symbols Outlined';
         font-style: normal;
         font-weight: 100 700;
         font-display: block;
-        src: url('/haraj/public/fonts/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].woff2') format('woff2');
+        src: url('{{ asset("fonts/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].woff2") }}') format('woff2');
     }
     .material-symbols-outlined {
         font-family: 'Material Symbols Outlined';
@@ -924,44 +924,44 @@
             active: 0,
             results: [],
             pages: [
-                { label: 'داشبورد', url: '/haraj/public/admin/dashboard', icon: 'dashboard', group: 'عمومی', keywords: 'خانه آمار' },
+                { label: 'داشبورد', url: '{{ url('/admin/') }}dashboard', icon: 'dashboard', group: 'عمومی', keywords: 'خانه آمار' },
                 // مزایده‌ها
-                { label: 'مدیریت آگهی‌ها', url: '/haraj/public/admin/listings', icon: 'sell', group: 'مزایده‌ها', keywords: 'حراج مزایده آگهی لیست' },
-                { label: 'دسته‌بندی‌ها', url: '/haraj/public/admin/categories', icon: 'category', group: 'مزایده‌ها', keywords: 'کتگوری گروه' },
+                { label: 'مدیریت آگهی‌ها', url: '{{ url('/admin/') }}listings', icon: 'sell', group: 'مزایده‌ها', keywords: 'حراج مزایده آگهی لیست' },
+                { label: 'دسته‌بندی‌ها', url: '{{ url('/admin/') }}categories', icon: 'category', group: 'مزایده‌ها', keywords: 'کتگوری گروه' },
                 // کاربران
-                { label: 'مدیریت کاربران', url: '/haraj/public/admin/users', icon: 'manage_accounts', group: 'کاربران', keywords: 'یوزر اکانت' },
-                { label: 'فروشندگان', url: '/haraj/public/admin/sellers', icon: 'storefront', group: 'کاربران', keywords: 'فروشگاه seller' },
-                { label: 'تغییر نام فروشگاه', url: '/haraj/public/admin/store-name-requests', icon: 'edit_note', group: 'کاربران', keywords: 'store name' },
-                { label: 'نظرات فروشندگان', url: '/haraj/public/admin/seller-reviews', icon: 'rate_review', group: 'کاربران', keywords: 'review امتیاز' },
+                { label: 'مدیریت کاربران', url: '{{ url('/admin/') }}users', icon: 'manage_accounts', group: 'کاربران', keywords: 'یوزر اکانت' },
+                { label: 'فروشندگان', url: '{{ url('/admin/') }}sellers', icon: 'storefront', group: 'کاربران', keywords: 'فروشگاه seller' },
+                { label: 'تغییر نام فروشگاه', url: '{{ url('/admin/') }}store-name-requests', icon: 'edit_note', group: 'کاربران', keywords: 'store name' },
+                { label: 'نظرات فروشندگان', url: '{{ url('/admin/') }}seller-reviews', icon: 'rate_review', group: 'کاربران', keywords: 'review امتیاز' },
                 // سفارشات
-                { label: 'سفارشات', url: '/haraj/public/admin/orders', icon: 'shopping_bag', group: 'سفارشات و مالی', keywords: 'order خرید' },
-                { label: 'گزارشات مالی', url: '/haraj/public/admin/financial-reports', icon: 'bar_chart', group: 'سفارشات و مالی', keywords: 'درآمد کمیسیون report' },
-                { label: 'درخواست‌های برداشت', url: '/haraj/public/admin/withdrawals', icon: 'account_balance', group: 'سفارشات و مالی', keywords: 'پول کیف پول withdrawal' },
-                { label: 'روش‌های ارسال', url: '/haraj/public/admin/shipping-methods', icon: 'local_shipping', group: 'سفارشات و مالی', keywords: 'پست shipping حمل' },
-                { label: 'درگاه‌های پرداخت', url: '/haraj/public/admin/payment-gateways', icon: 'credit_card', group: 'سفارشات و مالی', keywords: 'زرین پال payment gateway بانک' },
+                { label: 'سفارشات', url: '{{ url('/admin/') }}orders', icon: 'shopping_bag', group: 'سفارشات و مالی', keywords: 'order خرید' },
+                { label: 'گزارشات مالی', url: '{{ url('/admin/') }}financial-reports', icon: 'bar_chart', group: 'سفارشات و مالی', keywords: 'درآمد کمیسیون report' },
+                { label: 'درخواست‌های برداشت', url: '{{ url('/admin/') }}withdrawals', icon: 'account_balance', group: 'سفارشات و مالی', keywords: 'پول کیف پول withdrawal' },
+                { label: 'روش‌های ارسال', url: '{{ url('/admin/') }}shipping-methods', icon: 'local_shipping', group: 'سفارشات و مالی', keywords: 'پست shipping حمل' },
+                { label: 'درگاه‌های پرداخت', url: '{{ url('/admin/') }}payment-gateways', icon: 'credit_card', group: 'سفارشات و مالی', keywords: 'زرین پال payment gateway بانک' },
                 // پشتیبانی
-                { label: 'تیکت‌های پشتیبانی', url: '/haraj/public/admin/tickets', icon: 'confirmation_number', group: 'پشتیبانی', keywords: 'ticket support' },
-                { label: 'پرسش‌های محصولات', url: '/haraj/public/admin/comments', icon: 'help', group: 'پشتیبانی', keywords: 'سوال comment نظر' },
-                { label: 'خبرنامه', url: '/haraj/public/admin/newsletter', icon: 'mail', group: 'پشتیبانی', keywords: 'ایمیل email newsletter' },
+                { label: 'تیکت‌های پشتیبانی', url: '{{ url('/admin/') }}tickets', icon: 'confirmation_number', group: 'پشتیبانی', keywords: 'ticket support' },
+                { label: 'پرسش‌های محصولات', url: '{{ url('/admin/') }}comments', icon: 'help', group: 'پشتیبانی', keywords: 'سوال comment نظر' },
+                { label: 'خبرنامه', url: '{{ url('/admin/') }}newsletter', icon: 'mail', group: 'پشتیبانی', keywords: 'ایمیل email newsletter' },
                 // تنظیمات عمومی — با keywords کامل برای هر بخش
-                { label: 'تنظیمات عمومی', url: '/haraj/public/admin/settings/general', icon: 'tune', group: 'تنظیمات', keywords: 'نام سایت لوگو فاویکون آدرس تلفن ایمیل' },
-                { label: 'رنگ‌بندی و تم سایت', url: '/haraj/public/admin/settings/general', icon: 'palette', group: 'تنظیمات عمومی', keywords: 'رنگ تم color theme پس‌زمینه primary secondary' },
-                { label: 'شبکه‌های اجتماعی', url: '/haraj/public/admin/settings/general', icon: 'share', group: 'تنظیمات عمومی', keywords: 'اینستاگرام تلگرام واتساپ social instagram telegram' },
-                { label: 'فوتر سایت', url: '/haraj/public/admin/settings/general', icon: 'web', group: 'تنظیمات عمومی', keywords: 'footer متن پایین' },
+                { label: 'تنظیمات عمومی', url: '{{ url('/admin/') }}settings/general', icon: 'tune', group: 'تنظیمات', keywords: 'نام سایت لوگو فاویکون آدرس تلفن ایمیل' },
+                { label: 'رنگ‌بندی و تم سایت', url: '{{ url('/admin/') }}settings/general', icon: 'palette', group: 'تنظیمات عمومی', keywords: 'رنگ تم color theme پس‌زمینه primary secondary' },
+                { label: 'شبکه‌های اجتماعی', url: '{{ url('/admin/') }}settings/general', icon: 'share', group: 'تنظیمات عمومی', keywords: 'اینستاگرام تلگرام واتساپ social instagram telegram' },
+                { label: 'فوتر سایت', url: '{{ url('/admin/') }}settings/general', icon: 'web', group: 'تنظیمات عمومی', keywords: 'footer متن پایین' },
                 // تنظیمات سیستم
-                { label: 'تنظیمات سیستم', url: '/haraj/public/admin/settings', icon: 'manage_history', group: 'تنظیمات', keywords: 'سپرده کمیسیون مزایده otp احراز هویت' },
-                { label: 'تنظیمات سپرده', url: '/haraj/public/admin/settings', icon: 'savings', group: 'تنظیمات سیستم', keywords: 'deposit سپرده ضمانت' },
-                { label: 'تنظیمات کمیسیون', url: '/haraj/public/admin/settings', icon: 'percent', group: 'تنظیمات سیستم', keywords: 'commission درصد کارمزد' },
-                { label: 'تنظیمات کیف پول', url: '/haraj/public/admin/settings', icon: 'account_balance_wallet', group: 'تنظیمات سیستم', keywords: 'wallet شارژ برداشت مالیات' },
-                { label: 'تنظیمات OTP و پیامک', url: '/haraj/public/admin/settings', icon: 'sms', group: 'تنظیمات سیستم', keywords: 'otp sms کد تایید موبایل' },
-                { label: 'تنظیمات فروشندگان', url: '/haraj/public/admin/settings', icon: 'storefront', group: 'تنظیمات سیستم', keywords: 'seller approval تایید' },
-                { label: 'تنظیمات آگهی‌ها', url: '/haraj/public/admin/settings', icon: 'sell', group: 'تنظیمات سیستم', keywords: 'listing approval bid increment' },
+                { label: 'تنظیمات سیستم', url: '{{ url('/admin/') }}settings', icon: 'manage_history', group: 'تنظیمات', keywords: 'سپرده کمیسیون مزایده otp احراز هویت' },
+                { label: 'تنظیمات سپرده', url: '{{ url('/admin/') }}settings', icon: 'savings', group: 'تنظیمات سیستم', keywords: 'deposit سپرده ضمانت' },
+                { label: 'تنظیمات کمیسیون', url: '{{ url('/admin/') }}settings', icon: 'percent', group: 'تنظیمات سیستم', keywords: 'commission درصد کارمزد' },
+                { label: 'تنظیمات کیف پول', url: '{{ url('/admin/') }}settings', icon: 'account_balance_wallet', group: 'تنظیمات سیستم', keywords: 'wallet شارژ برداشت مالیات' },
+                { label: 'تنظیمات OTP و پیامک', url: '{{ url('/admin/') }}settings', icon: 'sms', group: 'تنظیمات سیستم', keywords: 'otp sms کد تایید موبایل' },
+                { label: 'تنظیمات فروشندگان', url: '{{ url('/admin/') }}settings', icon: 'storefront', group: 'تنظیمات سیستم', keywords: 'seller approval تایید' },
+                { label: 'تنظیمات آگهی‌ها', url: '{{ url('/admin/') }}settings', icon: 'sell', group: 'تنظیمات سیستم', keywords: 'listing approval bid increment' },
                 // سایر
-                { label: 'صفحه اصلی', url: '/haraj/public/admin/homepage', icon: 'dashboard_customize', group: 'تنظیمات', keywords: 'home بلوک بنر slider' },
-                { label: 'هدر و فوتر', url: '/haraj/public/admin/theme', icon: 'style', group: 'تنظیمات', keywords: 'header footer menu navbar' },
-                { label: 'مدیریت صفحات', url: '/haraj/public/admin/pages', icon: 'article', group: 'تنظیمات', keywords: 'page درباره ما تماس' },
-                { label: 'تنظیمات اعلان‌ها', url: '/haraj/public/admin/notification-settings', icon: 'notifications_active', group: 'تنظیمات', keywords: 'notification email اعلان' },
-                { label: 'درگاه‌های پیامک', url: '/haraj/public/admin/sms-gateways', icon: 'sms', group: 'تنظیمات', keywords: 'sms gateway kavenegar melipayamak' },
+                { label: 'صفحه اصلی', url: '{{ url('/admin/') }}homepage', icon: 'dashboard_customize', group: 'تنظیمات', keywords: 'home بلوک بنر slider' },
+                { label: 'هدر و فوتر', url: '{{ url('/admin/') }}theme', icon: 'style', group: 'تنظیمات', keywords: 'header footer menu navbar' },
+                { label: 'مدیریت صفحات', url: '{{ url('/admin/') }}pages', icon: 'article', group: 'تنظیمات', keywords: 'page درباره ما تماس' },
+                { label: 'تنظیمات اعلان‌ها', url: '{{ url('/admin/') }}notification-settings', icon: 'notifications_active', group: 'تنظیمات', keywords: 'notification email اعلان' },
+                { label: 'درگاه‌های پیامک', url: '{{ url('/admin/') }}sms-gateways', icon: 'sms', group: 'تنظیمات', keywords: 'sms gateway kavenegar melipayamak' },
             ],
             search() {
                 const q = this.query.trim().toLowerCase();
@@ -980,7 +980,7 @@
         };
     }
     </script>
-    <script src="/haraj/public/js/alpine.min.js"></script>
+    <script src="{{ asset('js/alpine.min.js') }}"></script>
     @stack('scripts')
 </body>
 </html>

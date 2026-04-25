@@ -26,8 +26,8 @@
     <meta property="og:title" content="@yield('title', $siteName){{ $titleSuffix }}">
     <meta property="og:description" content="@yield('meta_description', $siteDescription)">
     <meta property="og:site_name" content="{{ $siteName }}">
-    <link href="/haraj/public/css/app.css" rel="stylesheet"/>
-    <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
+    <link href="{{ asset('css/app.css') }}" rel="stylesheet"/>
+    <link href="{{ asset('css/vazirmatn-local.css') }}" rel="stylesheet"/>
     <style>
     :root {
         --color-primary: {{ $colorPrimary }};
@@ -56,7 +56,7 @@
         font-style: normal;
         font-weight: 100 700;
         font-display: block;
-        src: url('/haraj/public/fonts/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].woff2') format('woff2');
+        src: url('{{ asset("fonts/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].woff2") }}') format('woff2');
     }
     .material-symbols-outlined {
         font-family: 'Material Symbols Outlined';
@@ -852,7 +852,7 @@
     @endif
 
     @livewireScripts
-    <script defer src="/haraj/public/js/alpine.min.js"></script>
+    <script defer src="{{ asset('js/alpine.min.js') }}"></script>
     @stack('scripts')
 </body>
 </html>

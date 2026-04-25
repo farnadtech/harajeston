@@ -8,15 +8,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('melipayamak_settings', function (Blueprint $table) {
-            $table->string('api_key')->nullable()->after('password');
-        });
+        if (!Schema::hasColumn('melipayamak_settings', 'api_key')) {
+            Schema::table('melipayamak_settings', function (Blueprint $table) {
+                $table->string('api_key')->nullable()->after('password');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('melipayamak_settings', function (Blueprint $table) {
-            $table->dropColumn('api_key');
-        });
+        if (Schema::hasColumn('melipayamak_settings', 'api_key')) {
+            Schema::table('melipayamak_settings', function (Blueprint $table) {
+                $table->dropColumn('api_key');
+            });
+        }
     }
 };

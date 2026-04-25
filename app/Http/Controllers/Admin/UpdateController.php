@@ -38,40 +38,64 @@ class UpdateController extends Controller
         return $dir;
     }
 
-    // ─────────────────────────────────────────
-    // صفحه اصلی آپدیت
+    private function fetchUrl(string $url, int $timeout = 10): ?string
+    {
+        // اول curl امتحان کن
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => $timeout,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_USERAGENT      => 'HarajinoUpdater/1.0',
+            ]);
+            $result = curl_exec($ch);
+            $code   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($result !== false && $code === 200) return $result;
+        }
+
+        // fallback به file_get_contents
+        $ctx = stream_context_create(['http' => [
+            'timeout'    => $timeout,
+            'user_agent' => 'HarajinoUpdater/1.0',
+        ]]);
+        $result = @file_get_contents($url, false, $ctx);
+        return $result ?: null;
+    }
     // ─────────────────────────────────────────
 
     public function index()
-    {
-        $current   = $this->currentVersion();
-        $latest    = null;
-        $changelog = null;
-        $hasUpdate = false;
-        $error     = null;
+        {
+            $current   = $this->currentVersion();
+            $latest    = null;
+            $changelog = null;
+            $hasUpdate = false;
+            $error     = null;
 
-        try {
-            $ctx = stream_context_create(['http' => ['timeout' => 8]]);
-            $json = @file_get_contents(self::UPDATE_SERVER . '/version.json', false, $ctx);
-            if ($json) {
-                $data      = json_decode($json, true);
-                $latest    = $data['version'] ?? null;
-                $changelog = $data['changelog'] ?? null;
-                $hasUpdate = $latest && version_compare($latest, $current, '>');
-            } else {
-                $error = 'اتصال به سرور آپدیت برقرار نشد.';
+            try {
+                $json = $this->fetchUrl(self::UPDATE_SERVER . '/version.json');
+                if ($json) {
+                    $json      = ltrim($json, "\xEF\xBB\xBF"); // حذف BOM
+                    $data      = json_decode($json, true);
+                    $latest    = $data['version'] ?? null;
+                    $changelog = $data['changelog'] ?? null;
+                    $hasUpdate = $latest && version_compare($latest, $current, '>');
+                } else {
+                    $error = 'اتصال به سرور آپدیت برقرار نشد.';
+                }
+            } catch (\Exception $e) {
+                $error = 'خطا: ' . $e->getMessage();
             }
-        } catch (\Exception $e) {
-            $error = 'خطا در بررسی آپدیت: ' . $e->getMessage();
+
+            $backups = $this->listBackups();
+
+            return view('admin.update.index', compact(
+                'current', 'latest', 'hasUpdate', 'changelog', 'error', 'backups'
+            ));
         }
 
-        // لیست بکاپ‌های موجود برای rollback
-        $backups = $this->listBackups();
-
-        return view('admin.update.index', compact(
-            'current', 'latest', 'hasUpdate', 'changelog', 'error', 'backups'
-        ));
-    }
 
     // ─────────────────────────────────────────
     // آپدیت خودکار از سرور
@@ -80,11 +104,11 @@ class UpdateController extends Controller
     public function run(Request $request)
     {
         try {
-            $json = @file_get_contents(self::UPDATE_SERVER . '/version.json',
-                false, stream_context_create(['http' => ['timeout' => 15]]));
+            $json = $this->fetchUrl(self::UPDATE_SERVER . '/version.json', 15);
 
             if (!$json) throw new \Exception('دریافت اطلاعات از سرور ناموفق بود.');
 
+            $json        = ltrim($json, "\xEF\xBB\xBF");
             $meta        = json_decode($json, true);
             $downloadUrl = $meta['download_url'] ?? null;
             $newVersion  = $meta['version'] ?? null;
@@ -99,8 +123,7 @@ class UpdateController extends Controller
 
             // دانلود zip
             $zipPath = $this->updatesDir() . "/update-v{$newVersion}.zip";
-            $content = @file_get_contents($downloadUrl,
-                false, stream_context_create(['http' => ['timeout' => 120]]));
+            $content = $this->fetchUrl($downloadUrl, 120);
 
             if (!$content) throw new \Exception('دانلود فایل آپدیت ناموفق بود.');
             file_put_contents($zipPath, $content);
@@ -268,8 +291,10 @@ class UpdateController extends Controller
             if ($manifestJson) {
                 $manifest = json_decode($manifestJson, true);
                 foreach ($manifest['files'] ?? [] as $file) {
+                    $file = ltrim(str_replace('\\', '/', $file), '/');
+                    if (empty($file) || str_contains($file, '..')) continue;
                     $src = base_path($file);
-                    if (!file_exists($src)) continue;
+                    if (!file_exists($src) || is_dir($src)) continue;
                     $dest    = $backupDir . '/' . $file;
                     $destDir = dirname($dest);
                     if (!is_dir($destDir)) mkdir($destDir, 0755, true);
@@ -378,12 +403,32 @@ class UpdateController extends Controller
 
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $name = $zip->getNameIndex($i);
-            if ($name === 'manifest.json' || str_ends_with($name, '/')) continue;
+
+            // normalize slashes
+            $name = str_replace('\\', '/', $name);
+
+            // skip پوشه‌ها، manifest، مسیرهای خطرناک
+            if (!$name
+                || str_ends_with($name, '/')
+                || $name === 'manifest.json'
+                || str_contains($name, '..')
+            ) continue;
+
+            // basename باید یه فایل واقعی باشه
+            $basename = basename($name);
+            if (empty($basename) || !str_contains($basename, '.')) continue;
 
             $target    = base_path($name);
             $targetDir = dirname($target);
-            if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
-            file_put_contents($target, $zip->getFromIndex($i));
+
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0755, true);
+            }
+
+            $content = $zip->getFromIndex($i);
+            if ($content === false) continue;
+
+            file_put_contents($target, $content);
         }
 
         $zip->close();

@@ -62,13 +62,15 @@ Write-Host "$($FilesToInclude.Count) changed files found" -ForegroundColor Green
 
 # Copy files preserving directory structure
 foreach ($file in $FilesToInclude) {
-    $dest    = Join-Path $TempDir $file
+    # normalize to forward slashes
+    $normalizedFile = $file -replace '\\', '/'
+    $dest    = Join-Path $TempDir ($normalizedFile -replace '/', '\')
     $destDir = Split-Path $dest -Parent
     if (-not (Test-Path $destDir)) {
         New-Item -ItemType Directory -Path $destDir -Force | Out-Null
     }
     Copy-Item $file $dest -Force
-    Write-Host "  + $file" -ForegroundColor Gray
+    Write-Host "  + $normalizedFile" -ForegroundColor Gray
 }
 
 # Build manifest.json
@@ -86,11 +88,22 @@ $manifestJson = $manifest | ConvertTo-Json -Depth 5
 [System.IO.File]::WriteAllText("$TempDir\manifest.json", $manifestJson, [System.Text.Encoding]::UTF8)
 Write-Host "  + manifest.json" -ForegroundColor Gray
 
-# Create zip
+# Create zip using .NET directly (no folder entries)
 if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir | Out-Null }
 $ZipPath = "$OutputDir\$PackageName.zip"
 if (Test-Path $ZipPath) { Remove-Item $ZipPath }
-Compress-Archive -Path "$TempDir\*" -DestinationPath $ZipPath
+
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zipStream = [System.IO.Compression.ZipFile]::Open($ZipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+
+# اضافه کردن فایل‌ها با مسیر forward slash
+$TempDirFull = (Resolve-Path $TempDir).Path.TrimEnd('\') + '\'
+foreach ($file in (Get-ChildItem -Path $TempDir -Recurse -File)) {
+    $entryName = $file.FullName.Substring($TempDirFull.Length) -replace '\\', '/'
+    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipStream, $file.FullName, $entryName) | Out-Null
+}
+
+$zipStream.Dispose()
 Remove-Item -Recurse -Force $TempDir
 
 Write-Host ""
