@@ -24,38 +24,41 @@ use App\Http\Controllers\Admin\{
 Route::get('/', [ListingController::class, 'index'])->name('home');
 Route::get('/categories', [\App\Http\Controllers\CategoryPageController::class, 'index'])->name('categories.index');
 
-// Authentication Routes
-Route::get('/login', function () { return view('auth.login'); })->name('login');
-Route::get('/register', function () { return view('auth.register'); })->name('register');
+// Authentication Routes - فقط برای کاربران لاگین نشده
+Route::middleware('guest')->group(function () {
+    Route::get('/login', function () { return view('auth.login'); })->name('login');
+    Route::get('/register', function () { return view('auth.register'); })->name('register');
 
-// ورود با رمز عبور
-Route::post('/login', function (\Illuminate\Http\Request $request) {
-    $login     = $request->input('login');
-    $fieldType = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
-    $credentials = [$fieldType => $login, 'password' => $request->input('password')];
+    // ورود با رمز عبور
+    Route::post('/login', function (\Illuminate\Http\Request $request) {
+        $login     = $request->input('login');
+        $fieldType = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
+        $credentials = [$fieldType => $login, 'password' => $request->input('password')];
 
-    if (auth()->attempt($credentials, $request->filled('remember'))) {
-        $request->session()->regenerate();
-        return redirect()->intended('/dashboard');
-    }
+        if (auth()->attempt($credentials, $request->filled('remember'))) {
+            $request->session()->regenerate();
+            return redirect()->intended('/dashboard');
+        }
 
-    return back()->withErrors(['login' => 'اطلاعات ورود نادرست است.'])->withInput($request->only('login'));
+        return back()->withErrors(['login' => 'اطلاعات ورود نادرست است.'])->withInput($request->only('login'));
+    });
+
+    // ثبت‌نام با تایید OTP
+    Route::post('/register', [\App\Http\Controllers\Auth\OtpController::class, 'completeRegister']);
+
+    // ─── OTP Routes ───────────────────────────────────────────────────
+    Route::get('/login/otp', [\App\Http\Controllers\Auth\OtpController::class, 'loginForm'])->name('otp.login');
+    Route::post('/login/otp/send', [\App\Http\Controllers\Auth\OtpController::class, 'sendLoginOtp'])->name('otp.login.send');
+    Route::get('/login/otp/verify', [\App\Http\Controllers\Auth\OtpController::class, 'verifyLoginForm'])->name('otp.login.verify.form');
+    Route::post('/login/otp/verify', [\App\Http\Controllers\Auth\OtpController::class, 'verifyLogin'])->name('otp.login.verify');
+
+    // فراموشی رمز عبور
+    Route::get('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'showForm'])->name('password.request');
+    Route::get('/password/reset', function() { return view('auth.forgot-password'); })->name('password.forgot');
 });
 
-// ثبت‌نام با تایید OTP
-Route::post('/register', [\App\Http\Controllers\Auth\OtpController::class, 'completeRegister']);
-
-// ─── OTP Routes ───────────────────────────────────────────────────
-// ورود با OTP
-Route::get('/login/otp', [\App\Http\Controllers\Auth\OtpController::class, 'loginForm'])->name('otp.login');
-Route::post('/login/otp/send', [\App\Http\Controllers\Auth\OtpController::class, 'sendLoginOtp'])->name('otp.login.send');
-Route::get('/login/otp/verify', [\App\Http\Controllers\Auth\OtpController::class, 'verifyLoginForm'])->name('otp.login.verify.form');
-Route::post('/login/otp/verify', [\App\Http\Controllers\Auth\OtpController::class, 'verifyLogin'])->name('otp.login.verify');
-
-// ارسال OTP در ثبت‌نام (AJAX)
+// ارسال OTP در ثبت‌نام (AJAX) - بدون middleware guest چون ممکنه AJAX باشه
 Route::post('/register/otp/send', [\App\Http\Controllers\Auth\OtpController::class, 'sendRegisterOtp'])->name('otp.register.send');
-
-// ارسال مجدد کد
 Route::post('/otp/resend', [\App\Http\Controllers\Auth\OtpController::class, 'resend'])->name('otp.resend');
 // ─────────────────────────────────────────────────────────────────
 
@@ -89,6 +92,11 @@ Route::middleware('auth')->group(function () {
 Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/chart-data', [DashboardController::class, 'sellerChartData'])->name('dashboard.chart-data');
+
+    // Profile
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
     
     // Seller Request
     Route::get('/become-seller', [\App\Http\Controllers\SellerRequestController::class, 'create'])->name('seller-request.create');
@@ -136,6 +144,7 @@ Route::middleware('auth')->group(function () {
     
     // Orders
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/export', [OrderController::class, 'export'])->name('orders.export');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{order}/shipping-address', [OrderController::class, 'updateShippingAddress'])->name('orders.updateShippingAddress');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
@@ -194,6 +203,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/auction-release', [SettingsController::class, 'updateAuctionRelease'])->name('admin.settings.auction-release.update');
         Route::put('/settings/listing', [SettingsController::class, 'updateListing'])->name('admin.settings.listing.update');
         Route::put('/settings/otp', [SettingsController::class, 'updateOtp'])->name('admin.settings.otp.update');
+        Route::get('/settings/general', [SettingsController::class, 'general'])->name('admin.settings.general');
+        Route::post('/settings/general', [SettingsController::class, 'updateGeneral'])->name('admin.settings.general.update');
+        Route::post('/settings/general/upload-logo', [SettingsController::class, 'uploadLogo'])->name('admin.settings.general.upload-logo');
 
         // Payment Gateways
         Route::get('/payment-gateways', [\App\Http\Controllers\Admin\PaymentGatewayController::class, 'index'])->name('admin.payment-gateways.index');
@@ -232,6 +244,7 @@ Route::middleware('auth')->group(function () {
         
         // Admin Listings Resource (using slug for SEO)
         Route::get('/listings', [AdminListingController::class, 'index'])->name('admin.listings.index');
+        Route::get('/listings/export', [AdminListingController::class, 'export'])->name('admin.listings.export');
         Route::get('/listings/create', [AdminListingController::class, 'create'])->name('admin.listings.create');
         Route::post('/listings', [AdminListingController::class, 'store'])->name('admin.listings.store');
         Route::get('/listings/{listing}', [AdminListingController::class, 'show'])->name('admin.listings.show');
@@ -262,6 +275,7 @@ Route::middleware('auth')->group(function () {
         
         // User Management
         Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
+        Route::get('/users/export', [\App\Http\Controllers\Admin\UserController::class, 'export'])->name('admin.users.export');
         Route::get('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('admin.users.show');
         Route::post('/users/{user}/suspend', [\App\Http\Controllers\Admin\UserController::class, 'suspend'])->name('admin.users.suspend');
         Route::post('/users/{user}/activate', [\App\Http\Controllers\Admin\UserController::class, 'activate'])->name('admin.users.activate');
@@ -270,6 +284,7 @@ Route::middleware('auth')->group(function () {
         
         // Seller Management
         Route::get('/sellers', [\App\Http\Controllers\Admin\SellerController::class, 'index'])->name('admin.sellers.index');
+        Route::get('/sellers/export', [\App\Http\Controllers\Admin\SellerController::class, 'export'])->name('admin.sellers.export');
         Route::get('/sellers/{seller}', [\App\Http\Controllers\Admin\SellerController::class, 'show'])->name('admin.sellers.show');
         Route::post('/sellers/{seller}/approve', [\App\Http\Controllers\Admin\SellerController::class, 'approve'])->name('admin.sellers.approve');
         Route::post('/sellers/{seller}/reject', [\App\Http\Controllers\Admin\SellerController::class, 'reject'])->name('admin.sellers.reject');
@@ -309,11 +324,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/seller-reviews/{id}/approve', [\App\Http\Controllers\Admin\SellerReviewController::class, 'approve'])->name('admin.seller-reviews.approve');
         Route::post('/seller-reviews/{id}/reject', [\App\Http\Controllers\Admin\SellerReviewController::class, 'reject'])->name('admin.seller-reviews.reject');
         Route::delete('/seller-reviews/{id}', [\App\Http\Controllers\Admin\SellerReviewController::class, 'destroy'])->name('admin.seller-reviews.destroy');
+
+        // Withdrawal Requests Management
+        Route::get('/withdrawals', [\App\Http\Controllers\Admin\WithdrawalController::class, 'index'])->name('admin.withdrawals.index');
+        Route::get('/withdrawals/export', [\App\Http\Controllers\Admin\WithdrawalController::class, 'export'])->name('admin.withdrawals.export');
+        Route::post('/withdrawals/{withdrawal}/approve', [\App\Http\Controllers\Admin\WithdrawalController::class, 'approve'])->name('admin.withdrawals.approve');
+        Route::post('/withdrawals/{withdrawal}/reject', [\App\Http\Controllers\Admin\WithdrawalController::class, 'reject'])->name('admin.withdrawals.reject');
         
         Route::resource('shipping-methods', ShippingMethodController::class, ['as' => 'admin']);
         
         // Order Management
         Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('admin.orders.index');
+        Route::get('/orders/export', [\App\Http\Controllers\Admin\OrderController::class, 'export'])->name('admin.orders.export');
         Route::get('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])->name('admin.orders.show');
         Route::put('/orders/{order}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])->name('admin.orders.updateStatus');
         Route::put('/orders/{order}/shipping', [\App\Http\Controllers\Admin\OrderController::class, 'updateShipping'])->name('admin.orders.updateShipping');
@@ -331,6 +353,7 @@ Route::middleware('auth')->group(function () {
 
         // Newsletter
         Route::get('/newsletter', [\App\Http\Controllers\Admin\NewsletterController::class, 'index'])->name('admin.newsletter.index');
+        Route::get('/newsletter/export', [\App\Http\Controllers\Admin\NewsletterController::class, 'export'])->name('admin.newsletter.export');
         Route::delete('/newsletter/{subscriber}', [\App\Http\Controllers\Admin\NewsletterController::class, 'destroy'])->name('admin.newsletter.destroy');
         Route::post('/newsletter/{subscriber}/toggle', [\App\Http\Controllers\Admin\NewsletterController::class, 'toggleStatus'])->name('admin.newsletter.toggle');
         Route::post('/newsletter/send', [\App\Http\Controllers\Admin\NewsletterController::class, 'sendEmail'])->name('admin.newsletter.send');
@@ -338,8 +361,22 @@ Route::middleware('auth')->group(function () {
         // Theme / Header & Footer
         Route::get('/theme', [\App\Http\Controllers\Admin\ThemeController::class, 'index'])->name('admin.theme.index');
         Route::post('/theme', [\App\Http\Controllers\Admin\ThemeController::class, 'save'])->name('admin.theme.save');
+
+        // Pages Manager
+        Route::resource('pages', \App\Http\Controllers\Admin\PageController::class, ['as' => 'admin']);
+        Route::post('/pages/upload-image', [\App\Http\Controllers\Admin\PageController::class, 'uploadImage'])->name('admin.pages.upload-image');
+
+        // Notification Settings
+        Route::get('/notification-settings', [\App\Http\Controllers\Admin\NotificationSettingController::class, 'index'])->name('admin.notification-settings.index');
+        Route::put('/notification-settings', [\App\Http\Controllers\Admin\NotificationSettingController::class, 'update'])->name('admin.notification-settings.update');
+        Route::put('/notification-settings/admin-phone', [\App\Http\Controllers\Admin\NotificationSettingController::class, 'updateAdminPhone'])->name('admin.notification-settings.update-admin-phone');
+        Route::post('/notification-settings/{setting}/test', [\App\Http\Controllers\Admin\NotificationSettingController::class, 'test'])->name('admin.notification-settings.test');
+        Route::post('/notification-settings/{setting}/test-email', [\App\Http\Controllers\Admin\NotificationSettingController::class, 'testEmail'])->name('admin.notification-settings.test-email');
     });
 });
+
+// Public pages
+Route::get('/page/{slug}', [\App\Http\Controllers\PageController::class, 'show'])->name('pages.show');
 
 // Newsletter public routes
 Route::post('/newsletter/subscribe', [\App\Http\Controllers\NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');

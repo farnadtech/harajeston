@@ -4,7 +4,18 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'داشبورد مدیریت') - Persian Auction Marketplace</title>
+    @php
+        $siteName = \App\Models\SiteSetting::get('site_name', 'حراج‌استون');
+        $siteTagline = \App\Models\SiteSetting::get('site_tagline', '');
+        $siteFavicon = \App\Models\SiteSetting::get('site_favicon', '');
+        $faviconUrl = $siteFavicon ? rtrim(config('app.url'), '/') . '/storage/' . $siteFavicon : '';
+        $titleSuffix = $siteTagline ? ' | ' . $siteName . ' - ' . $siteTagline : ' | ' . $siteName;
+    @endphp
+    <title>@yield('title', 'داشبورد مدیریت'){{ $titleSuffix }}</title>
+    @if($faviconUrl)
+    <link rel="icon" type="image/png" href="{{ $faviconUrl }}">
+    <link rel="shortcut icon" href="{{ $faviconUrl }}">
+    @endif
     
     <link href="/haraj/public/css/app.css" rel="stylesheet"/>
     <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
@@ -158,11 +169,36 @@
     </style>
     
     @stack('styles')
-    @livewireStyles
+    <style>
+        /* Mobile sidebar */
+        @media (max-width: 1023px) {
+            #app-sidebar {
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            }
+            #app-sidebar.sidebar-open {
+                transform: translateX(0);
+            }
+        }
+        @media (min-width: 1024px) {
+            #app-sidebar { transform: translateX(0) !important; }
+            #sidebar-overlay { display: none !important; }
+        }
+    </style>
 </head>
 <body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex overflow-hidden">
+    <!-- Mobile Overlay -->
+    <div id="sidebar-overlay" onclick="closeSidebar()"
+         class="hidden fixed inset-0 bg-black/50 z-40"></div>
+
     <!-- Sidebar -->
-    <aside class="w-64 border-l border-gray-200 hidden lg:flex flex-col h-screen fixed right-0 top-0 z-30" style="background:{{ \App\Models\SiteSetting::get('theme_dashboard_sidebar_bg', '#ffffff') }};">
+    <aside id="app-sidebar"
+           class="w-64 border-l border-gray-200 flex flex-col h-screen fixed right-0 top-0 z-50 lg:z-30"
+           style="background:{{ \App\Models\SiteSetting::get('theme_dashboard_sidebar_bg', '#ffffff') }};">
+        <!-- Close button on mobile -->
+        <button onclick="closeSidebar()" class="absolute top-4 left-4 p-1.5 text-gray-400 hover:text-gray-600 lg:hidden">
+            <span class="material-symbols-outlined">close</span>
+        </button>
         <div class="h-20 flex items-center gap-3 px-6 border-b border-gray-100">
             @php
                 $adLogo = \App\Models\SiteSetting::get('theme_dashboard_logo', '');
@@ -179,126 +215,236 @@
             <h1 class="text-xl font-black tracking-tight text-[#0d121b]">{{ $adText }}</h1>
         </div>
         
-        <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1">
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.dashboard') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.dashboard') ? 'bold' : 'medium' }} transition-colors" href="{{ route('admin.dashboard') }}">
-                <span class="material-symbols-outlined">dashboard</span>
-                <span>داشبورد</span>
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.listings.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.listings.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.listings.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">gavel</span>
-                <span>مدیریت مزایده‌ها</span>
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.categories.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.categories.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.categories.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">category</span>
-                <span>دسته‌بندی‌ها</span>
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.comments.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.comments.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.comments.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">help</span>
-                <span>پرسش‌های محصولات</span>
-                @php
-                    $pendingCommentsCount = \App\Models\ListingComment::pending()->whereNull('parent_id')->count();
-                @endphp
-                @if($pendingCommentsCount > 0)
-                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingCommentsCount)</span>
-                @endif
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.seller-reviews.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.seller-reviews.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.seller-reviews.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">rate_review</span>
-                <span>نظرات فروشندگان</span>
-                @php
-                    $pendingReviewsCount = \App\Models\SellerReview::pending()->count();
-                @endphp
-                @if($pendingReviewsCount > 0)
-                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingReviewsCount)</span>
-                @endif
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-xl font-medium transition-colors group" href="{{ route('admin.users.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">group</span>
-                <span>کاربران</span>
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.sellers.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.sellers.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.sellers.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">storefront</span>
-                <span>فروشندگان</span>
-                @php
-                    $pendingSellersCount = \App\Models\User::where('seller_status', 'pending')->count();
-                @endphp
-                @if($pendingSellersCount > 0)
-                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingSellersCount)</span>
-                @endif
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.store-name-requests.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.store-name-requests.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.store-name-requests.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">edit_note</span>
-                <span>تغییر نام فروشگاه</span>
-                @php
-                    $pendingStoreNameCount = \App\Models\Store::whereNotNull('pending_store_name')->count();
-                @endphp
-                @if($pendingStoreNameCount > 0)
-                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingStoreNameCount)</span>
-                @endif
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.orders.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.orders.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.orders.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">shopping_bag</span>
-                <span>سفارشات</span>
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.financial-reports.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.financial-reports.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.financial-reports.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">payments</span>
-                <span>گزارشات مالی</span>
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.shipping-methods.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.shipping-methods.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.shipping-methods.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">local_shipping</span>
-                <span>روش‌های ارسال</span>
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.payment-gateways.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.payment-gateways.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.payment-gateways.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">credit_card</span>
-                <span>درگاه‌های پرداخت</span>
+        @php
+            $isAuctionGroup   = request()->routeIs('admin.listings.*') || request()->routeIs('admin.categories.*') || request()->routeIs('admin.category-attributes.*') || request()->routeIs('admin.bids.*');
+            $isUsersGroup     = request()->routeIs('admin.users.*') || request()->routeIs('admin.sellers.*') || request()->routeIs('admin.store-name-requests.*') || request()->routeIs('admin.seller-reviews.*');
+            $isOrdersGroup    = request()->routeIs('admin.orders.*') || request()->routeIs('admin.financial-reports.*') || request()->routeIs('admin.withdrawals.*') || request()->routeIs('admin.shipping-methods.*') || request()->routeIs('admin.payment-gateways.*');
+            $isSupportGroup   = request()->routeIs('admin.tickets.*') || request()->routeIs('admin.comments.*') || request()->routeIs('admin.newsletter.*') || request()->routeIs('admin.notifications.*');
+            $isSettingsGroup  = request()->routeIs('admin.settings.*') || request()->routeIs('admin.homepage.*') || request()->routeIs('admin.theme.*') || request()->routeIs('admin.pages.*') || request()->routeIs('admin.notification-settings.*') || request()->routeIs('admin.sms-gateways.*');
+        @endphp
+
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
+
+            {{-- داشبورد --}}
+            <a href="{{ route('admin.dashboard') }}"
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors
+                      {{ request()->routeIs('admin.dashboard') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                <span class="material-symbols-outlined text-[20px]">dashboard</span>
+                <span class="text-sm">داشبورد</span>
             </a>
 
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.sms-gateways.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.sms-gateways.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.sms-gateways.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">sms</span>
-                <span>درگاه‌های پیامک</span>
-            </a>
-            
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.tickets.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.tickets.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.tickets.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">confirmation_number</span>
-                <span>تیکت‌های پشتیبانی</span>
-                @php $openTickets = \App\Models\Ticket::where('status', 'open')->count(); @endphp
-                @if($openTickets > 0)
-                    <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($openTickets)</span>
-                @endif
-            </a>
+            {{-- ── مزایده‌ها ── --}}
+            <div x-data="{ open: {{ $isAuctionGroup ? 'true' : 'false' }} }">
+                <button @click="open = !open"
+                        class="w-full flex items-center gap-3 px-3 py-2 mt-3 text-xs font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors">
+                    <span class="material-symbols-outlined text-[16px]">gavel</span>
+                    <span>مزایده‌ها</span>
+                    <span class="material-symbols-outlined text-[16px] mr-auto transition-transform" :class="open ? 'rotate-180' : ''">expand_more</span>
+                </button>
+                <div x-show="open" class="space-y-0.5 pr-3">
+                    <a href="{{ route('admin.listings.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.listings.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">sell</span>
+                        <span>مدیریت آگهی‌ها</span>
+                    </a>
+                    <a href="{{ route('admin.categories.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.categories.*') || request()->routeIs('admin.category-attributes.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">category</span>
+                        <span>دسته‌بندی‌ها</span>
+                    </a>
+                </div>
+            </div>
 
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.settings.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.settings.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.settings.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">settings</span>
-                <span>تنظیمات سایت</span>
-            </a>
+            {{-- ── کاربران ── --}}
+            <div x-data="{ open: {{ $isUsersGroup ? 'true' : 'false' }} }">
+                <button @click="open = !open"
+                        class="w-full flex items-center gap-3 px-3 py-2 mt-3 text-xs font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors">
+                    <span class="material-symbols-outlined text-[16px]">group</span>
+                    <span>کاربران</span>
+                    <span class="material-symbols-outlined text-[16px] mr-auto transition-transform" :class="open ? 'rotate-180' : ''">expand_more</span>
+                </button>
+                <div x-show="open" class="space-y-0.5 pr-3">
+                    <a href="{{ route('admin.users.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.users.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">manage_accounts</span>
+                        <span>مدیریت کاربران</span>
+                    </a>
+                    <a href="{{ route('admin.sellers.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.sellers.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">storefront</span>
+                        <span>فروشندگان</span>
+                        @php $pendingSellersCount = \App\Models\User::where('seller_status', 'pending')->count(); @endphp
+                        @if($pendingSellersCount > 0)
+                            <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingSellersCount)</span>
+                        @endif
+                    </a>
+                    <a href="{{ route('admin.store-name-requests.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.store-name-requests.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">edit_note</span>
+                        <span>تغییر نام فروشگاه</span>
+                        @php $pendingStoreNameCount = \App\Models\Store::whereNotNull('pending_store_name')->count(); @endphp
+                        @if($pendingStoreNameCount > 0)
+                            <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingStoreNameCount)</span>
+                        @endif
+                    </a>
+                    <a href="{{ route('admin.seller-reviews.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.seller-reviews.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">rate_review</span>
+                        <span>نظرات فروشندگان</span>
+                        @php $pendingReviewsCount = \App\Models\SellerReview::pending()->count(); @endphp
+                        @if($pendingReviewsCount > 0)
+                            <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingReviewsCount)</span>
+                        @endif
+                    </a>
+                </div>
+            </div>
 
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.homepage.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.homepage.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.homepage.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">dashboard_customize</span>
-                <span>طراحی صفحه اصلی</span>
-            </a>
+            {{-- ── سفارشات و مالی ── --}}
+            <div x-data="{ open: {{ $isOrdersGroup ? 'true' : 'false' }} }">
+                <button @click="open = !open"
+                        class="w-full flex items-center gap-3 px-3 py-2 mt-3 text-xs font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors">
+                    <span class="material-symbols-outlined text-[16px]">payments</span>
+                    <span>سفارشات و مالی</span>
+                    <span class="material-symbols-outlined text-[16px] mr-auto transition-transform" :class="open ? 'rotate-180' : ''">expand_more</span>
+                </button>
+                <div x-show="open" class="space-y-0.5 pr-3">
+                    <a href="{{ route('admin.orders.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.orders.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">shopping_bag</span>
+                        <span>سفارشات</span>
+                    </a>
+                    <a href="{{ route('admin.financial-reports.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.financial-reports.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">bar_chart</span>
+                        <span>گزارشات مالی</span>
+                    </a>
+                    <a href="{{ route('admin.withdrawals.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.withdrawals.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">account_balance</span>
+                        <span>درخواست‌های برداشت</span>
+                        @php $pendingWithdrawCount = \App\Models\WithdrawalRequest::where('status','pending')->count(); @endphp
+                        @if($pendingWithdrawCount > 0)
+                            <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingWithdrawCount)</span>
+                        @endif
+                    </a>
+                    <a href="{{ route('admin.shipping-methods.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.shipping-methods.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">local_shipping</span>
+                        <span>روش‌های ارسال</span>
+                    </a>
+                    <a href="{{ route('admin.payment-gateways.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.payment-gateways.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">credit_card</span>
+                        <span>درگاه‌های پرداخت</span>
+                    </a>
+                </div>
+            </div>
 
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.theme.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.theme.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.theme.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">style</span>
-                <span>هدر و فوتر</span>
-            </a>
+            {{-- ── پشتیبانی ── --}}
+            <div x-data="{ open: {{ $isSupportGroup ? 'true' : 'false' }} }">
+                <button @click="open = !open"
+                        class="w-full flex items-center gap-3 px-3 py-2 mt-3 text-xs font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors">
+                    <span class="material-symbols-outlined text-[16px]">support_agent</span>
+                    <span>پشتیبانی</span>
+                    <span class="material-symbols-outlined text-[16px] mr-auto transition-transform" :class="open ? 'rotate-180' : ''">expand_more</span>
+                </button>
+                <div x-show="open" class="space-y-0.5 pr-3">
+                    <a href="{{ route('admin.tickets.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.tickets.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">confirmation_number</span>
+                        <span>تیکت‌های پشتیبانی</span>
+                        @php $openTickets = \App\Models\Ticket::where('status', 'open')->count(); @endphp
+                        @if($openTickets > 0)
+                            <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($openTickets)</span>
+                        @endif
+                    </a>
+                    <a href="{{ route('admin.comments.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.comments.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">help</span>
+                        <span>پرسش‌های محصولات</span>
+                        @php $pendingCommentsCount = \App\Models\ListingComment::pending()->whereNull('parent_id')->count(); @endphp
+                        @if($pendingCommentsCount > 0)
+                            <span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full mr-auto">@persian($pendingCommentsCount)</span>
+                        @endif
+                    </a>
+                    <a href="{{ route('admin.newsletter.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.newsletter.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">mail</span>
+                        <span>خبرنامه</span>
+                    </a>
+                </div>
+            </div>
 
-            <a class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('admin.newsletter.*') ? 'text-primary bg-primary/5' : 'text-gray-600 hover:text-primary hover:bg-gray-50' }} rounded-xl font-{{ request()->routeIs('admin.newsletter.*') ? 'bold' : 'medium' }} transition-colors group" href="{{ route('admin.newsletter.index') }}">
-                <span class="material-symbols-outlined group-hover:text-primary transition-colors">mail</span>
-                <span>خبرنامه</span>
-            </a>
+            {{-- ── تنظیمات ── --}}
+            <div x-data="{ open: {{ $isSettingsGroup ? 'true' : 'false' }} }">
+                <button @click="open = !open"
+                        class="w-full flex items-center gap-3 px-3 py-2 mt-3 text-xs font-bold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors">
+                    <span class="material-symbols-outlined text-[16px]">settings</span>
+                    <span>تنظیمات</span>
+                    <span class="material-symbols-outlined text-[16px] mr-auto transition-transform" :class="open ? 'rotate-180' : ''">expand_more</span>
+                </button>
+                <div x-show="open" class="space-y-0.5 pr-3">
+                    <a href="{{ route('admin.settings.general') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.settings.general') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">tune</span>
+                        <span>تنظیمات عمومی</span>
+                    </a>
+                    <a href="{{ route('admin.settings.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.settings.index') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">manage_history</span>
+                        <span>تنظیمات سیستم</span>
+                    </a>
+                    <a href="{{ route('admin.homepage.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.homepage.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">dashboard_customize</span>
+                        <span>صفحه اصلی</span>
+                    </a>
+                    <a href="{{ route('admin.theme.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.theme.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">style</span>
+                        <span>هدر و فوتر</span>
+                    </a>
+                    <a href="{{ route('admin.pages.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.pages.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">article</span>
+                        <span>مدیریت صفحات</span>
+                    </a>
+                    <a href="{{ route('admin.notification-settings.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.notification-settings.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">notifications_active</span>
+                        <span>تنظیمات اعلان‌ها</span>
+                    </a>
+                    <a href="{{ route('admin.sms-gateways.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.sms-gateways.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">sms</span>
+                        <span>درگاه‌های پیامک</span>
+                    </a>
+                </div>
+            </div>
+
         </nav>
-        
+
         <div class="p-4 border-t border-gray-100">
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
@@ -314,22 +460,59 @@
     <main class="flex-1 lg:mr-64 flex flex-col h-screen overflow-hidden relative w-full">
         <!-- Header -->
         <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0">
-            <div class="flex items-center gap-4 lg:hidden">
-                <button class="p-2 -mr-2 text-gray-500 hover:bg-gray-100 rounded-lg" onclick="toggleSidebar()">
+            <div class="flex items-center gap-3">
+                <button onclick="openSidebar()" class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg lg:hidden">
                     <span class="material-symbols-outlined">menu</span>
                 </button>
-                <h1 class="text-lg font-bold text-gray-900">@yield('page-title', 'داشبورد')</h1>
-            </div>
-            
-            <div class="hidden lg:block">
+                <div class="lg:hidden">
+                    <h1 class="text-base font-bold text-gray-900">@yield('page-title', 'داشبورد')</h1>
+                </div>
+                <div class="hidden lg:block">
                 <h2 class="text-xl font-bold text-gray-800">@yield('header-title', 'خوش آمدید، ادمین عزیز 👋')</h2>
                 <p class="text-sm text-gray-500">@yield('header-subtitle', 'گزارش کلی وضعیت بازار امروز')</p>
             </div>
+            </div>
             
             <div class="flex items-center gap-4">
-                <div class="relative hidden sm:block">
-                    <input class="w-64 h-10 pr-10 pl-4 bg-gray-50 border-gray-200 rounded-lg text-sm focus:border-primary focus:ring-primary transition-all" placeholder="جستجو..." type="text"/>
-                    <span class="material-symbols-outlined absolute right-3 top-2.5 text-gray-400 text-[20px]">search</span>
+                <div class="relative hidden sm:block" x-data="adminSearch()" @click.away="open = false">
+                    <span class="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[20px] pointer-events-none">search</span>
+                    <input
+                        x-model="query"
+                        @input.debounce.200ms="search()"
+                        @focus="if(query.length > 0) open = true"
+                        @keydown.escape="open = false"
+                        @keydown.arrow-down.prevent="moveDown()"
+                        @keydown.arrow-up.prevent="moveUp()"
+                        @keydown.enter.prevent="goTo()"
+                        class="w-64 h-10 pl-10 pr-4 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none"
+                        placeholder="جستجو در پنل..."
+                        type="text"
+                        autocomplete="off"
+                    />
+                    {{-- Dropdown --}}
+                    <div x-show="open && results.length > 0"
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 -translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         class="absolute top-12 left-0 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden"
+                         style="display:none">
+                        <template x-for="(item, index) in results" :key="index">
+                            <a :href="item.url"
+                               :class="index === active ? 'bg-primary/10 text-primary' : 'text-gray-700 hover:bg-gray-50'"
+                               class="flex items-center gap-3 px-4 py-3 transition-colors border-b border-gray-100 last:border-0">
+                                <span class="material-symbols-outlined text-[18px] text-gray-400" x-text="item.icon"></span>
+                                <div>
+                                    <p class="text-sm font-medium" x-text="item.label"></p>
+                                    <p class="text-xs text-gray-400" x-text="item.group"></p>
+                                </div>
+                            </a>
+                        </template>
+                    </div>
+                    <div x-show="open && query.length > 0 && results.length === 0"
+                         class="absolute top-12 left-0 w-72 bg-white rounded-xl shadow-xl border border-gray-200 z-50 px-4 py-6 text-center text-sm text-gray-400"
+                         style="display:none">
+                        نتیجه‌ای یافت نشد
+                    </div>
                 </div>
                 
                 <!-- Notifications Dropdown -->
@@ -469,9 +652,29 @@
         </div>
     </main>
 
-    @livewireScripts
-    <script defer src="/haraj/public/js/alpine.min.js"></script>
-    
+    <script>
+        // Sidebar toggle
+        function openSidebar() {
+            document.getElementById('app-sidebar').classList.add('sidebar-open');
+            document.getElementById('sidebar-overlay').classList.remove('hidden');
+        }
+        function closeSidebar() {
+            document.getElementById('app-sidebar').classList.remove('sidebar-open');
+            document.getElementById('sidebar-overlay').classList.add('hidden');
+        }
+        // Close sidebar on outside click
+        document.addEventListener('click', function(e) {
+            var sidebar = document.getElementById('app-sidebar');
+            var overlay = document.getElementById('sidebar-overlay');
+            if (sidebar && !sidebar.contains(e.target) && sidebar.classList.contains('sidebar-open')) {
+                var hamburger = document.querySelector('[onclick="openSidebar()"]');
+                if (!hamburger || !hamburger.contains(e.target)) {
+                    closeSidebar();
+                }
+            }
+        });
+    </script>
+
     <script>
         // Alpine.js Notification Dropdown Component
         function notificationDropdown() {
@@ -574,12 +777,6 @@
     </div>
     
     <script>
-        function toggleSidebar() {
-            // Mobile sidebar toggle functionality
-            const sidebar = document.querySelector('aside');
-            sidebar.classList.toggle('hidden');
-        }
-        
         // Notification System
         function showNotification(message, type = 'success') {
             // Remove existing notifications
@@ -713,6 +910,71 @@
         };
     </script>
     
+    <script>
+    function adminSearch() {
+        return {
+            query: '',
+            open: false,
+            active: 0,
+            results: [],
+            pages: [
+                { label: 'داشبورد', url: '/haraj/public/admin/dashboard', icon: 'dashboard', group: 'عمومی', keywords: 'خانه آمار' },
+                // مزایده‌ها
+                { label: 'مدیریت آگهی‌ها', url: '/haraj/public/admin/listings', icon: 'sell', group: 'مزایده‌ها', keywords: 'حراج مزایده آگهی لیست' },
+                { label: 'دسته‌بندی‌ها', url: '/haraj/public/admin/categories', icon: 'category', group: 'مزایده‌ها', keywords: 'کتگوری گروه' },
+                // کاربران
+                { label: 'مدیریت کاربران', url: '/haraj/public/admin/users', icon: 'manage_accounts', group: 'کاربران', keywords: 'یوزر اکانت' },
+                { label: 'فروشندگان', url: '/haraj/public/admin/sellers', icon: 'storefront', group: 'کاربران', keywords: 'فروشگاه seller' },
+                { label: 'تغییر نام فروشگاه', url: '/haraj/public/admin/store-name-requests', icon: 'edit_note', group: 'کاربران', keywords: 'store name' },
+                { label: 'نظرات فروشندگان', url: '/haraj/public/admin/seller-reviews', icon: 'rate_review', group: 'کاربران', keywords: 'review امتیاز' },
+                // سفارشات
+                { label: 'سفارشات', url: '/haraj/public/admin/orders', icon: 'shopping_bag', group: 'سفارشات و مالی', keywords: 'order خرید' },
+                { label: 'گزارشات مالی', url: '/haraj/public/admin/financial-reports', icon: 'bar_chart', group: 'سفارشات و مالی', keywords: 'درآمد کمیسیون report' },
+                { label: 'درخواست‌های برداشت', url: '/haraj/public/admin/withdrawals', icon: 'account_balance', group: 'سفارشات و مالی', keywords: 'پول کیف پول withdrawal' },
+                { label: 'روش‌های ارسال', url: '/haraj/public/admin/shipping-methods', icon: 'local_shipping', group: 'سفارشات و مالی', keywords: 'پست shipping حمل' },
+                { label: 'درگاه‌های پرداخت', url: '/haraj/public/admin/payment-gateways', icon: 'credit_card', group: 'سفارشات و مالی', keywords: 'زرین پال payment gateway بانک' },
+                // پشتیبانی
+                { label: 'تیکت‌های پشتیبانی', url: '/haraj/public/admin/tickets', icon: 'confirmation_number', group: 'پشتیبانی', keywords: 'ticket support' },
+                { label: 'پرسش‌های محصولات', url: '/haraj/public/admin/comments', icon: 'help', group: 'پشتیبانی', keywords: 'سوال comment نظر' },
+                { label: 'خبرنامه', url: '/haraj/public/admin/newsletter', icon: 'mail', group: 'پشتیبانی', keywords: 'ایمیل email newsletter' },
+                // تنظیمات عمومی — با keywords کامل برای هر بخش
+                { label: 'تنظیمات عمومی', url: '/haraj/public/admin/settings/general', icon: 'tune', group: 'تنظیمات', keywords: 'نام سایت لوگو فاویکون آدرس تلفن ایمیل' },
+                { label: 'رنگ‌بندی و تم سایت', url: '/haraj/public/admin/settings/general', icon: 'palette', group: 'تنظیمات عمومی', keywords: 'رنگ تم color theme پس‌زمینه primary secondary' },
+                { label: 'شبکه‌های اجتماعی', url: '/haraj/public/admin/settings/general', icon: 'share', group: 'تنظیمات عمومی', keywords: 'اینستاگرام تلگرام واتساپ social instagram telegram' },
+                { label: 'فوتر سایت', url: '/haraj/public/admin/settings/general', icon: 'web', group: 'تنظیمات عمومی', keywords: 'footer متن پایین' },
+                // تنظیمات سیستم
+                { label: 'تنظیمات سیستم', url: '/haraj/public/admin/settings', icon: 'manage_history', group: 'تنظیمات', keywords: 'سپرده کمیسیون مزایده otp احراز هویت' },
+                { label: 'تنظیمات سپرده', url: '/haraj/public/admin/settings', icon: 'savings', group: 'تنظیمات سیستم', keywords: 'deposit سپرده ضمانت' },
+                { label: 'تنظیمات کمیسیون', url: '/haraj/public/admin/settings', icon: 'percent', group: 'تنظیمات سیستم', keywords: 'commission درصد کارمزد' },
+                { label: 'تنظیمات کیف پول', url: '/haraj/public/admin/settings', icon: 'account_balance_wallet', group: 'تنظیمات سیستم', keywords: 'wallet شارژ برداشت مالیات' },
+                { label: 'تنظیمات OTP و پیامک', url: '/haraj/public/admin/settings', icon: 'sms', group: 'تنظیمات سیستم', keywords: 'otp sms کد تایید موبایل' },
+                { label: 'تنظیمات فروشندگان', url: '/haraj/public/admin/settings', icon: 'storefront', group: 'تنظیمات سیستم', keywords: 'seller approval تایید' },
+                { label: 'تنظیمات آگهی‌ها', url: '/haraj/public/admin/settings', icon: 'sell', group: 'تنظیمات سیستم', keywords: 'listing approval bid increment' },
+                // سایر
+                { label: 'صفحه اصلی', url: '/haraj/public/admin/homepage', icon: 'dashboard_customize', group: 'تنظیمات', keywords: 'home بلوک بنر slider' },
+                { label: 'هدر و فوتر', url: '/haraj/public/admin/theme', icon: 'style', group: 'تنظیمات', keywords: 'header footer menu navbar' },
+                { label: 'مدیریت صفحات', url: '/haraj/public/admin/pages', icon: 'article', group: 'تنظیمات', keywords: 'page درباره ما تماس' },
+                { label: 'تنظیمات اعلان‌ها', url: '/haraj/public/admin/notification-settings', icon: 'notifications_active', group: 'تنظیمات', keywords: 'notification email اعلان' },
+                { label: 'درگاه‌های پیامک', url: '/haraj/public/admin/sms-gateways', icon: 'sms', group: 'تنظیمات', keywords: 'sms gateway kavenegar melipayamak' },
+            ],
+            search() {
+                const q = this.query.trim().toLowerCase();
+                if (q.length === 0) { this.open = false; this.results = []; return; }
+                this.results = this.pages.filter(p =>
+                    p.label.toLowerCase().includes(q) ||
+                    p.group.toLowerCase().includes(q) ||
+                    (p.keywords && p.keywords.toLowerCase().includes(q))
+                ).slice(0, 8);
+                this.active = 0;
+                this.open = true;
+            },
+            moveDown() { if (this.active < this.results.length - 1) this.active++; },
+            moveUp()   { if (this.active > 0) this.active--; },
+            goTo()     { if (this.results[this.active]) window.location.href = this.results[this.active].url; },
+        };
+    }
+    </script>
+    <script src="/haraj/public/js/alpine.min.js"></script>
     @stack('scripts')
 </body>
 </html>

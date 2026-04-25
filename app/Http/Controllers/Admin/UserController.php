@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\CsvExportTrait;
 use App\Models\User;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    use CsvExportTrait;
     public function __construct()
     {
         $this->middleware('admin');
@@ -147,5 +149,28 @@ class UserController extends Controller
         return redirect()
             ->route('admin.users.show', $user)
             ->with('success', 'موجودی کیف پول با موفقیت به‌روزرسانی شد.');
+    }
+
+    public function export(Request $request)
+    {
+        $roleLabels = ['admin' => 'مدیر', 'seller' => 'فروشنده', 'buyer' => 'خریدار'];
+        $query = User::query();
+        if ($request->filled('role')) $query->where('role', $request->role);
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(fn($q) => $q->where('name', 'like', "%$s%")->orWhere('email', 'like', "%$s%")->orWhere('phone', 'like', "%$s%"));
+        }
+        $users = $query->orderBy('created_at', 'desc')->get();
+
+        $rows = $users->map(fn($u) => [
+            $u->id, $u->name, $u->email, $u->phone ?? '',
+            $roleLabels[$u->role] ?? $u->role,
+            ($u->email_verified_at || $u->phone_verified_at) ? 'احراز شده' : 'احراز نشده',
+            $this->jalali($u->created_at),
+        ]);
+
+        return $this->csvResponse('users-' . date('Y-m-d') . '.csv', [
+            'شناسه', 'نام', 'ایمیل', 'تلفن', 'نقش', 'وضعیت', 'تاریخ ثبت',
+        ], $rows);
     }
 }

@@ -138,4 +138,58 @@ class SmsService
         if ($error) { throw new \RuntimeException($error); }
         return json_decode($response, true) ?? [];
     }
+
+    /**
+     * Send SMS via a specific pattern ID (for notification events)
+     */
+    public function sendByPatternId(string $phone, string $patternId, array $params = []): bool
+    {
+        if (!$this->isConfigured()) return false;
+        try {
+            ini_set('soap.wsdl_cache_enabled', '0');
+            $client = new \SoapClient(self::SOAP_WSDL, ['exceptions' => true]);
+            // Build text from params (first value used as text)
+            $text = implode(',', array_values($params));
+            $result = $client->SendByBaseNumber2([
+                'username' => $this->settings()->username,
+                'password' => $this->settings()->getAuthPassword(),
+                'text'     => $text,
+                'to'       => $phone,
+                'bodyId'   => (int)$patternId,
+            ]);
+            $recId = (string)($result->SendByBaseNumber2Result ?? '0');
+            $success = strlen($recId) > 5 && (int)$recId > 0;
+            Log::info('SmsService::sendByPatternId', ['phone' => $phone, 'patternId' => $patternId, 'success' => $success]);
+            return $success;
+        } catch (\Throwable $e) {
+            Log::error('SmsService::sendByPatternId failed', ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Send plain text SMS
+     */
+    public function sendText(string $phone, string $text): bool
+    {
+        if (!$this->isConfigured()) return false;
+        try {
+            $data = [
+                'UserName' => $this->settings()->username,
+                'Password' => $this->settings()->getAuthPassword(),
+                'To'       => $phone,
+                'From'     => $this->settings()->from ?? '',
+                'Text'     => $text,
+                'IsFlash'  => false,
+            ];
+            $response = $this->httpPost(self::SEND_REST_URL, $data);
+            $result = json_decode($response, true);
+            $success = isset($result['Value']) && (int)$result['Value'] > 0;
+            Log::info('SmsService::sendText', ['phone' => $phone, 'success' => $success]);
+            return $success;
+        } catch (\Throwable $e) {
+            Log::error('SmsService::sendText failed', ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
 }

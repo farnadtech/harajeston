@@ -15,6 +15,8 @@ return [
 
     'class_namespace' => 'App\\Livewire',
 
+    'asset_url' => '/haraj/public/livewire/livewire.js',
+
     /*
     |---------------------------------------------------------------------------
     | View Path

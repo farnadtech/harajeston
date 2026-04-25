@@ -1,1 +1,0 @@
-<?php /**PATH D:\xamp8.1\htdocs\haraj\resources\views\wallet\partials\content.blade.php ENDPATH**/ ?>

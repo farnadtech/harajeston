@@ -78,19 +78,37 @@ class ThemeController extends Controller
             unset($data['footer_columns']);
         }
 
-        // Save footer social links as JSON
-        if (isset($data['footer_social'])) {
+        // Save footer social links as JSON (with image upload support)
+        if (isset($data['footer_social']) || $request->hasFile('footer_social_image')) {
+            $rawSocial = SiteSetting::get('theme_footer_social', '[]');
+            $existingSocials = is_array($rawSocial) ? $rawSocial : (json_decode($rawSocial, true) ?? []);
             $socials = [];
-            foreach ($data['footer_social']['icon'] ?? [] as $i => $icon) {
-                if (!empty($icon)) {
+            $urls   = $data['footer_social']['url']  ?? [];
+            $labels = $data['footer_social']['label'] ?? [];
+            $images = $data['footer_social']['image'] ?? []; // existing stored paths
+            $uploadedFiles = $request->file('footer_social_image') ?? [];
+
+            $count = max(count($urls), count($images), count($uploadedFiles));
+            for ($i = 0; $i < $count; $i++) {
+                $url = $urls[$i] ?? '#';
+                // If a new file was uploaded for this index, store it
+                if (!empty($uploadedFiles[$i]) && $uploadedFiles[$i]->isValid()) {
+                    $imgPath = $uploadedFiles[$i]->store('theme/social', 'public');
+                } else {
+                    // Keep existing image path
+                    $imgPath = $images[$i] ?? ($existingSocials[$i]['image'] ?? '');
+                }
+                if (!empty($url) || !empty($imgPath)) {
                     $socials[] = [
-                        'icon' => $icon,
-                        'url'  => $data['footer_social']['url'][$i] ?? '#',
+                        'image' => $imgPath,
+                        'label' => $labels[$i] ?? '',
+                        'url'   => $url,
                     ];
                 }
             }
             SiteSetting::set('theme_footer_social', json_encode($socials, JSON_UNESCAPED_UNICODE), 'json');
             unset($data['footer_social']);
+            unset($data['footer_social_image']);
         }
 
         // Save dashboard sidebar links as JSON
@@ -100,8 +118,25 @@ class ThemeController extends Controller
         }
 
         // Save remaining scalar settings
+        // Handle checkboxes - if not in data, they were unchecked (set to '0')
+        $checkboxFields = [
+            'header_sticky', 'header_show_search', 'header_show_cats',
+            'header_show_discount', 'footer_show',
+        ];
+        foreach ($checkboxFields as $cbField) {
+            if (!isset($data[$cbField])) {
+                $data[$cbField] = '0';
+            }
+        }
+
         foreach ($data as $key => $value) {
-            if (!str_starts_with($key, 'header_logo_file') && !str_starts_with($key, 'footer_logo_file') && !str_starts_with($key, 'dashboard_logo_file')) {
+            if (
+                !str_starts_with($key, 'header_logo_file') &&
+                !str_starts_with($key, 'footer_logo_file') &&
+                !str_starts_with($key, 'footer_trust_image_file') &&
+                !str_starts_with($key, 'dashboard_logo_file') &&
+                !is_array($value)
+            ) {
                 SiteSetting::set('theme_' . $key, $value ?? '');
             }
         }
@@ -121,6 +156,9 @@ class ThemeController extends Controller
             'header_logo_size'    => '40',
             'header_show_search'  => '1',
             'header_show_cats'    => '1',
+            'header_show_discount'=> '1',
+            'header_discount_text'=> 'حراجی‌های داغ',
+            'header_discount_url' => '/listings?sort=most_bids',
             'header_nav_links'    => '[]',
             'header_sticky'       => '1',
             'header_height'       => '80',

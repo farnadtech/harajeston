@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\CsvExportTrait;
 use App\Models\NewsletterSubscriber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
 class NewsletterController extends Controller
 {
+    use CsvExportTrait;
     public function index(Request $request)
     {
         $query = NewsletterSubscriber::latest();
@@ -80,5 +82,23 @@ class NewsletterController extends Controller
     {
         $url = url('/newsletter/unsubscribe/' . $subscriber->unsubscribe_token);
         return "<br><br><hr><p style='font-size:12px;color:#999;text-align:center;'>برای لغو اشتراک <a href='{$url}'>اینجا کلیک کنید</a></p>";
+    }
+
+    public function export(Request $request)
+    {
+        $query = NewsletterSubscriber::latest();
+        if ($request->status === 'active') $query->where('is_active', true);
+        elseif ($request->status === 'inactive') $query->where('is_active', false);
+        $subscribers = $query->get();
+
+        $rows = $subscribers->map(fn($s) => [
+            $s->id, $s->email, $s->name ?? '',
+            $s->is_active ? 'فعال' : 'غیرفعال',
+            $this->jalali($s->subscribed_at ?? $s->created_at),
+        ]);
+
+        return $this->csvResponse('newsletter-' . date('Y-m-d') . '.csv', [
+            'شناسه', 'ایمیل', 'نام', 'وضعیت', 'تاریخ عضویت',
+        ], $rows);
     }
 }

@@ -39,7 +39,7 @@ class StoreController extends Controller
         switch ($tab) {
             case 'ended':
                 // حراج‌های تمام شده
-                $query->where('status', 'completed');
+                $query->whereIn('status', ['completed', 'ended']);
                 break;
             case 'upcoming':
                 // حراج‌های آینده
@@ -93,7 +93,10 @@ class StoreController extends Controller
             ->whereIn('status', ['delivered', 'completed'])
             ->count();
 
-        return view('stores.show', compact('store', 'listings', 'seller', 'reviews', 'completedSales', 'ratingCounts', 'sort', 'tab'));
+        // Total auctions count (all statuses)
+        $totalAuctions = $store->listings()->count();
+
+        return view('stores.show', compact('store', 'listings', 'seller', 'reviews', 'completedSales', 'ratingCounts', 'sort', 'tab', 'totalAuctions'));
     }
 
     /**

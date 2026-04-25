@@ -363,55 +363,64 @@ class ListingController extends Controller
      * Display listings where user has placed bids
      */
     public function myBids(Request $request)
-    {
-        $user = auth()->user();
+        {
+            $user = auth()->user();
 
-        // Get status filter
-        $status = $request->get('status', 'all');
+            // Get status filter
+            $status = $request->get('status', 'all');
 
-        // Build query - get listings where user has bids
-        $query = Listing::whereHas('bids', function($q) use ($user) {
-            $q->where('user_id', $user->id);
-        });
+            // Listings where user has bids
+            $bidListingIds = Listing::whereHas('bids', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })->pluck('id');
 
-        // Apply status filter
-        if ($status !== 'all') {
-            if ($status === 'completed') {
-                // تمام شده شامل هم ended و هم completed
-                $query->whereIn('status', ['ended', 'completed']);
-            } else {
-                $query->where('status', $status);
+            // Listings where user won via buy-now (has an order as buyer)
+            $buyNowListingIds = \App\Models\Order::where('buyer_id', $user->id)
+                ->whereHas('items')
+                ->with('items')
+                ->get()
+                ->flatMap(fn($o) => $o->items->pluck('listing_id'))
+                ->unique();
+
+            // Merge both sets
+            $allListingIds = $bidListingIds->merge($buyNowListingIds)->unique()->values();
+
+            // Build query
+            $query = Listing::whereIn('id', $allListingIds);
+
+            // Apply status filter
+            if ($status !== 'all') {
+                if ($status === 'completed') {
+                    $query->whereIn('status', ['ended', 'completed']);
+                } else {
+                    $query->where('status', $status);
+                }
             }
+
+            // Get counts
+            $baseQuery = Listing::whereIn('id', $allListingIds);
+            $counts = [
+                'all' => (clone $baseQuery)->count(),
+                'active' => (clone $baseQuery)->where('status', 'active')->count(),
+                'completed' => (clone $baseQuery)->whereIn('status', ['ended', 'completed'])->count(),
+            ];
+
+            $listings = $query->with(['category', 'images', 'seller'])
+                ->withCount('bids')
+                ->orderByDesc('created_at')
+                ->paginate(20)
+                ->appends($request->except('page'));
+
+            // Add user's bid and current highest bid to each listing
+            foreach ($listings as $listing) {
+                $listing->my_bid = $listing->bids()->where('user_id', $user->id)->orderBy('amount', 'desc')->first();
+                $listing->current_highest_bid = $listing->bids()->max('amount') ?? $listing->starting_price;
+                // Check if user won via buy-now
+                $listing->is_buy_now_winner = $buyNowListingIds->contains($listing->id);
+            }
+
+            return view('listings.my-bids', compact('listings', 'counts'));
         }
-
-        // Get counts for each status
-        $counts = [
-            'all' => Listing::whereHas('bids', function($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })->count(),
-            'active' => Listing::whereHas('bids', function($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })->where('status', 'active')->count(),
-            'completed' => Listing::whereHas('bids', function($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })->whereIn('status', ['ended', 'completed'])->count(),
-        ];
-
-        // Get listings with user's bid info
-        $listings = $query->with(['category', 'images', 'seller'])
-            ->withCount('bids')
-            ->orderByDesc('created_at')
-            ->paginate(20)
-            ->appends($request->except('page'));
-
-        // Add user's bid and current highest bid to each listing
-        foreach ($listings as $listing) {
-            $listing->my_bid = $listing->bids()->where('user_id', $user->id)->orderBy('amount', 'desc')->first();
-            $listing->current_highest_bid = $listing->bids()->max('amount') ?? $listing->starting_price;
-        }
-
-        return view('listings.my-bids', compact('listings', 'counts'));
-    }
 
 
 
@@ -501,6 +510,9 @@ class ListingController extends Controller
                 }]);
             },
             'seller.store',
+            'seller.sellerReviews' => function($query) {
+                $query->approved();
+            },
             'images', 
             'bids.user', 
             'shippingMethods', 
@@ -515,6 +527,13 @@ class ListingController extends Controller
                       ->latest();
             }
         ]);
+
+        // محاسبه live rating از نظرات تایید شده
+        $approvedReviews = $listing->seller->sellerReviews;
+        if ($approvedReviews->isNotEmpty()) {
+            $listing->seller->seller_rating = round($approvedReviews->avg('rating'), 1);
+            $listing->seller->seller_rating_count = $approvedReviews->count();
+        }
 
         // Calculate amounts for finalization modal
         $totalAmount = null;

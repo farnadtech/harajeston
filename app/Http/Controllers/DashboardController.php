@@ -33,75 +33,116 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
+        // Base query
+        $ordersQuery = Order::where('seller_id', $user->id);
+
         $stats = [
-            'active_auctions' => Listing::where('seller_id', $user->id)
-                ->where('status', 'active')
-                ->count(),
-            'pending_listings' => Listing::where('seller_id', $user->id)
-                ->where('status', 'pending')
-                ->count(),
-            'completed_auctions' => Listing::where('seller_id', $user->id)
-                ->where('status', 'completed')
-                ->count(),
-            'total_sales' => Order::where('seller_id', $user->id)
-                ->where('status', 'completed')
-                ->sum('total'),
+            'active_auctions'    => Listing::where('seller_id', $user->id)->where('status', 'active')->count(),
+            'pending_listings'   => Listing::where('seller_id', $user->id)->where('status', 'pending')->count(),
+            'scheduled_listings' => Listing::where('seller_id', $user->id)->where('status', 'scheduled')->count(),
+            'completed_auctions' => Listing::where('seller_id', $user->id)->where('status', 'completed')->count(),
+            'total_sales'        => (clone $ordersQuery)->where('status', 'completed')->sum('total'),
         ];
 
-        $recentOrders = Order::where('seller_id', $user->id)
-            ->with('buyer', 'items')
+        // Financial breakdown by status
+        $financials = [
+            'completed'   => ['count' => 0, 'total' => 0, 'label' => 'تکمیل‌شده',    'color' => 'green'],
+            'processing'  => ['count' => 0, 'total' => 0, 'label' => 'در پردازش',    'color' => 'blue'],
+            'shipped'     => ['count' => 0, 'total' => 0, 'label' => 'ارسال‌شده',    'color' => 'indigo'],
+            'delivered'   => ['count' => 0, 'total' => 0, 'label' => 'تحویل‌شده',   'color' => 'teal'],
+            'paid'        => ['count' => 0, 'total' => 0, 'label' => 'پرداخت‌شده',  'color' => 'cyan'],
+            'pending'     => ['count' => 0, 'total' => 0, 'label' => 'در انتظار',    'color' => 'yellow'],
+            'cancelled'   => ['count' => 0, 'total' => 0, 'label' => 'لغو‌شده',     'color' => 'red'],
+            'refunded'    => ['count' => 0, 'total' => 0, 'label' => 'بازگشت وجه',  'color' => 'orange'],
+        ];
+
+        $allOrders = (clone $ordersQuery)
+            ->selectRaw('status, COUNT(*) as cnt, SUM(total) as sum_total')
+            ->groupBy('status')
+            ->get();
+
+        $grandTotal = 0;
+        $grandCount = 0;
+        foreach ($allOrders as $row) {
+            if (isset($financials[$row->status])) {
+                $financials[$row->status]['count'] = $row->cnt;
+                $financials[$row->status]['total'] = $row->sum_total ?? 0;
+            }
+            $grandTotal += $row->sum_total ?? 0;
+            $grandCount += $row->cnt;
+        }
+
+        $recentOrders = (clone $ordersQuery)
+            ->with('buyer')
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
         $activeListings = Listing::where('seller_id', $user->id)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'pending', 'scheduled'])
             ->with('category', 'images')
             ->orderBy('ends_at', 'asc')
             ->limit(10)
             ->get();
 
-        // Recent activities - combining bids, orders, and listing status changes
-        $recentBids = Bid::whereHas('listing', function($q) use ($user) {
-                $q->where('seller_id', $user->id);
-            })
-            ->with('user', 'listing')
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function($bid) {
-                return [
-                    'type' => 'bid',
-                    'icon' => 'gavel',
-                    'color' => 'blue',
-                    'title' => 'پیشنهاد جدید',
-                    'description' => $bid->user->name . ' پیشنهاد ' . number_format($bid->amount) . ' تومان برای ' . $bid->listing->title,
-                    'time' => $bid->created_at,
-                ];
-            });
+        $chartData = $this->buildSalesChart($user->id, 7);
 
-        $recentOrderActivities = Order::where('seller_id', $user->id)
-            ->with('buyer')
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function($order) {
-                return [
-                    'type' => 'order',
-                    'icon' => 'shopping_bag',
-                    'color' => 'green',
-                    'title' => 'سفارش جدید',
-                    'description' => 'سفارش #' . $order->order_number . ' از ' . $order->buyer->name,
-                    'time' => $order->created_at,
-                ];
-            });
+        return view('dashboard.seller', compact(
+            'stats', 'activeListings', 'recentOrders',
+            'chartData', 'financials', 'grandTotal', 'grandCount'
+        ));
+    }
 
-        // Merge and sort activities
-        $recentActivities = $recentBids->concat($recentOrderActivities)
-            ->sortByDesc('time')
-            ->take(10);
+    public function sellerChartData(\Illuminate\Http\Request $request)
+    {
+        $user = auth()->user();
+        $days = (int) $request->get('days', 7);
+        $allowed = [7, 30, 90, 180, 365];
+        if (!in_array($days, $allowed)) $days = 7;
 
-        return view('dashboard.seller', compact('stats', 'activeListings', 'recentOrders', 'recentActivities'));
+        // Must be authenticated seller
+        if (!$user || !$user->canSell()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $data = $this->buildSalesChart($user->id, $days);
+        return response()->json($data);
+    }
+
+    private function buildSalesChart(int $userId, int $days): array
+    {
+        $paidStatuses = ['completed', 'processing', 'shipped', 'delivered', 'paid'];
+        $labels = [];
+        $values = [];
+
+        if ($days <= 30) {
+            // Daily grouping with Jalali labels
+            for ($i = $days - 1; $i >= 0; $i--) {
+                $date = now()->subDays($i);
+                // Jalali label: month/day (e.g. فروردین ۱)
+                $jalali = \Morilog\Jalali\Jalalian::fromCarbon($date);
+                $labels[] = $jalali->getYear() . '/' . $jalali->getMonth() . '/' . $jalali->getDay();
+                $values[] = (int) Order::where('seller_id', $userId)
+                    ->whereIn('status', $paidStatuses)
+                    ->whereDate('created_at', $date->toDateString())
+                    ->sum('total');
+            }
+        } else {
+            // Weekly grouping with Jalali labels
+            $weeks = (int) ceil($days / 7);
+            for ($i = $weeks - 1; $i >= 0; $i--) {
+                $start = now()->subWeeks($i)->startOfWeek();
+                $jalali = \Morilog\Jalali\Jalalian::fromCarbon($start);
+                $labels[] = $jalali->getYear() . '/' . $jalali->getMonth() . '/' . $jalali->getDay();
+                $end = now()->subWeeks($i)->endOfWeek();
+                $values[] = (int) Order::where('seller_id', $userId)
+                    ->whereIn('status', $paidStatuses)
+                    ->whereBetween('created_at', [$start, $end])
+                    ->sum('total');
+            }
+        }
+
+        return ['labels' => $labels, 'values' => $values, 'max' => max(array_merge($values, [1]))];
     }
 
     /**
@@ -192,8 +233,7 @@ class DashboardController extends Controller
             'wonAuctionsCount', 
             'totalOrdersCount',
             'myActiveBids',
-            'recentOrders',
-            'recentActivities'
+            'recentOrders'
         ));
     }
 }

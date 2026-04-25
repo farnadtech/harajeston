@@ -3,7 +3,14 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>تایید کد - حراج‌استون</title>
+    @php
+        $siteName = \App\Models\SiteSetting::get('site_name', 'حراج‌استون');
+        $siteTagline = \App\Models\SiteSetting::get('site_tagline', '');
+        $siteFavicon = \App\Models\SiteSetting::get('site_favicon', '');
+        $faviconUrl = $siteFavicon ? rtrim(config('app.url'), '/') . '/storage/' . $siteFavicon : '';
+    @endphp
+    <title>تایید کد | {{ $siteName }}{{ $siteTagline ? ' - ' . $siteTagline : '' }}</title>
+    @if($faviconUrl)<link rel="icon" type="image/png" href="{{ $faviconUrl }}"><link rel="shortcut icon" href="{{ $faviconUrl }}">@endif
     <link href="/haraj/public/css/app.css" rel="stylesheet"/>
     <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
     <style>

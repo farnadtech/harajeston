@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\CsvExportTrait;
 use App\Models\Order;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+    use CsvExportTrait;
     public function __construct()
     {
         $this->middleware('admin');
@@ -104,5 +106,39 @@ class OrderController extends Controller
         return redirect()
             ->route('admin.orders.show', $order)
             ->with('success', 'اطلاعات ارسال با موفقیت به‌روزرسانی شد.');
+    }
+
+    public function export(Request $request)
+    {
+        $statusLabels = [
+            'pending' => 'در انتظار', 'processing' => 'در حال پردازش',
+            'shipped' => 'ارسال شده', 'delivered' => 'تحویل داده شده',
+            'completed' => 'تکمیل شده', 'cancelled' => 'لغو شده',
+            'refunded' => 'بازگشت وجه', 'paid' => 'پرداخت شده',
+        ];
+        $query = Order::with('buyer', 'seller');
+        if ($request->filled('status')) $query->where('status', $request->status);
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(fn($q) => $q->where('order_number', 'like', "%$s%")
+                ->orWhereHas('buyer', fn($q) => $q->where('name', 'like', "%$s%")));
+        }
+        $orders = $query->orderBy('created_at', 'desc')->get();
+
+        $rows = $orders->map(fn($o) => [
+            $o->order_number, $o->buyer->name ?? '', $o->seller->name ?? '',
+            $statusLabels[$o->status] ?? $o->status,
+            number_format($o->subtotal ?? 0),
+            number_format($o->shipping_cost ?? 0),
+            number_format($o->total ?? 0),
+            $o->shipping_city ?? '', $o->tracking_number ?? '',
+            $this->jalali($o->created_at),
+        ]);
+
+        return $this->csvResponse('orders-' . date('Y-m-d') . '.csv', [
+            'شماره سفارش', 'خریدار', 'فروشنده', 'وضعیت',
+            'جمع کالا', 'هزینه ارسال', 'مجموع',
+            'شهر', 'کد رهگیری', 'تاریخ ثبت',
+        ], $rows);
     }
 }

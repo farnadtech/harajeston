@@ -128,6 +128,21 @@
                                 <span class="text-sm text-gray-600">فعال</span>
                             </label>
                         </div>
+                        <div class="flex items-center gap-3">
+                            <label class="text-sm font-medium text-gray-700 w-32">دکمه تخفیف‌ها</label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="header_show_discount" value="1" {{ ($settings['header_show_discount'] ?? '1') ? 'checked' : '' }} class="accent-primary w-4 h-4">
+                                <span class="text-sm text-gray-600">فعال</span>
+                            </label>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="text-sm font-medium text-gray-700 w-32">متن دکمه تخفیف</label>
+                            <input type="text" name="header_discount_text" value="{{ $settings['header_discount_text'] ?? 'حراجی‌های داغ' }}" class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="text-sm font-medium text-gray-700 w-32">لینک دکمه تخفیف</label>
+                            <input type="text" name="header_discount_url" value="{{ $settings['header_discount_url'] ?? '' }}" placeholder="خالی = حراجی‌ها با بیشترین پیشنهاد" class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -269,15 +284,25 @@
                     <h4 class="font-semibold text-gray-700 mt-5 mb-3">لینک‌های شبکه اجتماعی</h4>
                     <div id="social-links-container" class="space-y-2 mb-3">
                         @foreach($settings['footer_social'] as $i => $social)
-                        <div class="social-row grid gap-2 p-2 bg-gray-50 rounded-lg" style="grid-template-columns:120px 1fr auto;" data-index="{{ $i }}">
-                            <div>
-                                <input type="text" name="footer_social[icon][]" value="{{ $social['icon'] }}" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="آیکون">
-                            </div>
-                            <div>
-                                <input type="text" name="footer_social[url][]" value="{{ $social['url'] }}" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="https://...">
-                            </div>
+                        <div class="social-row flex items-center gap-2 p-2 bg-gray-50 rounded-lg" data-index="{{ $i }}">
+                            {{-- Hidden existing image path --}}
+                            <input type="hidden" name="footer_social[image][]" value="{{ $social['image'] ?? '' }}">
+                            {{-- Image preview + upload --}}
+                            <label class="relative w-10 h-10 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer overflow-hidden bg-white hover:border-primary transition-colors flex-shrink-0" title="آپلود آیکون (PNG/SVG)">
+                                @if(!empty($social['image']))
+                                    <img src="{{ url('storage/'.$social['image']) }}" class="w-full h-full object-contain p-0.5 social-preview-img" alt="">
+                                @else
+                                    <span class="material-symbols-outlined text-gray-400 text-base social-preview-placeholder">add_photo_alternate</span>
+                                    <img src="" class="w-full h-full object-contain p-0.5 social-preview-img hidden" alt="">
+                                @endif
+                                <input type="file" name="footer_social_image[{{ $i }}]" accept=".png,.svg,image/png,image/svg+xml" class="absolute inset-0 opacity-0 cursor-pointer social-img-input" onchange="previewSocialImg(this)">
+                            </label>
+                            {{-- Label --}}
+                            <input type="text" name="footer_social[label][]" value="{{ $social['label'] ?? '' }}" class="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="نام">
+                            {{-- URL --}}
+                            <input type="text" name="footer_social[url][]" value="{{ $social['url'] ?? '#' }}" class="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="https://...">
                             <button type="button" onclick="this.closest('.social-row').remove()"
-                                    class="p-1.5 border border-red-200 rounded bg-red-50 text-red-500">
+                                    class="p-1.5 border border-red-200 rounded bg-red-50 text-red-500 flex-shrink-0">
                                 <span class="material-symbols-outlined text-sm">delete</span>
                             </button>
                         </div>
@@ -675,19 +700,41 @@ function addBottomLink() {
 }
 
 // Social links
+let socialCount = document.querySelectorAll('.social-row').length;
 function addSocialLink() {
     const c = document.getElementById('social-links-container');
+    const i = socialCount++;
     const div = document.createElement('div');
-    div.className = 'social-row grid gap-2 p-2 bg-gray-50 rounded-lg';
-    div.style.gridTemplateColumns = '120px 1fr auto';
+    div.className = 'social-row flex items-center gap-2 p-2 bg-gray-50 rounded-lg';
     div.innerHTML = `
-        <input type="text" name="footer_social[icon][]" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="آیکون">
-        <input type="text" name="footer_social[url][]" class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="https://...">
+        <input type="hidden" name="footer_social[image][]" value="">
+        <label class="relative w-10 h-10 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer overflow-hidden bg-white hover:border-primary transition-colors flex-shrink-0" title="آپلود آیکون (PNG/SVG)">
+            <span class="material-symbols-outlined text-gray-400 text-base social-preview-placeholder">add_photo_alternate</span>
+            <img src="" class="w-full h-full object-contain p-0.5 social-preview-img hidden" alt="">
+            <input type="file" name="footer_social_image[${i}]" accept=".png,.svg,image/png,image/svg+xml" class="absolute inset-0 opacity-0 cursor-pointer social-img-input" onchange="previewSocialImg(this)">
+        </label>
+        <input type="text" name="footer_social[label][]" class="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="نام">
+        <input type="text" name="footer_social[url][]" class="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="https://...">
         <button type="button" onclick="this.closest('.social-row').remove()"
-                class="p-1.5 border border-red-200 rounded bg-red-50 text-red-500">
+                class="p-1.5 border border-red-200 rounded bg-red-50 text-red-500 flex-shrink-0">
             <span class="material-symbols-outlined text-sm">delete</span>
         </button>`;
     c.appendChild(div);
+}
+
+function previewSocialImg(input) {
+    const label = input.closest('label');
+    const img = label.querySelector('.social-preview-img');
+    const placeholder = label.querySelector('.social-preview-placeholder');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            img.src = e.target.result;
+            img.classList.remove('hidden');
+            if (placeholder) placeholder.classList.add('hidden');
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
 }
 
 // Footer columns

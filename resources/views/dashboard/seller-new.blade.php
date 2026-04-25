@@ -3,7 +3,7 @@
 @section('title', 'داشبورد فروشنده')
 
 @section('page-title', 'خوش آمدید، ' . (optional(auth()->user()->store)->store_name ?? auth()->user()->name) . ' 👋')
-@section('page-subtitle', 'خلاصه وضعیت فروشگاه شما امروز')
+@section('page-subtitle', 'خلاصه وضعیت فروشگاه من امروز')
 
 @section('content')
     <!-- Statistics Cards -->
@@ -81,69 +81,6 @@
             </div>
         </div>
 
-        <!-- Recent Activities -->
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div class="p-6 border-b border-gray-100">
-                <h3 class="text-lg font-bold text-gray-900">فعالیت‌های اخیر</h3>
-                <p class="text-sm text-gray-500 mt-1">آخرین رویدادها</p>
-            </div>
-            <div class="p-4 space-y-4 max-h-80 overflow-y-auto">
-                <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-green-600 text-xl">shopping_bag</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900">فروش جدید</p>
-                        <p class="text-xs text-gray-500 mt-0.5">سفارش #۱۲۳۴ تکمیل شد</p>
-                        <p class="text-xs text-gray-400 mt-1">۲ ساعت پیش</p>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-blue-600 text-xl">gavel</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900">پیشنهاد جدید</p>
-                        <p class="text-xs text-gray-500 mt-0.5">پیشنهاد ۵۰۰,۰۰۰ تومان</p>
-                        <p class="text-xs text-gray-400 mt-1">۳ ساعت پیش</p>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-orange-600 text-xl">local_shipping</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900">ارسال محصول</p>
-                        <p class="text-xs text-gray-500 mt-0.5">سفارش #۱۲۳۰ ارسال شد</p>
-                        <p class="text-xs text-gray-400 mt-1">۵ ساعت پیش</p>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-green-600 text-xl">shopping_bag</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900">فروش جدید</p>
-                        <p class="text-xs text-gray-500 mt-0.5">سفارش #۱۲۲۸ تکمیل شد</p>
-                        <p class="text-xs text-gray-400 mt-1">۱ روز پیش</p>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-blue-600 text-xl">gavel</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-900">پیشنهاد جدید</p>
-                        <p class="text-xs text-gray-500 mt-0.5">پیشنهاد ۷۵۰,۰۰۰ تومان</p>
-                        <p class="text-xs text-gray-400 mt-1">۱ روز پیش</p>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Active Listings Table -->

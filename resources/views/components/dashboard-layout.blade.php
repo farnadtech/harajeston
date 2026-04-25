@@ -4,10 +4,18 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'داشبورد' }} - {{ config('app.name') }}</title>
+    @php
+        $siteName = \App\Models\SiteSetting::get('site_name', config('app.name'));
+        $siteFavicon = \App\Models\SiteSetting::get('site_favicon', '');
+        $faviconUrl = $siteFavicon ? rtrim(config('app.url'), '/') . '/storage/' . $siteFavicon : '';
+    @endphp
+    @if($faviconUrl)
+    <link rel="icon" type="image/png" href="{{ $faviconUrl }}">
+    <link rel="shortcut icon" href="{{ $faviconUrl }}">
+    @endif
+    <title>{{ $title ?? 'داشبورد' }} - {{ $siteName }}</title>
     <link href="/haraj/public/css/app.css" rel="stylesheet"/>
     <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
-    <script defer src="/haraj/public/js/alpine.min.js"></script>
     <style>
     @font-face {
         font-family: 'Material Symbols Outlined';
@@ -73,10 +81,30 @@
         [x-cloak] { display: none !important; }
     </style>
     {{ $styles ?? '' }}
+    <style>
+        @media (max-width: 1023px) {
+            #app-sidebar { transform: translateX(100%); transition: transform 0.3s ease; }
+            #app-sidebar.sidebar-open { transform: translateX(0); }
+        }
+        @media (min-width: 1024px) {
+            #app-sidebar { transform: translateX(0) !important; }
+            #sidebar-overlay { display: none !important; }
+        }
+    </style>
 </head>
 <body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex overflow-hidden">
+    <!-- Mobile Overlay -->
+    <div id="sidebar-overlay" onclick="closeSidebar()"
+         class="hidden fixed inset-0 bg-black/50 z-40"></div>
+
     <!-- Sidebar -->
-    <aside class="w-64 border-l border-gray-200 hidden lg:flex flex-col h-screen fixed right-0 top-0 z-30" style="background:{{ \App\Models\SiteSetting::get('theme_dashboard_sidebar_bg', '#ffffff') }};">
+    <aside id="app-sidebar"
+           class="w-64 border-l border-gray-200 flex flex-col h-screen fixed right-0 top-0 z-50 lg:z-30"
+           style="background:{{ \App\Models\SiteSetting::get('theme_dashboard_sidebar_bg', '#ffffff') }};">
+        <!-- Close button on mobile -->
+        <button onclick="closeSidebar()" class="absolute top-4 left-4 p-1.5 text-gray-400 hover:text-gray-600 lg:hidden">
+            <span class="material-symbols-outlined">close</span>
+        </button>
         @php
             $dashLogo = \App\Models\SiteSetting::get('theme_dashboard_logo', '');
             $dashText = \App\Models\SiteSetting::get('theme_dashboard_logo_text', 'حراجآنلاین');
@@ -186,7 +214,17 @@
             @endif
         </nav>
         
-        <div class="p-4 border-t border-gray-100">
+        <div class="p-4 border-t border-gray-100 space-y-1">
+            <a href="{{ route('profile.edit') }}"
+               class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('profile.*') ? 'text-primary bg-primary/5 font-bold' : 'text-gray-600 hover:text-primary hover:bg-gray-50 font-medium' }} rounded-xl transition-colors group">
+                @if(auth()->user()->avatar)
+                    <img src="{{ url('storage/'.auth()->user()->avatar) }}"
+                         class="w-6 h-6 rounded-full object-cover flex-shrink-0">
+                @else
+                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">manage_accounts</span>
+                @endif
+                <span>ویرایش پروفایل</span>
+            </a>
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
                 <button type="submit" class="flex items-center gap-3 w-full px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-medium transition-colors">
@@ -201,11 +239,19 @@
     <main class="flex-1 lg:mr-64 flex flex-col h-screen overflow-hidden relative w-full">
         <!-- Header -->
         <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0">
-            <div class="hidden lg:block">
-                <h2 class="text-xl font-bold text-gray-800">{{ $pageTitle ?? 'داشبورد' }}</h2>
-                <p class="text-sm text-gray-500">خوش آمدید، {{ auth()->user()->name }} عزیز</p>
+            <div class="flex items-center gap-3">
+                <!-- Hamburger - mobile only -->
+                <button onclick="openSidebar()" class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg lg:hidden">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
+                <div class="hidden lg:block">
+                    <h2 class="text-xl font-bold text-gray-800">{{ $pageTitle ?? 'داشبورد' }}</h2>
+                    <p class="text-sm text-gray-500">خوش آمدید، {{ auth()->user()->name }} عزیز</p>
+                </div>
+                <div class="lg:hidden">
+                    <h2 class="text-base font-bold text-gray-800">{{ $pageTitle ?? 'داشبورد' }}</h2>
+                </div>
             </div>
-            
             <div class="flex items-center gap-4">
                 <div class="dropdown" id="notificationsDropdown">
                     <button onclick="toggleDropdown('notificationsDropdown')" class="relative p-2 text-gray-600 hover:text-primary hover:bg-gray-50 rounded-lg transition-colors">
@@ -222,9 +268,6 @@
                     <div class="dropdown-menu">
                         <div class="p-4 border-b border-gray-100 flex items-center justify-between">
                             <h3 class="font-bold text-gray-900">اعلان‌ها</h3>
-                            @if($unreadCount > 0)
-                            <span class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">{{ \App\Services\PersianNumberService::convertToPersian($unreadCount) }} جدید</span>
-                            @endif
                         </div>
                         <div class="max-h-80 overflow-y-auto">
                             @php
@@ -260,13 +303,55 @@
                     </div>
                 </div>
                 
-                <div class="flex items-center gap-3 pr-4 border-r border-gray-200 mr-2">
-                    <div class="text-left hidden sm:block">
-                        <p class="text-sm font-bold text-gray-900">{{ auth()->user()->name }}</p>
-                        <p class="text-xs text-gray-500">{{ auth()->user()->canSell() ? 'فروشنده' : 'خریدار' }}</p>
-                    </div>
-                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                        {{ mb_substr(auth()->user()->name, 0, 1) }}
+                <div class="relative flex-shrink-0" x-data="{ open: false }">
+                    <button @click="open = !open"
+                            class="flex items-center gap-2 pr-3 border-r border-gray-200 mr-2 focus:outline-none">
+                        <div class="text-left hidden sm:block">
+                            <p class="text-sm font-bold text-gray-900 leading-tight">{{ auth()->user()->name }}</p>
+                            <p class="text-xs text-gray-500">{{ auth()->user()->canSell() ? 'فروشنده' : 'خریدار' }}</p>
+                        </div>
+                        <div class="rounded-full overflow-hidden flex-shrink-0 border-2 border-gray-200 hover:border-primary transition-colors" style="width:32px;height:32px;min-width:32px;min-height:32px;">
+                            @if(auth()->user()->avatar)
+                                <img src="{{ url('storage/'.auth()->user()->avatar) }}"
+                                     class="w-full h-full object-cover"
+                                     alt="{{ auth()->user()->name }}">
+                            @else
+                                <div class="w-full h-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                                    {{ mb_substr(auth()->user()->name, 0, 1) }}
+                                </div>
+                            @endif
+                        </div>
+                        <span class="material-symbols-outlined text-gray-400 text-base hidden sm:block" :class="open ? 'rotate-180' : ''">expand_more</span>
+                    </button>
+                    <div x-show="open" @click.away="open = false" x-transition
+                         class="absolute left-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                        <a href="{{ route('profile.edit') }}"
+                           class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 transition-colors">
+                            <div class="rounded-full overflow-hidden flex-shrink-0 border border-gray-200" style="width:32px;height:32px;min-width:32px;min-height:32px;">
+                                @if(auth()->user()->avatar)
+                                    <img src="{{ url('storage/'.auth()->user()->avatar) }}" class="w-full h-full object-cover">
+                                @else
+                                    <div class="w-full h-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                                        {{ mb_substr(auth()->user()->name, 0, 1) }}
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-800 truncate">{{ auth()->user()->name }}</p>
+                                <p class="text-xs text-primary">ویرایش پروفایل</p>
+                            </div>
+                        </a>
+                        <a href="{{ route('dashboard') }}" class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                            <span class="material-symbols-outlined text-base text-gray-400">dashboard</span>
+                            داشبورد
+                        </a>
+                        <form action="{{ route('logout') }}" method="POST">
+                            @csrf
+                            <button type="submit" class="flex items-center gap-2 w-full text-right px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                                <span class="material-symbols-outlined text-base">logout</span>
+                                خروج
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -301,6 +386,24 @@
             }
         });
     </script>
+    <script>
+        function openSidebar() {
+            document.getElementById('app-sidebar').classList.add('sidebar-open');
+            document.getElementById('sidebar-overlay').classList.remove('hidden');
+        }
+        function closeSidebar() {
+            document.getElementById('app-sidebar').classList.remove('sidebar-open');
+            document.getElementById('sidebar-overlay').classList.add('hidden');
+        }
+        document.addEventListener('click', function(e) {
+            var sidebar = document.getElementById('app-sidebar');
+            if (sidebar && !sidebar.contains(e.target) && sidebar.classList.contains('sidebar-open')) {
+                var btn = document.querySelector('[onclick="openSidebar()"]');
+                if (!btn || !btn.contains(e.target)) closeSidebar();
+            }
+        });
+    </script>
+    <script src="/haraj/public/js/alpine.min.js"></script>
     {{ $scripts ?? '' }}
 </body>
 </html>

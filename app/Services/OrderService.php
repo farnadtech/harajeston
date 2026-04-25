@@ -146,7 +146,11 @@ class OrderService
                     'subtotal' => $subtotal,
                     'shipping_cost' => $shippingCost,
                     'total' => $total,
-                    'shipping_address' => $shippingData['address'] ?? null,
+                    'shipping_address'     => $shippingData['shipping_address'] ?? $shippingData['address'] ?? null,
+                    'shipping_city'        => $shippingData['shipping_city'] ?? null,
+                    'shipping_postal_code' => $shippingData['shipping_postal_code'] ?? null,
+                    'shipping_phone'       => $shippingData['shipping_phone'] ?? null,
+                    'shipping_method_id'   => $shippingData['shipping_method_id'] ?? null,
                 ]);
                 
                 // Create order items and decrement stock
@@ -172,7 +176,18 @@ class OrderService
                 
                 // Send notifications
                 $buyer->notify(new \App\Notifications\OrderPlacedNotification($order, false));
-                User::find($sellerId)->notify(new \App\Notifications\OrderPlacedNotification($order, true));
+                $seller = \App\Models\User::find($sellerId);
+                $seller->notify(new \App\Notifications\OrderPlacedNotification($order, true));
+                // Notify seller that order is ready for processing (address provided)
+                $seller->notify(new \App\Notifications\OrderReadyForProcessingNotification($order));
+
+                // Dispatch SMS/Email via NotificationDispatcher
+                $dispatcher = app(\App\Services\NotificationDispatcher::class);
+                $notifData = ['order_number' => $order->order_number, 'amount' => number_format($order->total),
+                    'buyer_name' => $buyer->name, 'seller_name' => $seller->name ?? ''];
+                $dispatcher->dispatch('order_placed_buyer', $buyer, $notifData);
+                $dispatcher->dispatch('order_placed_seller', $seller, $notifData);
+                $dispatcher->dispatch('order_ready_processing', $seller, $notifData);
                 
                 $orders->push($order);
             }
@@ -269,7 +284,7 @@ class OrderService
     /**
      * Get orders by user (buyer or seller)
      */
-    public function getOrdersByUser(User $user, string $role = 'buyer'): Collection
+    public function getOrdersByUser(User $user, string $role = 'buyer', ?string $search = null, ?string $status = null): Collection
     {
         $query = Order::query();
         
@@ -277,6 +292,18 @@ class OrderService
             $query->where('buyer_id', $user->id);
         } else {
             $query->where('seller_id', $user->id);
+        }
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhereHas('buyer', fn($q) => $q->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('items.listing', fn($q) => $q->where('title', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($status) {
+            $query->where('status', $status);
         }
         
         return $query->with(['items.listing', 'buyer', 'seller'])

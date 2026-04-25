@@ -47,6 +47,9 @@ class SellerReviewController extends Controller
     {
         $review = SellerReview::findOrFail($id);
         $review->reject();
+        
+        // Update seller rating in case it was previously approved
+        $review->seller->updateSellerRating();
 
         return back()->with('success', 'نظر رد شد');
     }

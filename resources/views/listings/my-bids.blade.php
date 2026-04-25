@@ -57,10 +57,10 @@
                         </span>
 
                         <!-- Winner Badge -->
-                        @if(in_array($listing->status, ['ended', 'completed']) && $listing->current_winner_id === auth()->id())
+                        @if(in_array($listing->status, ['ended', 'completed']) && ($listing->current_winner_id === auth()->id() || $listing->is_buy_now_winner))
                             <span class="absolute top-3 left-3 px-3 py-1 bg-yellow-500 text-white text-xs font-bold rounded-full flex items-center gap-1">
                                 <span class="material-symbols-outlined text-sm">emoji_events</span>
-                                برنده
+                                {{ $listing->is_buy_now_winner && !$listing->current_winner_id ? 'خرید فوری' : 'برنده' }}
                             </span>
                         @endif
                     </div>
@@ -75,7 +75,18 @@
                         </div>
 
                         <!-- My Bid Info -->
-                        @if($listing->my_bid)
+                        @if($listing->is_buy_now_winner)
+                            <div class="bg-green-50 border border-green-200 rounded-xl p-3 mb-3">
+                                <div class="flex items-center gap-2 text-sm text-green-700">
+                                    <span class="material-symbols-outlined text-base">shopping_cart</span>
+                                    <span class="font-bold">خرید فوری انجام شده</span>
+                                </div>
+                                <div class="flex items-center justify-between mt-1">
+                                    <span class="text-xs text-gray-600">مبلغ پرداختی:</span>
+                                    <span class="text-sm font-bold text-green-600">@price($listing->buy_now_price) تومان</span>
+                                </div>
+                            </div>
+                        @elseif($listing->my_bid)
                             @php
                                 $currentHighest = $listing->current_highest_bid ?? $listing->starting_price;
                                 $isWinning = $listing->my_bid->amount >= $currentHighest;
@@ -160,10 +171,29 @@
                         @endif
 
                         <!-- Action Button -->
-                        <a href="{{ route('listings.show', $listing) }}" 
-                           class="block w-full bg-primary text-white text-center py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium">
-                            مشاهده جزئیات
-                        </a>
+                        @if($listing->is_buy_now_winner)
+                            @php
+                                $buyNowOrder = \App\Models\Order::where('buyer_id', auth()->id())
+                                    ->whereHas('items', fn($q) => $q->where('listing_id', $listing->id))
+                                    ->first();
+                            @endphp
+                            @if($buyNowOrder)
+                                <a href="{{ route('orders.show', $buyNowOrder) }}" 
+                                   class="block w-full bg-green-600 text-white text-center py-3 rounded-xl hover:bg-green-700 transition-colors font-medium">
+                                    مشاهده سفارش
+                                </a>
+                            @else
+                                <a href="{{ route('listings.show', $listing) }}" 
+                                   class="block w-full bg-primary text-white text-center py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium">
+                                    مشاهده جزئیات
+                                </a>
+                            @endif
+                        @else
+                            <a href="{{ route('listings.show', $listing) }}" 
+                               class="block w-full bg-primary text-white text-center py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium">
+                                مشاهده جزئیات
+                            </a>
+                        @endif
                     </div>
                 </div>
             @endforeach

@@ -63,31 +63,8 @@
                                         <span class="material-symbols-outlined text-xl">edit</span>
                                         ویرایش فروشگاه
                                     </a>
-                                @else
-                                    {{-- Follow and Message Buttons (For other users) --}}
-                                    <button onclick="alert('قابلیت دنبال کردن به زودی اضافه خواهد شد')" class="px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-blue-600 transition-colors shadow-lg shadow-primary/20 flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-xl">add</span>
-                                        دنبال کردن
-                                    </button>
-                                    <button onclick="alert('قابلیت پیام‌رسانی به زودی اضافه خواهد شد')" class="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-xl">chat</span>
-                                        پیام
-                                    </button>
                                 @endif
-                            @else
-                                {{-- Buttons for guests --}}
-                                <button onclick="alert('قابلیت دنبال کردن به زودی اضافه خواهد شد')" class="px-6 py-2.5 bg-primary text-white font-bold rounded-xl hover:bg-blue-600 transition-colors shadow-lg shadow-primary/20 flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-xl">add</span>
-                                    دنبال کردن
-                                </button>
-                                <button onclick="alert('قابلیت پیام‌رسانی به زودی اضافه خواهد شد')" class="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-xl">chat</span>
-                                    پیام
-                                </button>
                             @endauth
-                            <button onclick="alert('قابلیت گزارش تخلف به زودی اضافه خواهد شد')" class="p-2.5 bg-white border border-gray-200 text-gray-500 rounded-xl hover:text-red-500 hover:bg-red-50 hover:border-red-100 transition-colors" title="گزارش تخلف">
-                                <span class="material-symbols-outlined text-xl">flag</span>
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -96,8 +73,8 @@
             {{-- Store Stats --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
                 <div class="bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
-                    <span class="block text-xs text-gray-500 mb-1">تعداد محصولات</span>
-                    <span class="block text-lg font-black text-gray-900">@persian($listings->total())</span>
+                    <span class="block text-xs text-gray-500 mb-1">تعداد کل حراجی‌ها</span>
+                    <span class="block text-lg font-black text-gray-900">@persian($totalAuctions)</span>
                 </div>
                 <div class="bg-gray-50 rounded-xl p-3 text-center border border-gray-100">
                     <span class="block text-xs text-gray-500 mb-1">فروش موفق</span>
@@ -122,14 +99,14 @@
     </div>
 
     {{-- Tabs Section --}}
-    <div x-data="{ activeTab: 'products', filter: 'all', auctionTab: '{{ $tab ?? 'active' }}' }">
+    <div x-data="{ activeTab: 'products' }">
         {{-- Tabs Navigation --}}
         <div class="border-b border-gray-200">
             <nav aria-label="Tabs" class="flex gap-8 overflow-x-auto no-scrollbar">
                 <button @click="activeTab = 'products'" :class="activeTab === 'products' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="border-b-2 py-4 px-1 text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors">
                     <span class="material-symbols-outlined">gavel</span>
                     حراج‌ها
-                    <span class="bg-primary/10 text-primary text-xs py-0.5 px-2 rounded-full mr-1">@persian($listings->total())</span>
+                    <span class="bg-primary/10 text-primary text-xs py-0.5 px-2 rounded-full mr-1">@persian($totalAuctions)</span>
                 </button>
                 <button @click="activeTab = 'reviews'" :class="activeTab === 'reviews' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="border-b-2 py-4 px-1 text-sm font-bold whitespace-nowrap flex items-center gap-2 transition-colors">
                     <span class="material-symbols-outlined">rate_review</span>
@@ -169,28 +146,6 @@
 
         {{-- Filters and Sort --}}
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4 py-4 mt-4">
-            @if($tab === 'active')
-            <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-2 sm:pb-0">
-                <button 
-                    @click="filter = 'all'" 
-                    :class="filter === 'all' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'" 
-                    class="px-4 py-2 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
-                    همه حراج‌ها
-                </button>
-                <button 
-                    @click="filter = 'buy_now'" 
-                    :class="filter === 'buy_now' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'" 
-                    class="px-4 py-2 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
-                    با خرید فوری
-                </button>
-                <button 
-                    @click="filter = 'ending'" 
-                    :class="filter === 'ending' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'" 
-                    class="px-4 py-2 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
-                    در حال پایان
-                </button>
-            </div>
-            @endif
             <div class="flex items-center gap-2 w-full sm:w-auto">
                 <span class="text-sm text-gray-500 whitespace-nowrap">مرتب‌سازی:</span>
                 <select 
@@ -201,6 +156,8 @@
                     <option value="ending_soon" {{ $sort === 'ending_soon' ? 'selected' : '' }}>زمان باقیمانده</option>
                     @elseif($tab === 'upcoming')
                     <option value="starting_soon" {{ $sort === 'starting_soon' ? 'selected' : '' }}>زودتر شروع می‌شود</option>
+                    @elseif($tab === 'ended')
+                    <option value="price_desc" {{ $sort === 'price_desc' ? 'selected' : '' }}>قیمت نهایی (زیاد به کم)</option>
                     @endif
                     <option value="price_asc" {{ $sort === 'price_asc' ? 'selected' : '' }}>قیمت (کم به زیاد)</option>
                     <option value="price_desc" {{ $sort === 'price_desc' ? 'selected' : '' }}>قیمت (زیاد به کم)</option>
@@ -212,16 +169,8 @@
     @if($listings->count() > 0)
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             @foreach($listings as $listing)
-                @php
-                    $hasBuyNow = $listing->hasBuyNowPrice();
-                    $isEnding = $listing->ends_at && $listing->ends_at->diffInHours() < 24;
-                @endphp
                 <div 
                     class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group overflow-hidden flex flex-col"
-                    @if($tab === 'active')
-                    x-show="filter === 'all' || (filter === 'buy_now' && {{ $hasBuyNow ? 'true' : 'false' }}) || (filter === 'ending' && {{ $isEnding ? 'true' : 'false' }})"
-                    style="display: none;"
-                    @endif
                     x-transition:enter="transition ease-out duration-200"
                     x-transition:enter-start="opacity-0 scale-95"
                     x-transition:enter-end="opacity-100 scale-100"
@@ -302,16 +251,16 @@
                                 </div>
                             @endif
 
-                            @if($listing->status !== 'completed')
+                            @if(!in_array($listing->status, ['completed', 'ended']))
                             <div class="flex gap-2">
                                 <a href="{{ route('listings.show', $listing) }}" class="flex-1 py-2.5 bg-primary/10 hover:bg-primary hover:text-white text-primary font-bold rounded-xl transition-all text-sm text-center">
                                     ثبت پیشنهاد
                                 </a>
                             </div>
                             @else
-                            <div class="py-2.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm text-center">
-                                حراج پایان یافته
-                            </div>
+                            <a href="{{ route('listings.show', $listing) }}" class="block py-2.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm text-center hover:bg-gray-200 transition-colors">
+                                مشاهده نتیجه
+                            </a>
                             @endif
                         </div>
                     </div>

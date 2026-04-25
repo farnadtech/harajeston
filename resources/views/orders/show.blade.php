@@ -492,6 +492,39 @@
                     </div>
                 @endif
 
+                @if($order->buyer_id === auth()->id() && $order->status === 'delivered')
+                    @php
+                        $hasReview = \App\Models\SellerReview::where('order_id', $order->id)
+                            ->where('buyer_id', auth()->id())
+                            ->exists();
+                    @endphp
+                    @if(!$hasReview)
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">ثبت نظر درباره فروشنده</h2>
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-star text-yellow-500 text-xl mt-1"></i>
+                                <div class="text-sm text-gray-700">
+                                    <p>از تجربه خرید خود راضی بودید؟ نظر شما به بهبود کیفیت فروشندگان کمک می‌کند.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <a href="{{ route('seller-reviews.create', $order) }}" 
+                           class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-bold">
+                            <i class="fas fa-star"></i>
+                            ثبت امتیاز و نظر
+                        </a>
+                    </div>
+                    @else
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex items-center gap-3 text-green-700">
+                            <i class="fas fa-check-circle text-xl"></i>
+                            <span class="font-medium">نظر شما برای این سفارش ثبت شده است</span>
+                        </div>
+                    </div>
+                    @endif
+                @endif
+
                 @if($order->seller_id === auth()->id() && $order->status === 'pending')
                     <div class="bg-white rounded-lg shadow-sm p-6">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">تغییر وضعیت سفارش</h2>

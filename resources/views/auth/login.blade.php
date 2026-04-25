@@ -3,7 +3,14 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>ورود - حراج‌استون</title>
+    @php
+        $siteName = \App\Models\SiteSetting::get('site_name', 'حراج‌استون');
+        $siteTagline = \App\Models\SiteSetting::get('site_tagline', '');
+        $siteFavicon = \App\Models\SiteSetting::get('site_favicon', '');
+        $faviconUrl = $siteFavicon ? rtrim(config('app.url'), '/') . '/storage/' . $siteFavicon : '';
+    @endphp
+    <title>ورود | {{ $siteName }}{{ $siteTagline ? ' - ' . $siteTagline : '' }}</title>
+    @if($faviconUrl)<link rel="icon" type="image/png" href="{{ $faviconUrl }}"><link rel="shortcut icon" href="{{ $faviconUrl }}">@endif
     <link href="/haraj/public/css/app.css" rel="stylesheet"/>
     <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
     <style>
@@ -29,21 +36,12 @@
         font-feature-settings: 'liga';
         -webkit-font-smoothing: antialiased;
     }
-    </style>
-    <style>
-        body { font-family: 'Vazirmatn', sans-serif; }
+    body { font-family: 'Vazirmatn', sans-serif; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 antialiased min-h-screen flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-md p-8 sm:p-12">
-        <div class="flex items-center gap-3 mb-8">
-            <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-2xl">gavel</span>
-            </div>
-            <h1 class="text-xl font-black tracking-tight">
-                حراج<span class="text-primary">استون</span>
-            </h1>
-        </div>
+        <x-auth-header />
         
         <div class="mb-8">
             <div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto mb-4">

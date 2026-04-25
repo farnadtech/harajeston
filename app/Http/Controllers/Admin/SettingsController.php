@@ -291,4 +291,106 @@ class SettingsController extends Controller
         return redirect()->route('admin.settings.index')
             ->with('success', $enabled ? 'سیستم OTP فعال شد.' : 'سیستم OTP غیرفعال شد.');
     }
+
+    /**
+     * صفحه تنظیمات عمومی سایت
+     */
+    public function general()
+    {
+        $settings = [
+            'site_name'           => SiteSetting::get('site_name', 'حراج‌استون'),
+            'site_tagline'        => SiteSetting::get('site_tagline', ''),
+            'site_description'    => SiteSetting::get('site_description', ''),
+            'site_logo'           => SiteSetting::get('site_logo', ''),
+            'site_favicon'        => SiteSetting::get('site_favicon', ''),
+            'site_icon'           => SiteSetting::get('site_icon', 'gavel'),
+            'site_email'          => SiteSetting::get('site_email', ''),
+            'site_phone'          => SiteSetting::get('site_phone', ''),
+            'site_address'        => SiteSetting::get('site_address', ''),
+            'color_primary'       => SiteSetting::get('color_primary', '#135bec'),
+            'color_primary_hover' => SiteSetting::get('color_primary_hover', '#0e4bc7'),
+            'color_secondary'     => SiteSetting::get('color_secondary', '#f97316'),
+            'color_bg'            => SiteSetting::get('color_bg', '#f1f3f7'),
+            'color_text'          => SiteSetting::get('color_text', '#0d121b'),
+            'footer_text'         => SiteSetting::get('footer_text', ''),
+            'social_instagram'    => SiteSetting::get('social_instagram', ''),
+            'social_telegram'     => SiteSetting::get('social_telegram', ''),
+            'social_whatsapp'     => SiteSetting::get('social_whatsapp', ''),
+        ];
+
+        return view('admin.settings.general', compact('settings'));
+    }
+
+    /**
+     * ذخیره تنظیمات عمومی
+     */
+    public function updateGeneral(Request $request)
+    {
+        $request->validate([
+            'site_name'           => 'required|string|max:100',
+            'site_tagline'        => 'nullable|string|max:200',
+            'site_description'    => 'nullable|string|max:500',
+            'site_icon'           => 'nullable|string|max:50',
+            'site_email'          => 'nullable|email|max:100',
+            'site_phone'          => 'nullable|string|max:20',
+            'site_address'        => 'nullable|string|max:300',
+            'color_primary'       => 'required|regex:/^#[0-9a-fA-F]{6}$/',
+            'color_primary_hover' => 'required|regex:/^#[0-9a-fA-F]{6}$/',
+            'color_secondary'     => 'required|regex:/^#[0-9a-fA-F]{6}$/',
+            'color_bg'            => 'required|regex:/^#[0-9a-fA-F]{6}$/',
+            'color_text'          => 'required|regex:/^#[0-9a-fA-F]{6}$/',
+            'footer_text'         => 'nullable|string|max:500',
+            'social_instagram'    => 'nullable|url|max:200',
+            'social_telegram'     => 'nullable|string|max:200',
+            'social_whatsapp'     => 'nullable|string|max:20',
+        ]);
+
+        $fields = [
+            'site_name', 'site_tagline', 'site_description', 'site_icon',
+            'site_email', 'site_phone', 'site_address',
+            'color_primary', 'color_primary_hover', 'color_secondary', 'color_bg', 'color_text',
+            'footer_text', 'social_instagram', 'social_telegram', 'social_whatsapp',
+        ];
+
+        foreach ($fields as $field) {
+            SiteSetting::set($field, $request->input($field, ''));
+        }
+
+        // Clear all settings cache
+        SiteSetting::clearCache();
+
+        return redirect()->route('admin.settings.general')
+            ->with('success', 'تنظیمات عمومی با موفقیت ذخیره شد.');
+    }
+
+    /**
+     * آپلود لوگو یا فاویکون
+     */
+    public function uploadLogo(Request $request)
+    {
+        try {
+            $request->validate([
+                'file'  => 'required|file|mimes:png,jpg,jpeg,gif,webp,svg|max:2048',
+                'type'  => 'required|in:site_logo,site_favicon',
+            ]);
+
+            $path = $request->file('file')->store('site', 'public');
+            SiteSetting::set($request->type, $path);
+            SiteSetting::clearCache();
+
+            // Build URL using APP_URL directly to avoid XAMPP subfolder issues
+            $url = rtrim(config('app.url'), '/') . '/storage/' . $path;
+
+            return response()->json([
+                'success' => true,
+                'path' => $path,
+                'url' => $url,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'message' => implode(' ', $e->validator->errors()->all())], 422);
+        } catch (\Exception $e) {
+            \Log::error('Logo upload error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 }

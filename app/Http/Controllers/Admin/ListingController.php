@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\CsvExportTrait;
 use App\Models\Listing;
 use App\Services\AuctionService;
 use App\Services\WalletService;
@@ -10,6 +11,7 @@ use Illuminate\Http\Request;
 
 class ListingController extends Controller
 {
+    use CsvExportTrait;
     public function __construct(
         protected AuctionService $auctionService,
         protected WalletService $walletService
@@ -955,5 +957,38 @@ class ListingController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    public function export(Request $request)
+    {
+        $statusLabels = [
+            'pending'   => 'در انتظار تایید',
+            'active'    => 'فعال',
+            'ended'     => 'پایان یافته',
+            'cancelled' => 'لغو شده',
+            'suspended' => 'تعلیق شده',
+            'scheduled' => 'زمان‌بندی شده',
+            'completed' => 'تکمیل شده',
+            'failed'    => 'ناموفق',
+            'rejected'  => 'رد شده',
+            'draft'     => 'پیش‌نویس',
+        ];
+        $query = Listing::with('seller', 'category');
+        if ($request->filled('status')) $query->where('status', $request->status);
+        if ($request->filled('search')) $query->where('title', 'like', '%' . $request->search . '%');
+        $listings = $query->orderBy('created_at', 'desc')->get();
+
+        $rows = $listings->map(fn($l) => [
+            $l->id, $l->title, $l->seller->name ?? '', $l->category->name ?? '',
+            $statusLabels[$l->status] ?? $l->status,
+            number_format($l->starting_price), number_format($l->current_price ?? 0),
+            $l->buy_now_price ? number_format($l->buy_now_price) : '',
+            $this->jalali($l->starts_at), $this->jalali($l->ends_at), $this->jalali($l->created_at),
+        ]);
+
+        return $this->csvResponse('listings-' . date('Y-m-d') . '.csv', [
+            'شناسه', 'عنوان', 'فروشنده', 'دسته‌بندی', 'وضعیت',
+            'قیمت شروع', 'قیمت فعلی', 'قیمت خرید فوری', 'تاریخ شروع', 'تاریخ پایان', 'تاریخ ثبت',
+        ], $rows);
     }
 }

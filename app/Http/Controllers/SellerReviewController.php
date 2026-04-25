@@ -15,9 +15,9 @@ class SellerReviewController extends Controller
             abort(403, 'شما مجاز به ثبت نظر برای این سفارش نیستید');
         }
 
-        // Check if order is completed
-        if ($order->status !== 'completed') {
-            return back()->with('error', 'فقط می‌توانید برای سفارشات تکمیل شده نظر ثبت کنید');
+        // Check if order is delivered or completed
+        if (!in_array($order->status, ['delivered', 'completed'])) {
+            return back()->with('error', 'فقط می‌توانید برای سفارشات تحویل داده شده نظر ثبت کنید');
         }
 
         // Check if already reviewed
@@ -39,9 +39,9 @@ class SellerReviewController extends Controller
             abort(403);
         }
 
-        // Check if order is completed
-        if ($order->status !== 'completed') {
-            return back()->with('error', 'فقط می‌توانید برای سفارشات تکمیل شده نظر ثبت کنید');
+        // Check if order is delivered or completed
+        if (!in_array($order->status, ['delivered', 'completed'])) {
+            return back()->with('error', 'فقط می‌توانید برای سفارشات تحویل داده شده نظر ثبت کنید');
         }
 
         // Check if already reviewed

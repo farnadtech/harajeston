@@ -14,15 +14,16 @@
                 <span class="material-symbols-outlined">attach_money</span>
             </div>
             <div>
-                <p class="text-sm text-gray-500 font-medium">فروش کل</p>
+                <p class="text-sm text-gray-500 font-medium">درآمد ماه جاری</p>
                 <h3 class="text-2xl font-black text-gray-900 mt-1">
-                    @price($stats['total_sales'] ?? 2500000000)
+                    @price($stats['total_sales'])
                     <span class="text-xs font-normal text-gray-400">تومان</span>
                 </h3>
-                <p class="text-xs text-green-500 flex items-center gap-1 mt-1 font-bold">
-                    <span class="material-symbols-outlined text-[14px]">trending_up</span>
-                    @persian(12)٪ رشد هفتگی
+                <p class="text-xs {{ $stats['sales_growth'] >= 0 ? 'text-green-500' : 'text-red-500' }} flex items-center gap-1 mt-1 font-bold">
+                    <span class="material-symbols-outlined text-[14px]">{{ $stats['sales_growth'] >= 0 ? 'trending_up' : 'trending_down' }}</span>
+                    @persian(abs($stats['sales_growth']))٪ {{ $stats['sales_growth'] >= 0 ? 'رشد' : 'کاهش' }} نسبت به ماه قبل
                 </p>
+                <p class="text-xs text-gray-400 mt-0.5">ماه قبل: @price($stats['prev_month_sales']) تومان</p>
             </div>
         </div>
 
@@ -32,10 +33,10 @@
             </div>
             <div>
                 <p class="text-sm text-gray-500 font-medium">مزایده‌های فعال</p>
-                <h3 class="text-2xl font-black text-gray-900 mt-1">@persian($stats['active_auctions'] ?? 1240)</h3>
-                <p class="text-xs text-green-500 flex items-center gap-1 mt-1 font-bold">
-                    <span class="material-symbols-outlined text-[14px]">trending_up</span>
-                    @persian(5)٪ افزایش
+                <h3 class="text-2xl font-black text-gray-900 mt-1">@persian($stats['active_auctions'])</h3>
+                <p class="text-xs {{ $stats['auctions_growth'] >= 0 ? 'text-green-500' : 'text-red-500' }} flex items-center gap-1 mt-1 font-bold">
+                    <span class="material-symbols-outlined text-[14px]">{{ $stats['auctions_growth'] >= 0 ? 'trending_up' : 'trending_down' }}</span>
+                    @persian(abs($stats['auctions_growth']))٪ {{ $stats['auctions_growth'] >= 0 ? 'افزایش' : 'کاهش' }}
                 </p>
             </div>
         </div>
@@ -45,11 +46,11 @@
                 <span class="material-symbols-outlined">group</span>
             </div>
             <div>
-                <p class="text-sm text-gray-500 font-medium">کاربران فعال</p>
-                <h3 class="text-2xl font-black text-gray-900 mt-1">@persian($stats['active_users'] ?? 15800)</h3>
-                <p class="text-xs text-red-500 flex items-center gap-1 mt-1 font-bold">
-                    <span class="material-symbols-outlined text-[14px]">trending_down</span>
-                    @persian(1)٪ کاهش
+                <p class="text-sm text-gray-500 font-medium">کل کاربران</p>
+                <h3 class="text-2xl font-black text-gray-900 mt-1">@persian($stats['active_users'])</h3>
+                <p class="text-xs {{ $stats['users_growth'] >= 0 ? 'text-green-500' : 'text-red-500' }} flex items-center gap-1 mt-1 font-bold">
+                    <span class="material-symbols-outlined text-[14px]">{{ $stats['users_growth'] >= 0 ? 'trending_up' : 'trending_down' }}</span>
+                    @persian(abs($stats['users_growth']))٪ {{ $stats['users_growth'] >= 0 ? 'رشد ماهانه' : 'کاهش ماهانه' }}
                 </p>
             </div>
         </div>
@@ -60,8 +61,10 @@
             </div>
             <div>
                 <p class="text-sm text-gray-500 font-medium">در انتظار تایید</p>
-                <h3 class="text-2xl font-black text-gray-900 mt-1">@persian($stats['pending_approvals'] ?? 45)</h3>
-                <p class="text-xs text-gray-400 mt-1">فروشنده و کالا</p>
+                <h3 class="text-2xl font-black text-gray-900 mt-1">@persian($stats['pending_approvals'])</h3>
+                <p class="text-xs text-gray-400 mt-1">
+                    @persian($stats['pending_sellers']) فروشنده / @persian($stats['pending_listings']) کالا
+                </p>
             </div>
         </div>
     </div>
@@ -71,43 +74,17 @@
         <!-- Activity Chart -->
         <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
             <div class="flex items-center justify-between mb-6">
-                <h3 class="text-lg font-bold text-gray-900">نمودار فعالیت هفتگی</h3>
-                <select class="bg-gray-50 border-gray-200 text-sm rounded-lg focus:ring-primary focus:border-primary py-1 px-3">
-                    <option>۷ روز گذشته</option>
-                    <option>۳۰ روز گذشته</option>
-                    <option>امسال</option>
-                </select>
-            </div>
-            <div class="w-full h-64 relative">
-                <svg class="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 800 300">
-                    <g class="chart-grid text-gray-200">
-                        <line stroke="#e5e7eb" stroke-dasharray="4" stroke-width="1" x1="0" x2="800" y1="250" y2="250"></line>
-                        <line stroke="#e5e7eb" stroke-dasharray="4" stroke-width="1" x1="0" x2="800" y1="200" y2="200"></line>
-                        <line stroke="#e5e7eb" stroke-dasharray="4" stroke-width="1" x1="0" x2="800" y1="150" y2="150"></line>
-                        <line stroke="#e5e7eb" stroke-dasharray="4" stroke-width="1" x1="0" x2="800" y1="100" y2="100"></line>
-                        <line stroke="#e5e7eb" stroke-dasharray="4" stroke-width="1" x1="0" x2="800" y1="50" y2="50"></line>
-                    </g>
-                    <path d="M0,250 L0,220 C100,200 150,150 200,180 C250,210 300,120 400,100 C500,80 550,160 600,130 C650,100 700,50 800,20 L800,250 Z" fill="url(#gradient)" opacity="0.1"></path>
-                    <path d="M0,220 C100,200 150,150 200,180 C250,210 300,120 400,100 C500,80 550,160 600,130 C650,100 700,50 800,20" fill="none" stroke="#135bec" stroke-linecap="round" stroke-width="3"></path>
-                    <circle cx="200" cy="180" fill="white" r="4" stroke="#135bec" stroke-width="2"></circle>
-                    <circle cx="400" cy="100" fill="white" r="4" stroke="#135bec" stroke-width="2"></circle>
-                    <circle cx="600" cy="130" fill="white" r="4" stroke="#135bec" stroke-width="2"></circle>
-                    <defs>
-                        <linearGradient id="gradient" x1="0%" x2="0%" y1="0%" y2="100%">
-                            <stop offset="0%" style="stop-color:#135bec;stop-opacity:1"></stop>
-                            <stop offset="100%" style="stop-color:#135bec;stop-opacity:0"></stop>
-                        </linearGradient>
-                    </defs>
-                </svg>
-                <div class="flex justify-between text-xs text-gray-400 mt-2">
-                    <span>شنبه</span>
-                    <span>یکشنبه</span>
-                    <span>دوشنبه</span>
-                    <span>سه‌شنبه</span>
-                    <span>چهارشنبه</span>
-                    <span>پنجشنبه</span>
-                    <span>جمعه</span>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">مزایده‌های فعال</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">تعداد مزایده‌های فعال در ۷ روز گذشته</p>
                 </div>
+                <div class="flex items-center gap-2 text-sm text-gray-500">
+                    <span class="w-3 h-3 rounded-full bg-primary inline-block"></span>
+                    مزایده فعال
+                </div>
+            </div>
+            <div class="w-full h-64">
+                <canvas id="auctionChart"></canvas>
             </div>
         </div>
 
@@ -115,7 +92,7 @@
         <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold text-gray-900">تایید فروشندگان</h3>
-                <a class="text-sm text-primary font-bold hover:underline" href="#">مشاهده همه</a>
+                <a class="text-sm text-primary font-bold hover:underline" href="{{ route('admin.sellers.index', ['status' => 'pending']) }}">مشاهده همه</a>
             </div>
             <div class="flex-1 overflow-y-auto space-y-4 pr-1">
                 @forelse($pendingSellers ?? [] as $seller)
@@ -124,7 +101,7 @@
                             {{ mb_substr($seller->name, 0, 2) }}
                         </div>
                         <div class="flex-1 min-w-0">
-                            <h4 class="text-sm font-bold text-gray-900 truncate">{{ $seller->name }}</h4>
+                            <a href="{{ route('admin.sellers.show', $seller) }}" class="text-sm font-bold text-gray-900 truncate hover:text-primary transition-colors block">{{ $seller->name }}</a>
                             <p class="text-xs text-gray-500 truncate">{{ $seller->store->store_name ?? 'فروشگاه' }}</p>
                         </div>
                         <div class="flex gap-1">
@@ -312,6 +289,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 function showRejectModal(sellerId, sellerName) {
     const modal = document.getElementById('rejectModal');
@@ -334,5 +312,63 @@ document.getElementById('rejectModal')?.addEventListener('click', function(e) {
         closeRejectModal();
     }
 });
+
+// Auction Chart
+(function() {
+    const labels = @json($chartLabels);
+    const data   = @json($chartData);
+
+    const ctx = document.getElementById('auctionChart');
+    if (!ctx) return;
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'مزایده فعال',
+                data: data,
+                borderColor: '#135bec',
+                backgroundColor: 'rgba(19,91,236,0.08)',
+                borderWidth: 2.5,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#135bec',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                fill: true,
+                tension: 0.4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    rtl: true,
+                    callbacks: {
+                        label: ctx => ' ' + ctx.parsed.y + ' مزایده فعال',
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { family: 'Tahoma', size: 11 }, color: '#9ca3af' }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f3f4f6', drawBorder: false },
+                    ticks: {
+                        font: { family: 'Tahoma', size: 11 },
+                        color: '#9ca3af',
+                        stepSize: 1,
+                        precision: 0,
+                    }
+                }
+            }
+        }
+    });
+})();
 </script>
 @endsection

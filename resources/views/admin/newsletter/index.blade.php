@@ -8,11 +8,17 @@
             <h1 class="text-2xl font-bold text-gray-900">مدیریت خبرنامه</h1>
             <p class="text-sm text-gray-500 mt-1">مشترکین و ارسال ایمیل گروهی</p>
         </div>
-        <button onclick="document.getElementById('send-modal').style.display='flex'"
-                class="flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors">
-            <span class="material-symbols-outlined text-base">send</span>
-            ارسال ایمیل گروهی
-        </button>
+        <div class="flex gap-2">
+            <a href="{{ route('admin.newsletter.export', request()->query()) }}" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium">
+                <span class="material-symbols-outlined text-base">download</span>
+                خروجی Excel
+            </a>
+            <button onclick="document.getElementById('send-modal').style.display='flex'"
+                    class="flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-600 transition-colors">
+                <span class="material-symbols-outlined text-base">send</span>
+                ارسال ایمیل گروهی
+            </button>
+        </div>
     </div>
 
     @if(session('success'))

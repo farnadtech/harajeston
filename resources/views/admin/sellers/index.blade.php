@@ -7,6 +7,10 @@
             <h1 class="text-2xl font-black text-gray-900">مدیریت فروشندگان</h1>
             <p class="text-gray-600 mt-1">مدیریت درخواست‌ها و فروشندگان فعال</p>
         </div>
+        <a href="{{ route('admin.sellers.export', request()->query()) }}" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium">
+            <span class="material-symbols-outlined text-[18px]">download</span>
+            خروجی Excel
+        </a>
     </div>
 
     @if(session('success'))

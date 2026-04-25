@@ -3,7 +3,18 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>ثبت‌نام - حراج‌استون</title>
+    @php
+        $siteName = \App\Models\SiteSetting::get('site_name', 'حراج‌استون');
+        $siteTagline = \App\Models\SiteSetting::get('site_tagline', '');
+        $siteFavicon = \App\Models\SiteSetting::get('site_favicon', '');
+        $faviconUrl = $siteFavicon ? rtrim(config('app.url'), '/') . '/storage/' . $siteFavicon : '';
+        $primaryColor = \App\Models\SiteSetting::get('color_primary', '#135bec');
+        $primaryHover = \App\Models\SiteSetting::get('color_primary_hover', '#0e4bc7');
+        $siteLogo = \App\Models\SiteSetting::get('site_logo', '');
+        $siteIcon = \App\Models\SiteSetting::get('site_icon', 'gavel');
+    @endphp
+    <title>ثبت‌نام | {{ $siteName }}{{ $siteTagline ? ' - ' . $siteTagline : '' }}</title>
+    @if($faviconUrl)<link rel="icon" type="image/png" href="{{ $faviconUrl }}"><link rel="shortcut icon" href="{{ $faviconUrl }}">@endif
     <link href="/haraj/public/css/app.css" rel="stylesheet"/>
     <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
     <style>
@@ -29,20 +40,27 @@
         font-feature-settings: 'liga';
         -webkit-font-smoothing: antialiased;
     }
-    </style>
-    <style>
-        body { font-family: 'Vazirmatn', sans-serif; }
+    body { font-family: 'Vazirmatn', sans-serif; }
+    :root { --color-primary: {{ $primaryColor }}; --color-primary-hover: {{ $primaryHover }}; }
+    .text-primary { color: var(--color-primary) !important; }
+    .bg-primary { background-color: var(--color-primary) !important; }
+    .border-primary { border-color: var(--color-primary) !important; }
+    .bg-primary\/10 { background-color: color-mix(in srgb, var(--color-primary) 10%, transparent) !important; }
+    .focus\:border-primary:focus { border-color: var(--color-primary) !important; }
+    .hover\:bg-primary-hover:hover { background-color: var(--color-primary-hover) !important; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 antialiased min-h-screen flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-md p-8 sm:p-12">
         <div class="flex items-center gap-3 mb-8">
-            <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-2xl">gavel</span>
-            </div>
-            <h1 class="text-xl font-black tracking-tight">
-                حراج<span class="text-primary">استون</span>
-            </h1>
+            @if($siteLogo)
+                <img src="{{ url('storage/' . $siteLogo) }}" alt="{{ $siteName }}" class="h-10 w-auto object-contain">
+            @else
+                <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-2xl">{{ $siteIcon }}</span>
+                </div>
+            @endif
+            <h1 class="text-xl font-black tracking-tight text-primary">{{ $siteName }}</h1>
         </div>
         
         <div class="mb-8">
@@ -188,7 +206,7 @@
                 <input id="terms" name="terms" type="checkbox" required
                        class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded mt-1">
                 <label for="terms" class="mr-2 block text-sm text-gray-700">
-                    با <a href="#" class="text-primary hover:text-primary-hover font-medium">قوانین و مقررات</a> موافقم <span class="text-red-500">*</span>
+                    با <a href="{{ route('pages.show', 'terms') }}" target="_blank" class="text-primary hover:text-primary-hover font-medium underline">قوانین و مقررات</a> موافقم <span class="text-red-500">*</span>
                 </label>
             </div>
             

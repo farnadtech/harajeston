@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateOrderStatusRequest;
+use App\Http\Controllers\Admin\Traits\CsvExportTrait;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+    use CsvExportTrait;
     public function __construct(
         protected OrderService $orderService
     ) {}
@@ -19,9 +21,12 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $role = $request->get('role', 'buyer');
-        $orders = $this->orderService->getOrdersByUser(auth()->user(), $role);
+        $search = $request->get('search');
+        $status = $request->get('status');
 
-        return view('orders.index', compact('orders', 'role'));
+        $orders = $this->orderService->getOrdersByUser(auth()->user(), $role, $search, $status);
+
+        return view('orders.index', compact('orders', 'role', 'search', 'status'));
     }
 
     /**
@@ -79,9 +84,21 @@ class OrderController extends Controller
             'status' => 'processing',
         ]);
         
-        // Notify seller
+        // Notify seller via custom notification system
         try {
-            $order->seller->notify(new \App\Notifications\OrderReadyForProcessingNotification($order));
+            \App\Models\Notification::create([
+                'user_id' => $order->seller_id,
+                'type' => 'order',
+                'title' => 'سفارش آماده پردازش',
+                'message' => sprintf(
+                    'خریدار آدرس ارسال سفارش #%s را وارد کرد. سفارش آماده پردازش و ارسال است.',
+                    $order->order_number
+                ),
+                'icon' => 'local_shipping',
+                'color' => 'green',
+                'link' => route('orders.show', $order->id),
+                'is_read' => false,
+            ]);
         } catch (\Exception $e) {
             \Log::warning('Failed to send notification: ' . $e->getMessage());
         }
@@ -297,5 +314,39 @@ class OrderController extends Controller
                 ->route('orders.show', $order)
                 ->with('error', 'خطا در لغو سفارش: ' . $e->getMessage());
         }
+    }
+
+    public function export(Request $request)
+    {
+        $role = $request->get('role', 'buyer');
+        $orders = $this->orderService->getOrdersByUser(auth()->user(), $role, $request->get('search'), $request->get('status'));
+
+        $statusLabels = [
+            'pending' => 'در انتظار', 'processing' => 'در حال پردازش',
+            'shipped' => 'ارسال شده', 'delivered' => 'تحویل داده شده',
+            'completed' => 'تکمیل شده', 'cancelled' => 'لغو شده',
+            'refunded' => 'بازگشت وجه', 'paid' => 'پرداخت شده',
+        ];
+
+        $rows = $orders->map(fn($o) => [
+            $o->order_number,
+            $o->items->pluck('listing.title')->filter()->implode(' / '),
+            $role === 'buyer' ? ($o->seller->name ?? '') : ($o->buyer->name ?? ''),
+            $statusLabels[$o->status] ?? $o->status,
+            number_format($o->subtotal ?? 0),
+            number_format($o->shipping_cost ?? 0),
+            number_format($o->total ?? 0),
+            $o->shipping_city ?? '',
+            $o->tracking_number ?? '',
+            $this->jalali($o->created_at),
+        ]);
+
+        $counterpartLabel = $role === 'buyer' ? 'فروشنده' : 'خریدار';
+
+        return $this->csvResponse("orders-{$role}-" . date('Y-m-d') . '.csv', [
+            'شماره سفارش', 'نام آگهی', $counterpartLabel, 'وضعیت',
+            'جمع کالا', 'هزینه ارسال', 'مجموع',
+            'شهر', 'کد رهگیری', 'تاریخ ثبت',
+        ], $rows);
     }
 }

@@ -4,7 +4,16 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>داشبورد خریدار - {{ config('app.name') }}</title>
+    @php
+        $siteName = \App\Models\SiteSetting::get('site_name', config('app.name'));
+        $siteFavicon = \App\Models\SiteSetting::get('site_favicon', '');
+        $faviconUrl = $siteFavicon ? rtrim(config('app.url'), '/') . '/storage/' . $siteFavicon : '';
+    @endphp
+    @if($faviconUrl)
+    <link rel="icon" type="image/png" href="{{ $faviconUrl }}">
+    <link rel="shortcut icon" href="{{ $faviconUrl }}">
+    @endif
+    <title>داشبورد خریدار - {{ $siteName }}</title>
     <link href="/haraj/public/css/app.css" rel="stylesheet"/>
     <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
     <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
@@ -89,10 +98,30 @@
             }
         });
     </script>
+    <style>
+        @media (max-width: 1023px) {
+            #app-sidebar { transform: translateX(100%); transition: transform 0.3s ease; }
+            #app-sidebar.sidebar-open { transform: translateX(0); }
+        }
+        @media (min-width: 1024px) {
+            #app-sidebar { transform: translateX(0) !important; }
+            #sidebar-overlay { display: none !important; }
+        }
+    </style>
 </head>
 <body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex overflow-hidden">
+    <!-- Mobile Overlay -->
+    <div id="sidebar-overlay" onclick="closeSidebar()"
+         class="hidden fixed inset-0 bg-black/50 z-40"></div>
+
     <!-- Sidebar -->
-    <aside class="w-64 border-l border-gray-200 hidden lg:flex flex-col h-screen fixed right-0 top-0 z-30" style="background:{{ \App\Models\SiteSetting::get('theme_dashboard_sidebar_bg', '#ffffff') }};">
+    <aside id="app-sidebar"
+           class="w-64 border-l border-gray-200 flex flex-col h-screen fixed right-0 top-0 z-50 lg:z-30"
+           style="background:{{ \App\Models\SiteSetting::get('theme_dashboard_sidebar_bg', '#ffffff') }};">
+        <!-- Close button on mobile -->
+        <button onclick="closeSidebar()" class="absolute top-4 left-4 p-1.5 text-gray-400 hover:text-gray-600 lg:hidden">
+            <span class="material-symbols-outlined">close</span>
+        </button>
         <div class="h-20 flex items-center gap-3 px-6 border-b border-gray-100">
             @php
                 $bLogo = \App\Models\SiteSetting::get('theme_dashboard_logo', '');
@@ -144,17 +173,40 @@
                 </a>
             </div>
             
-            @if(auth()->user()->seller_status === 'none')
+            @if(in_array(auth()->user()->seller_status, ['none', 'rejected']))
             <div class="pt-4 border-t border-gray-200">
+                @if(auth()->user()->seller_status === 'rejected')
+                    <div class="mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                        <p class="font-bold mb-0.5">درخواست فروشندگی شما رد شد:</p>
+                        <p>{{ auth()->user()->seller_rejection_reason ?? 'اطلاعات کافی نبود' }}</p>
+                    </div>
+                @endif
                 <a class="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:from-green-600 hover:to-emerald-700 transition-all shadow-md" href="{{ route('seller-request.create') }}">
                     <span class="material-symbols-outlined">store</span>
-                    <span>فروشنده شوید</span>
+                    <span>{{ auth()->user()->seller_status === 'rejected' ? 'درخواست مجدد' : 'فروشنده شوید' }}</span>
+                </a>
+            </div>
+            @elseif(auth()->user()->seller_status === 'pending')
+            <div class="pt-4 border-t border-gray-200">
+                <a class="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl font-bold" href="{{ route('seller-request.status') }}">
+                    <span class="material-symbols-outlined">hourglass_top</span>
+                    <span>درخواست فروشندگی شما در حال بررسی می باشد</span>
                 </a>
             </div>
             @endif
         </nav>
         
-        <div class="p-4 border-t border-gray-100">
+        <div class="p-4 border-t border-gray-100 space-y-1">
+            <a href="{{ route('profile.edit') }}"
+               class="flex items-center gap-3 px-4 py-3 {{ request()->routeIs('profile.*') ? 'text-primary bg-primary/5 font-bold' : 'text-gray-600 hover:text-primary hover:bg-gray-50 font-medium' }} rounded-xl transition-colors group">
+                @if(auth()->user()->avatar)
+                    <img src="{{ url('storage/'.auth()->user()->avatar) }}"
+                         class="rounded-full object-cover flex-shrink-0" style="width:20px;height:20px;">
+                @else
+                    <span class="material-symbols-outlined group-hover:text-primary transition-colors">manage_accounts</span>
+                @endif
+                <span>ویرایش پروفایل</span>
+            </a>
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
                 <button type="submit" class="flex items-center gap-3 w-full px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl font-medium transition-colors">
@@ -169,9 +221,17 @@
     <main class="flex-1 lg:mr-64 flex flex-col h-screen overflow-hidden relative w-full">
         <!-- Header -->
         <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0">
-            <div class="hidden lg:block">
-                <h2 class="text-xl font-bold text-gray-800">داشبورد خریدار</h2>
-                <p class="text-sm text-gray-500">خوش آمدید، {{ auth()->user()->name }} عزیز</p>
+            <div class="flex items-center gap-3">
+                <button onclick="openSidebar()" class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg lg:hidden">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
+                <div class="hidden lg:block">
+                    <h2 class="text-xl font-bold text-gray-800">داشبورد خریدار</h2>
+                    <p class="text-sm text-gray-500">خوش آمدید، {{ auth()->user()->name }} عزیز</p>
+                </div>
+                <div class="lg:hidden">
+                    <h2 class="text-base font-bold text-gray-800">داشبورد</h2>
+                </div>
             </div>
             
             <div class="flex items-center gap-4">
@@ -190,9 +250,6 @@
                     <div class="dropdown-menu">
                         <div class="p-4 border-b border-gray-100 flex items-center justify-between">
                             <h3 class="font-bold text-gray-900">اعلان‌ها</h3>
-                            @if($unreadCount > 0)
-                            <span class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">{{ \App\Services\PersianNumberService::convertToPersian($unreadCount) }} جدید</span>
-                            @endif
                         </div>
                         <div class="max-h-80 overflow-y-auto">
                             @php
@@ -228,13 +285,55 @@
                     </div>
                 </div>
                 
-                <div class="flex items-center gap-3 pr-4 border-r border-gray-200 mr-2">
-                    <div class="text-left hidden sm:block">
-                        <p class="text-sm font-bold text-gray-900">{{ auth()->user()->name }}</p>
-                        <p class="text-xs text-gray-500">خریدار</p>
-                    </div>
-                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                        {{ mb_substr(auth()->user()->name, 0, 1) }}
+                <div class="relative flex-shrink-0" x-data="{ open: false }">
+                    <button @click="open = !open"
+                            class="flex items-center gap-2 pr-3 border-r border-gray-200 mr-2 focus:outline-none">
+                        <div class="text-left hidden sm:block">
+                            <p class="text-sm font-bold text-gray-900 leading-tight">{{ auth()->user()->name }}</p>
+                            <p class="text-xs text-gray-500">خریدار</p>
+                        </div>
+                        <div class="rounded-full overflow-hidden flex-shrink-0 border-2 border-gray-200 hover:border-primary transition-colors" style="width:32px;height:32px;min-width:32px;min-height:32px;">
+                            @if(auth()->user()->avatar)
+                                <img src="{{ url('storage/'.auth()->user()->avatar) }}"
+                                     class="w-full h-full object-cover"
+                                     alt="{{ auth()->user()->name }}">
+                            @else
+                                <div class="w-full h-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                                    {{ mb_substr(auth()->user()->name, 0, 1) }}
+                                </div>
+                            @endif
+                        </div>
+                        <span class="material-symbols-outlined text-gray-400 text-base hidden sm:block" :class="open ? 'rotate-180' : ''">expand_more</span>
+                    </button>
+                    <div x-show="open" @click.away="open = false" x-transition
+                         class="absolute left-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                        <a href="{{ route('profile.edit') }}"
+                           class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-100 transition-colors">
+                            <div class="rounded-full overflow-hidden flex-shrink-0 border border-gray-200" style="width:32px;height:32px;min-width:32px;min-height:32px;">
+                                @if(auth()->user()->avatar)
+                                    <img src="{{ url('storage/'.auth()->user()->avatar) }}" class="w-full h-full object-cover">
+                                @else
+                                    <div class="w-full h-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                                        {{ mb_substr(auth()->user()->name, 0, 1) }}
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-800 truncate">{{ auth()->user()->name }}</p>
+                                <p class="text-xs text-primary">ویرایش پروفایل</p>
+                            </div>
+                        </a>
+                        <a href="{{ route('dashboard') }}" class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                            <span class="material-symbols-outlined text-base text-gray-400">dashboard</span>
+                            داشبورد
+                        </a>
+                        <form action="{{ route('logout') }}" method="POST">
+                            @csrf
+                            <button type="submit" class="flex items-center gap-2 w-full text-right px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                                <span class="material-symbols-outlined text-base">logout</span>
+                                خروج
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -375,69 +474,28 @@
 
                 <!-- Right Column -->
                 <div class="space-y-8">
-                    <!-- Quick Actions -->
-                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                        <h3 class="text-lg font-bold text-gray-900 mb-4">دسترسی سریع</h3>
-                        <div class="space-y-3">
-                            <a href="{{ route('listings.index') }}" class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors group">
-                                <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                                    <span class="material-symbols-outlined text-blue-600">gavel</span>
-                                </div>
-                                <span class="font-medium text-gray-700 group-hover:text-primary">مزایده‌های فعال</span>
-                            </a>
-                            <a href="{{ route('wallet.show') }}" class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors group">
-                                <div class="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center group-hover:bg-green-100 transition-colors">
-                                    <span class="material-symbols-outlined text-green-600">account_balance_wallet</span>
-                                </div>
-                                <span class="font-medium text-gray-700 group-hover:text-primary">شارژ کیف پول</span>
-                            </a>
-                            <a href="{{ route('orders.index') }}" class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-xl transition-colors group">
-                                <div class="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center group-hover:bg-purple-100 transition-colors">
-                                    <span class="material-symbols-outlined text-purple-600">shopping_bag</span>
-                                </div>
-                                <span class="font-medium text-gray-700 group-hover:text-primary">سفارشات من</span>
-                            </a>
-                            @if(auth()->user()->seller_status === 'none')
-                            <a href="{{ route('seller-request.create') }}" class="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 rounded-xl transition-colors group border border-green-200">
-                                <div class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                                    <span class="material-symbols-outlined text-white">store</span>
-                                </div>
-                                <span class="font-bold text-green-700">فروشنده شوید</span>
-                            </a>
-                            @endif
-                        </div>
-                    </div>
 
-                    <!-- Recent Activities -->
-                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                        <div class="p-6 border-b border-gray-100">
-                            <h3 class="text-lg font-bold text-gray-900">فعالیت‌های اخیر</h3>
-                            <p class="text-sm text-gray-500 mt-1">آخرین رویدادها</p>
-                        </div>
-                        <div class="p-4 space-y-4 max-h-80 overflow-y-auto">
-                            @forelse($recentActivities as $activity)
-                                <div class="flex items-start gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-{{ $activity['color'] }}-50 flex items-center justify-center shrink-0">
-                                        <span class="material-symbols-outlined text-{{ $activity['color'] }}-600 text-xl">{{ $activity['icon'] }}</span>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-medium text-gray-900">{{ $activity['title'] }}</p>
-                                        <p class="text-xs text-gray-500 mt-0.5">{{ $activity['description'] }}</p>
-                                        <p class="text-xs text-gray-400 mt-1">{{ \App\Services\PersianNumberService::convertToPersian($activity['time']->diffForHumans()) }}</p>
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="text-center py-8">
-                                    <span class="material-symbols-outlined text-gray-300 text-4xl">history</span>
-                                    <p class="text-gray-500 text-sm mt-2">فعالیتی ثبت نشده</p>
-                                </div>
-                            @endforelse
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
     </main>
-    <script defer src="/haraj/public/js/alpine.min.js"></script>
+    <script>
+        function openSidebar() {
+            document.getElementById('app-sidebar').classList.add('sidebar-open');
+            document.getElementById('sidebar-overlay').classList.remove('hidden');
+        }
+        function closeSidebar() {
+            document.getElementById('app-sidebar').classList.remove('sidebar-open');
+            document.getElementById('sidebar-overlay').classList.add('hidden');
+        }
+        document.addEventListener('click', function(e) {
+            var sidebar = document.getElementById('app-sidebar');
+            if (sidebar && !sidebar.contains(e.target) && sidebar.classList.contains('sidebar-open')) {
+                var btn = document.querySelector('[onclick="openSidebar()"]');
+                if (!btn || !btn.contains(e.target)) closeSidebar();
+            }
+        });
+    </script>
+    <script src="/haraj/public/js/alpine.min.js"></script>
 </body>
 </html>

@@ -21,6 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Fix asset URL for subdirectory installations
+        \Illuminate\Support\Facades\URL::forceRootUrl(config('app.url'));
         // Register Jalali date Blade directive
         \Illuminate\Support\Facades\Blade::directive('jalali', function ($expression) {
             return "<?php echo app(\App\Services\JalaliDateService::class)->toJalali($expression); ?>";

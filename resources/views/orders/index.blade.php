@@ -5,7 +5,7 @@
     <div class="space-y-6">
             <!-- Tabs -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 mb-6">
-                <div class="border-b border-gray-200">
+                <div class="flex items-center justify-between border-b border-gray-200 px-2">
                     <nav class="flex -mb-px">
                         <a href="{{ route('orders.index', ['role' => 'buyer']) }}" 
                            class="py-4 px-6 text-center border-b-2 font-medium text-sm transition-colors flex items-center gap-2 {{ $role === 'buyer' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
@@ -24,12 +24,47 @@
                             @endif
                         </a>
                     </nav>
+                    @if(!$orders->isEmpty())
+                    <a href="{{ route('orders.export', request()->query()) }}" class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors ml-2">
+                        <span class="material-symbols-outlined text-[18px]">download</span>
+                        خروجی Excel
+                    </a>
+                    @endif
                 </div>
             </div>
 
+            <!-- Search & Filter -->
+            <form method="GET" action="{{ route('orders.index') }}" class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex flex-wrap gap-3 items-end">
+                <input type="hidden" name="role" value="{{ $role }}">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs text-gray-500 mb-1">جستجو</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[18px]">search</span>
+                        <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="شماره سفارش یا نام محصول..." class="w-full pr-3 pl-9 py-2 border border-gray-300 rounded-lg text-sm focus:border-primary focus:ring-1 focus:ring-primary/20">
+                    </div>
+                </div>
+                <div class="min-w-[160px]">
+                    <label class="block text-xs text-gray-500 mb-1">وضعیت</label>
+                    <select name="status" class="no-arrow w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-primary">
+                        <option value="">همه وضعیت‌ها</option>
+                        @foreach(['pending' => 'در انتظار', 'processing' => 'در حال پردازش', 'shipped' => 'ارسال شده', 'delivered' => 'تحویل داده شده', 'completed' => 'تکمیل شده', 'cancelled' => 'لغو شده'] as $val => $label)
+                            <option value="{{ $val }}" {{ ($status ?? '') === $val ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[18px]">filter_list</span>
+                    اعمال فیلتر
+                </button>
+                @if($search || $status)
+                <a href="{{ route('orders.index', ['role' => $role]) }}" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+                    پاک کردن
+                </a>
+                @endif
+            </form>
+
             @if($orders->isEmpty())
                 <!-- Empty State -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
                     <div class="max-w-md mx-auto">
                         <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <span class="material-symbols-outlined text-gray-400" style="font-size: 60px;">receipt_long</span>

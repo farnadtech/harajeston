@@ -137,7 +137,7 @@ class WalletController extends Controller
     }
 
     /**
-     * Withdraw funds from wallet
+     * Withdraw funds from wallet - Create withdrawal request
      */
     public function withdraw(Request $request)
     {
@@ -146,26 +146,44 @@ class WalletController extends Controller
         $minWithdraw = \App\Models\SiteSetting::get('wallet_min_withdraw', 50000);
 
         $request->validate([
-            'amount' => "required|numeric|min:{$minWithdraw}|max:{$wallet->balance}",
+            'amount'       => "required|numeric|min:{$minWithdraw}|max:{$wallet->balance}",
+            'full_name'    => 'required|string|max:100',
+            'bank_name'    => 'required|string|max:100',
+            'card_number'  => 'required|string|size:16',
+            'sheba_number' => 'required|string|size:24',
+            'national_id'  => 'required|string|size:10',
         ], [
-            'amount.min' => "حداقل مبلغ برداشت " . number_format($minWithdraw) . " تومان است.",
-            'amount.max' => 'مبلغ برداشت نمی‌تواند بیشتر از موجودی قابل استفاده باشد.'
+            'amount.min'           => "حداقل مبلغ برداشت " . number_format($minWithdraw) . " تومان است.",
+            'amount.max'           => 'مبلغ برداشت نمی‌تواند بیشتر از موجودی باشد.',
+            'full_name.required'   => 'نام و نام خانوادگی الزامی است.',
+            'bank_name.required'   => 'نام بانک الزامی است.',
+            'card_number.required' => 'شماره کارت الزامی است.',
+            'card_number.size'     => 'شماره کارت باید 16 رقم باشد.',
+            'sheba_number.required'=> 'شماره شبا الزامی است.',
+            'sheba_number.size'    => 'شماره شبا باید 24 رقم باشد.',
+            'national_id.required' => 'کد ملی الزامی است.',
+            'national_id.size'     => 'کد ملی باید 10 رقم باشد.',
         ]);
 
         try {
-            $this->walletService->deduct(
-                $user,
-                $request->amount,
-                'برداشت از حساب'
-            );
+            \App\Models\WithdrawalRequest::create([
+                'user_id'      => $user->id,
+                'amount'       => $request->amount,
+                'full_name'    => $request->full_name,
+                'bank_name'    => $request->bank_name,
+                'card_number'  => $request->card_number,
+                'sheba_number' => $request->sheba_number,
+                'national_id'  => $request->national_id,
+                'status'       => 'pending',
+            ]);
 
             return redirect()
                 ->route('wallet.show')
-                ->with('success', 'درخواست برداشت با موفقیت ثبت شد. مبلغ به حساب بانکی شما واریز خواهد شد.');
+                ->with('success', 'درخواست برداشت با موفقیت ثبت شد و در انتظار بررسی ادمین است.');
         } catch (\Exception $e) {
             return redirect()
                 ->route('wallet.show')
-                ->with('error', 'خطا در ثبت درخواست برداشت: ' . $e->getMessage());
+                ->with('error', 'خطا در ثبت درخواست: ' . $e->getMessage());
         }
     }
 
@@ -201,29 +219,51 @@ class WalletController extends Controller
     public function export()
     {
         $user = auth()->user();
-        $transactions = $user->wallet->transactions()->get();
+        $transactions = $user->wallet->transactions()->orderBy('created_at', 'desc')->get();
+
+        $typeLabels = [
+            'deposit'                    => 'واریز',
+            'withdrawal'                 => 'برداشت',
+            'freeze'                     => 'مسدود',
+            'unfreeze'                   => 'آزادسازی',
+            'freeze_deposit'             => 'بلاک سپرده',
+            'unfreeze_refund'            => 'بازگشت وجه',
+            'release_deposit'            => 'آزادسازی سپرده',
+            'auction_payment'            => 'پرداخت حراجی',
+            'deduct_frozen'              => 'کسر از مسدودی',
+            'order_cancellation_penalty' => 'جریمه لغو سفارش',
+            'commission'                 => 'کمیسیون',
+            'refund'                     => 'بازگشت وجه',
+            'charge'                     => 'شارژ',
+            'payment'                    => 'پرداخت',
+        ];
 
         $filename = 'transactions_' . date('Y-m-d') . '.csv';
         $headers = [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Transfer-Encoding' => 'binary',
         ];
 
-        $callback = function () use ($transactions) {
+        $callback = function () use ($transactions, $typeLabels) {
             $file = fopen('php://output', 'w');
-            
-            // Header
-            fputcsv($file, ['تاریخ', 'نوع', 'مبلغ', 'توضیحات', 'موجودی قبل', 'موجودی بعد']);
 
-            // Data
+            // BOM for Excel UTF-8
+            fputs($file, "\xEF\xBB\xBF");
+
+            fputcsv($file, ['تاریخ', 'نوع', 'مبلغ (تومان)', 'توضیحات', 'موجودی قبل', 'موجودی بعد']);
+
             foreach ($transactions as $transaction) {
+                $jalaliDate = \Morilog\Jalali\Jalalian::fromCarbon($transaction->created_at)->format('Y/m/d H:i');
+                $typeLabel = $typeLabels[$transaction->type] ?? $transaction->type;
+
                 fputcsv($file, [
-                    $transaction->created_at->format('Y-m-d H:i:s'),
-                    $transaction->type,
-                    $transaction->amount,
-                    $transaction->description,
-                    $transaction->before_balance,
-                    $transaction->after_balance,
+                    $jalaliDate,
+                    $typeLabel,
+                    number_format($transaction->amount),
+                    $transaction->description ?? '',
+                    $transaction->balance_before !== null ? number_format($transaction->balance_before) : '',
+                    $transaction->balance_after !== null ? number_format($transaction->balance_after) : '',
                 ]);
             }
 

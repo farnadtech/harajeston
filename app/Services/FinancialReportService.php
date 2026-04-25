@@ -28,16 +28,28 @@ class FinancialReportService
 
         // کمیسیون‌های دریافتی در بازه زمانی
         $commissions = WalletTransaction::where('wallet_id', $siteWallet->id)
-            ->where('type', 'credit')
+            ->where('type', 'deposit')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->where('description', 'LIKE', '%کمیسیون%')
             ->sum('amount');
 
-        // سپرده‌های ضبط شده
+        // سپرده‌های ضبط شده و جریمه‌ها (همه انواع درآمد غیر از کمیسیون)
         $forfeitedDeposits = WalletTransaction::where('wallet_id', $siteWallet->id)
-            ->where('type', 'credit')
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->where('description', 'LIKE', '%ضبط سپرده%')
+            ->where(function($q) {
+                // جریمه لغو سفارش
+                $q->where('type', 'order_cancellation_penalty_revenue')
+                  // سپرده ضبط شده برنده (از طریق addFunds)
+                  ->orWhere(function($q2) {
+                      $q2->where('type', 'deposit')
+                         ->where(function($q3) {
+                             $q3->where('description', 'LIKE', '%سهم سایت از سپرده ضبط شده%')
+                                ->orWhere('description', 'LIKE', '%کارمزد بازنده مزایده%')
+                                ->orWhere('description', 'LIKE', '%ضبط سپرده%')
+                                ->orWhere('description', 'LIKE', '%جریمه%');
+                         });
+                  });
+            })
             ->sum('amount');
 
         // کل درآمد
@@ -81,13 +93,16 @@ class FinancialReportService
         }
 
         $dailyData = WalletTransaction::where('wallet_id', $siteWallet->id)
-            ->where('type', 'credit')
             ->whereBetween('created_at', [$startDate, $endDate])
+            ->where(function($q) {
+                $q->where('type', 'deposit')
+                  ->orWhere('type', 'order_cancellation_penalty_revenue');
+            })
             ->select(
                 DB::raw('DATE(created_at) as date'),
-                DB::raw('SUM(CASE WHEN description LIKE "%کمیسیون%" THEN amount ELSE 0 END) as commissions'),
-                DB::raw('SUM(CASE WHEN description LIKE "%ضبط سپرده%" THEN amount ELSE 0 END) as forfeited_deposits'),
-                DB::raw('SUM(amount) as total')
+                DB::raw('SUM(CASE WHEN type = "deposit" AND description LIKE "%کمیسیون%" THEN amount ELSE 0 END) as commissions'),
+                DB::raw('SUM(CASE WHEN type = "order_cancellation_penalty_revenue" OR (type = "deposit" AND (description LIKE "%سهم سایت از سپرده ضبط شده%" OR description LIKE "%کارمزد بازنده مزایده%" OR description LIKE "%ضبط سپرده%" OR description LIKE "%جریمه%")) THEN amount ELSE 0 END) as forfeited_deposits'),
+                DB::raw('SUM(CASE WHEN type = "deposit" AND description LIKE "%کمیسیون%" THEN amount WHEN type = "order_cancellation_penalty_revenue" THEN amount WHEN type = "deposit" AND (description LIKE "%سهم سایت از سپرده ضبط شده%" OR description LIKE "%کارمزد بازنده مزایده%" OR description LIKE "%ضبط سپرده%" OR description LIKE "%جریمه%") THEN amount ELSE 0 END) as total')
             )
             ->groupBy('date')
             ->orderBy('date', 'asc')
@@ -109,13 +124,16 @@ class FinancialReportService
         }
 
         $monthlyData = WalletTransaction::where('wallet_id', $siteWallet->id)
-            ->where('type', 'credit')
             ->whereYear('created_at', $year)
+            ->where(function($q) {
+                $q->where('type', 'deposit')
+                  ->orWhere('type', 'order_cancellation_penalty_revenue');
+            })
             ->select(
                 DB::raw('MONTH(created_at) as month'),
-                DB::raw('SUM(CASE WHEN description LIKE "%کمیسیون%" THEN amount ELSE 0 END) as commissions'),
-                DB::raw('SUM(CASE WHEN description LIKE "%ضبط سپرده%" THEN amount ELSE 0 END) as forfeited_deposits'),
-                DB::raw('SUM(amount) as total')
+                DB::raw('SUM(CASE WHEN type = "deposit" AND description LIKE "%کمیسیون%" THEN amount ELSE 0 END) as commissions'),
+                DB::raw('SUM(CASE WHEN type = "order_cancellation_penalty_revenue" OR (type = "deposit" AND (description LIKE "%سهم سایت از سپرده ضبط شده%" OR description LIKE "%کارمزد بازنده مزایده%" OR description LIKE "%ضبط سپرده%")) THEN amount ELSE 0 END) as forfeited_deposits'),
+                DB::raw('SUM(CASE WHEN type = "deposit" AND description LIKE "%کمیسیون%" THEN amount WHEN type = "order_cancellation_penalty_revenue" THEN amount WHEN type = "deposit" AND (description LIKE "%سهم سایت از سپرده ضبط شده%" OR description LIKE "%کارمزد بازنده مزایده%" OR description LIKE "%ضبط سپرده%") THEN amount ELSE 0 END) as total')
             )
             ->groupBy('month')
             ->orderBy('month', 'asc')
@@ -291,7 +309,9 @@ class FinancialReportService
         $summary = $this->getSiteRevenueSummary($startDate, $endDate);
         $dailyRevenue = $this->getDailyRevenue($startDate, $endDate);
 
-        $csv = "تاریخ,کمیسیون,سپرده ضبط شده,کل درآمد\n";
+        // BOM for Excel UTF-8
+        $csv = "\xEF\xBB\xBF";
+        $csv .= "تاریخ,کمیسیون,سپرده ضبط شده,کل درآمد\n";
         
         foreach ($dailyRevenue as $day) {
             $csv .= sprintf(

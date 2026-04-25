@@ -10,6 +10,10 @@
             <h2 class="text-2xl font-black text-gray-900">مدیریت سفارشات</h2>
             <p class="text-sm text-gray-500 mt-1">مشاهده و مدیریت تمام سفارشات سایت</p>
         </div>
+        <a href="{{ route('admin.orders.export', request()->query()) }}" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2 text-sm font-medium">
+            <span class="material-symbols-outlined text-[18px]">download</span>
+            خروجی Excel
+        </a>
     </div>
 
     @if(session('success'))

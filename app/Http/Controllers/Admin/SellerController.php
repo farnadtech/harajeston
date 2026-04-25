@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\CsvExportTrait;
 use App\Models\Store;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class SellerController extends Controller
 {
+    use CsvExportTrait;
     public function __construct()
     {
         $this->middleware('admin');
@@ -112,6 +114,9 @@ class SellerController extends Controller
             $notificationService = new \App\Services\NotificationService();
             $notificationService->notifySellerApproved($seller);
 
+            // SMS/Email via dispatcher
+            app(\App\Services\NotificationDispatcher::class)->dispatch('seller_approved', $seller, []);
+
             DB::commit();
 
             return back()->with('success', 'فروشنده با موفقیت تایید شد.');
@@ -140,6 +145,11 @@ class SellerController extends Controller
             // Send notification
             $notificationService = new \App\Services\NotificationService();
             $notificationService->notifySellerRejected($seller, $request->reason);
+
+            // SMS/Email via dispatcher
+            app(\App\Services\NotificationDispatcher::class)->dispatch('seller_rejected', $seller, [
+                'reason' => $request->reason,
+            ]);
 
             // غیرفعال کردن تمام آگهی‌های فعال و pending
             $seller->listings()
@@ -325,5 +335,35 @@ class SellerController extends Controller
         return redirect()
             ->back()
             ->with('success', 'درخواست تغییر نام رد شد.');
+    }
+
+    public function export(Request $request)
+    {
+        $statusLabels = [
+            'pending' => 'در انتظار', 'active' => 'فعال',
+            'suspended' => 'تعلیق شده', 'rejected' => 'رد شده',
+        ];
+        $query = User::with('store')->where('seller_status', '!=', 'none');
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('seller_status', $request->status);
+        }
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(fn($q) => $q->where('name', 'like', "%$s%")->orWhere('email', 'like', "%$s%"));
+        }
+        $sellers = $query->orderBy('seller_requested_at', 'desc')->get();
+
+        $rows = $sellers->map(fn($s) => [
+            $s->id, $s->name, $s->email, $s->phone ?? '',
+            $s->store->store_name ?? '',
+            $statusLabels[$s->seller_status] ?? $s->seller_status,
+            number_format($s->seller_rating ?? 0),
+            $this->jalali($s->seller_requested_at),
+            $this->jalali($s->seller_approved_at),
+        ]);
+
+        return $this->csvResponse('sellers-' . date('Y-m-d') . '.csv', [
+            'شناسه', 'نام', 'ایمیل', 'تلفن', 'نام فروشگاه', 'وضعیت', 'امتیاز', 'تاریخ درخواست', 'تاریخ تایید',
+        ], $rows);
     }
 }

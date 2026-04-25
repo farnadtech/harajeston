@@ -155,26 +155,108 @@
                 <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
                     <span class="material-symbols-outlined text-red-600 text-2xl">remove_circle</span>
                 </div>
-                <h2 class="text-xl font-bold text-gray-900">برداشت از حساب</h2>
+                <h2 class="text-xl font-bold text-gray-900">درخواست برداشت</h2>
             </div>
-            <form method="POST" action="{{ route('wallet.withdraw') }}" class="space-y-4" id="withdrawFormBuyer">
-                @csrf
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">مبلغ (تومان)</label>
-                    @php
-                        $minWithdraw = \App\Models\SiteSetting::get('wallet_min_withdraw', 50000);
-                    @endphp
-                    <input type="number" name="amount" id="withdrawAmountBuyer" placeholder="مثال: 50000" required 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                           oninput="validateWithdrawBuyer()">
-                    <p class="text-xs text-gray-500 mt-1">حداقل: @price($minWithdraw) - حداکثر: @price($wallet->balance) تومان</p>
-                    <p id="withdrawErrorBuyer" class="text-xs text-red-600 mt-1" style="display:none;"></p>
+
+            @php
+                $minWithdraw = \App\Models\SiteSetting::get('wallet_min_withdraw', 50000);
+                $pendingWithdrawal = \App\Models\WithdrawalRequest::where('user_id', auth()->id())->where('status', 'pending')->first();
+                $lastRequest = \App\Models\WithdrawalRequest::where('user_id', auth()->id())->latest()->first();
+                $lastRejected = ($lastRequest && $lastRequest->status === 'rejected') ? $lastRequest : null;
+            @endphp
+
+            @if($pendingWithdrawal)
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
+                    <div class="flex items-center gap-2 text-yellow-700">
+                        <span class="material-symbols-outlined">hourglass_top</span>
+                        <p class="text-sm font-medium">درخواست برداشت <strong>@price($pendingWithdrawal->amount) تومان</strong> در انتظار بررسی ادمین است.</p>
+                    </div>
                 </div>
-                <button type="submit" id="submitWithdrawBuyer" class="w-full bg-red-600 text-white px-6 py-3 rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2">
-                    <span class="material-symbols-outlined">account_balance</span>
-                    <span>درخواست برداشت</span>
-                </button>
-            </form>
+            @else
+                @if($lastRejected)
+                    <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                        <div class="flex items-start gap-2 text-red-700">
+                            <span class="material-symbols-outlined mt-0.5">cancel</span>
+                            <div>
+                                <p class="text-sm font-medium">آخرین درخواست رد شد:</p>
+                                <p class="text-xs mt-1">{{ $lastRejected->reject_reason }}</p>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('wallet.withdraw') }}" class="space-y-4" id="withdrawFormBuyer">
+                    @csrf
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">مبلغ برداشت (تومان) *</label>
+                            <input type="number" name="amount" id="withdrawAmountBuyer"
+                                   placeholder="مثال: 500000" required
+                                   class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+                                   oninput="validateWithdrawBuyer()">
+                            <p class="text-xs text-gray-500 mt-1">حداقل: @price($minWithdraw) — حداکثر: @price($wallet->balance) تومان</p>
+                            <p id="withdrawErrorBuyer" class="text-xs text-red-600 mt-1 hidden"></p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">نام و نام خانوادگی *</label>
+                            <input type="text" name="full_name" value="{{ old('full_name') }}" required
+                                   placeholder="مطابق کارت ملی"
+                                   class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">نام بانک *</label>
+                            <input type="text" name="bank_name" value="{{ old('bank_name') }}" required
+                                   placeholder="مثال: ملت، صادرات، ملی"
+                                   class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">شماره کارت *</label>
+                            <input type="text" name="card_number" value="{{ old('card_number') }}" required
+                                   placeholder="16 رقم بدون خط تیره" maxlength="16" dir="ltr"
+                                   class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">شماره شبا *</label>
+                            <input type="text" name="sheba_number" value="{{ old('sheba_number') }}" required
+                                   placeholder="IR + 22 رقم" maxlength="24" dir="ltr"
+                                   class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">کد ملی *</label>
+                            <input type="text" name="national_id" value="{{ old('national_id') }}" required
+                                   placeholder="10 رقم" maxlength="10" dir="ltr"
+                                   class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm">
+                        </div>
+                    </div>
+                    <button type="submit" id="submitWithdrawBuyer"
+                            class="w-full bg-red-600 text-white px-6 py-3 rounded-xl hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined">account_balance</span>
+                        <span>ثبت درخواست برداشت</span>
+                    </button>
+                </form>
+            @endif
+
+            {{-- تاریخچه درخواست‌های برداشت --}}
+            @php
+                $myWithdrawals = \App\Models\WithdrawalRequest::where('user_id', auth()->id())->latest()->take(5)->get();
+            @endphp
+            @if($myWithdrawals->count() > 0)
+                <div class="mt-5 pt-4 border-t border-gray-100">
+                    <p class="text-xs font-semibold text-gray-500 mb-3">آخرین درخواست‌های برداشت:</p>
+                    <div class="space-y-2">
+                        @foreach($myWithdrawals as $wr)
+                        <div class="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-3 py-2">
+                            <span class="font-medium text-gray-800">@price($wr->amount) تومان</span>
+                            <span class="text-gray-400">{{ \Morilog\Jalali\Jalalian::fromCarbon($wr->created_at)->format('Y/m/d') }}</span>
+                            <span class="px-2 py-0.5 rounded-full font-medium
+                                {{ $wr->status === 'pending' ? 'bg-yellow-100 text-yellow-700' : ($wr->status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700') }}">
+                                {{ $wr->status_label }}
+                            </span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $listing->title . ' - Persian Auction Marketplace')
+@section('title', e($listing->title))
 
 @php
     // Calculate buy now amounts for modal
@@ -22,7 +22,7 @@
 @endphp
 
 @section('content')
-<main class="flex-grow w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+<div class="flex-grow w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
     <!-- Success/Error Messages -->
     @if(session('success'))
         <div class="bg-green-50 border-2 border-green-200 rounded-xl p-4 flex items-center gap-3">
@@ -221,9 +221,6 @@
                     @if($listing->status === 'active')
                         <span class="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md animate-pulse">مزایده داغ</span>
                     @endif
-                    <button class="bg-white/90 hover:bg-white text-gray-600 hover:text-red-500 p-2 rounded-full shadow-sm transition-colors backdrop-blur-sm">
-                        <span class="material-symbols-outlined text-xl">favorite</span>
-                    </button>
                 </div>
                 <div class="aspect-[4/3] w-full bg-gray-50 flex items-center justify-center cursor-pointer" onclick="openLightboxFromMain()">
                     @if($listing->images->count() > 0)
@@ -362,7 +359,11 @@
                             <div class="flex items-center gap-1 mt-1">
                                 <span class="material-symbols-outlined text-yellow-500 text-sm">star</span>
                                 <span class="text-xs font-bold text-gray-700">@persian(number_format($listing->seller->seller_rating ?? 0, 1))</span>
-                                <span class="text-xs text-gray-400">(@persian($listing->seller->successful_sales ?? 0) فروش موفق)</span>
+                                @if(($listing->seller->seller_rating_count ?? 0) > 0)
+                                    <span class="text-xs text-gray-400">(@persian($listing->seller->seller_rating_count) نظر)</span>
+                                @else
+                                    <span class="text-xs text-gray-400">(بدون نظر)</span>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -1111,7 +1112,7 @@
             </div>
         </div>
     </div>
-</main>
+</div>
 
 <script>
 // Image gallery data

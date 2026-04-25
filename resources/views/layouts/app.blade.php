@@ -4,12 +4,53 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Persian Auction Marketplace')</title>
-    
+    @php
+        $siteName = \App\Models\SiteSetting::get('site_name', 'حراج‌استون');
+        $siteTagline = \App\Models\SiteSetting::get('site_tagline', '');
+        $siteDescription = \App\Models\SiteSetting::get('site_description', '');
+        $siteFavicon = \App\Models\SiteSetting::get('site_favicon', '');
+        $faviconUrl = $siteFavicon ? rtrim(config('app.url'), '/') . '/storage/' . $siteFavicon : '';
+        $colorPrimary = \App\Models\SiteSetting::get('color_primary', '#135bec');
+        $colorPrimaryHover = \App\Models\SiteSetting::get('color_primary_hover', '#0e4bc7');
+        $colorSecondary = \App\Models\SiteSetting::get('color_secondary', '#f97316');
+        $colorBg = \App\Models\SiteSetting::get('color_bg', '#f1f3f7');
+        $colorText = \App\Models\SiteSetting::get('color_text', '#0d121b');
+        $titleSuffix = $siteTagline ? ' | ' . $siteName . ' - ' . $siteTagline : ' | ' . $siteName;
+    @endphp
+    @if($faviconUrl)
+    <link rel="icon" type="image/png" href="{{ $faviconUrl }}">
+    <link rel="shortcut icon" href="{{ $faviconUrl }}">
+    @endif
+    <title>@yield('title', $siteName){{ $titleSuffix }}</title>
+    <meta name="description" content="@yield('meta_description', $siteDescription)">
+    <meta property="og:title" content="@yield('title', $siteName){{ $titleSuffix }}">
+    <meta property="og:description" content="@yield('meta_description', $siteDescription)">
+    <meta property="og:site_name" content="{{ $siteName }}">
     <link href="/haraj/public/css/app.css" rel="stylesheet"/>
-    <script defer src="/haraj/public/js/alpine.min.js"></script>
     <link href="/haraj/public/css/vazirmatn-local.css" rel="stylesheet"/>
     <style>
+    :root {
+        --color-primary: {{ $colorPrimary }};
+        --color-primary-hover: {{ $colorPrimaryHover }};
+        --color-secondary: {{ $colorSecondary }};
+        --color-bg: {{ $colorBg }};
+        --color-text: {{ $colorText }};
+    }
+    .text-primary { color: var(--color-primary) !important; }
+    .bg-primary { background-color: var(--color-primary) !important; }
+    .border-primary { border-color: var(--color-primary) !important; }
+    .bg-primary\/10 { background-color: color-mix(in srgb, var(--color-primary) 10%, transparent) !important; }
+    .bg-primary\/5 { background-color: color-mix(in srgb, var(--color-primary) 5%, transparent) !important; }
+    .border-primary\/20 { border-color: color-mix(in srgb, var(--color-primary) 20%, transparent) !important; }
+    .text-secondary { color: var(--color-secondary) !important; }
+    .bg-secondary { background-color: var(--color-secondary) !important; }
+    .bg-secondary\/10 { background-color: color-mix(in srgb, var(--color-secondary) 10%, transparent) !important; }
+    .hover\:bg-primary-hover:hover { background-color: var(--color-primary-hover) !important; }
+    .focus\:border-primary:focus { border-color: var(--color-primary) !important; }
+    .focus\:ring-primary\/20:focus { --tw-ring-color: color-mix(in srgb, var(--color-primary) 20%, transparent) !important; }
+    .shadow-blue-500\/30 { box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 30%, transparent) !important; }
+    body { color: var(--color-text); }
+    .bg-background-light { background-color: var(--color-bg) !important; }
     @font-face {
         font-family: 'Material Symbols Outlined';
         font-style: normal;
@@ -98,6 +139,11 @@
     </style>
     
     @livewireStyles
+    <style>
+    [wire\:loading],[wire\:loading\.delay],[wire\:loading\.inline-block],[wire\:loading\.inline],[wire\:loading\.block],[wire\:loading\.flex],[wire\:loading\.table],[wire\:loading\.grid],[wire\:loading\.inline-flex]{display:none}
+    [wire\:offline]{display:none}
+    [wire\:dirty]:not(textarea):not(input):not(select){display:none}
+    </style>
     @stack('styles')
 </head>
 <body class="bg-background-light text-[#0d121b] antialiased min-h-screen flex flex-col">
@@ -111,6 +157,9 @@
         $thLogoSz = max(20, (int)\App\Models\SiteSetting::get('theme_header_logo_size', '40'));
         $thSearch = \App\Models\SiteSetting::get('theme_header_show_search', '1');
         $thCats   = \App\Models\SiteSetting::get('theme_header_show_cats', '1');
+        $thDiscount     = \App\Models\SiteSetting::get('theme_header_show_discount', '1');
+        $thDiscountText = \App\Models\SiteSetting::get('theme_header_discount_text', 'تخفیف‌های ویژه');
+        $thDiscountUrl  = \App\Models\SiteSetting::get('theme_header_discount_url', '') ?: route('listings.index', ['sort' => 'most_bids']);
         $thNavRaw = \App\Models\SiteSetting::get('theme_header_nav_links', '[]');
         $thNav    = is_array($thNavRaw) ? $thNavRaw : (json_decode($thNavRaw, true) ?? []);
     @endphp
@@ -122,7 +171,7 @@
                 <div class="flex items-center gap-3 shrink-0">
                     <a href="{{ route('listings.index') }}" class="flex items-center gap-3">
                         @if($thLogo)
-                            <img src="{{ url('storage/'.$thLogo) }}" style="height:{{ $thLogoSz }}px;width:auto;object-fit:contain;" alt="{{ $thText }}">
+                            <img src="{{ rtrim(config('app.url'), '/') . '/storage/' . $thLogo }}" style="height:{{ $thLogoSz }}px;width:auto;object-fit:contain;" alt="{{ $thText }}">
                         @else
                             <div style="width:{{ $thLogoSz }}px;height:{{ $thLogoSz }}px;" class="bg-primary/10 rounded-xl flex items-center justify-center text-primary">
                                 <span class="material-symbols-outlined" style="font-size:{{ round($thLogoSz*0.6) }}px;">{{ $thIcon }}</span>
@@ -346,7 +395,7 @@
                         <div class="relative" id="notificationDropdown">
                             <button onclick="toggleNotifications()" class="relative p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors">
                                 <span class="material-symbols-outlined">notifications</span>
-                                <span id="notificationBadge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center"></span>
+                                <span id="notificationBadge" class="hidden absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                             </button>
                             
                             <div id="notificationMenu" class="hidden absolute left-0 mt-2 w-80 bg-white rounded-xl shadow-xl z-50 border border-gray-100 overflow-hidden">
@@ -414,7 +463,6 @@
                         function updateNotificationBadge(count) {
                             const badge = document.getElementById('notificationBadge');
                             if (count > 0) {
-                                badge.textContent = count;
                                 badge.classList.remove('hidden');
                             } else {
                                 badge.classList.add('hidden');
@@ -480,13 +528,36 @@
                     <div class="h-8 w-[1px] bg-gray-200 mx-1 hidden sm:block"></div>
                     @auth
                         <div class="relative" x-data="{ open: false }">
-                            <button @click="open = !open" class="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors">
-                                <span class="material-symbols-outlined text-[20px]">person</span>
+                            <button @click="open = !open" class="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors">
+                                @if(auth()->user()->avatar)
+                                    <img src="{{ url('storage/'.auth()->user()->avatar) }}"
+                                         style="width:32px;height:32px;min-width:32px;min-height:32px;"
+                                         class="rounded-full object-cover border border-primary/30 flex-shrink-0"
+                                         alt="{{ auth()->user()->name }}">
+                                @else
+                                    <span class="material-symbols-outlined text-[20px]">person</span>
+                                @endif
                                 <span>{{ auth()->user()->name }}</span>
                                 <span class="material-symbols-outlined text-[18px]" :class="open ? 'rotate-180' : ''">expand_more</span>
                             </button>
-                            <div x-show="open" @click.away="open = false" x-transition class="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-50 border border-gray-100">
-                                <a href="{{ route('dashboard') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-t-lg">داشبورد</a>
+                            <div x-show="open" @click.away="open = false" class="absolute left-0 mt-2 w-52 bg-white rounded-lg shadow-xl z-50 border border-gray-100">
+                                {{-- Profile header --}}
+                                <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-t-lg border-b border-gray-100">
+                                    @if(auth()->user()->avatar)
+                                        <img src="{{ url('storage/'.auth()->user()->avatar) }}"
+                                             style="width:32px;height:32px;min-width:32px;min-height:32px;"
+                                             class="rounded-full object-cover border border-gray-200 flex-shrink-0">
+                                    @else
+                                        <div style="width:32px;height:32px;min-width:32px;min-height:32px;" class="rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                            <span class="material-symbols-outlined text-primary text-lg">person</span>
+                                        </div>
+                                    @endif
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-gray-800 truncate">{{ auth()->user()->name }}</p>
+                                        <p class="text-xs text-primary">ویرایش پروفایل</p>
+                                    </div>
+                                </a>
+                                <a href="{{ route('dashboard') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">داشبورد</a>
                                 <a href="{{ route('wallet.show') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">کیف پول</a>
                                 <a href="{{ route('tickets.index') }}" class="flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-gray-100">
                                     <span>تیکت‌های پشتیبانی</span>
@@ -512,12 +583,88 @@
                             <span>ورود / ثبت نام</span>
                         </a>
                     @endauth
-                    <button class="sm:hidden p-2 text-gray-500 rounded-full">
+                    <button onclick="toggleMobileMenu()" class="sm:hidden p-2 text-gray-500 rounded-full hover:bg-gray-100 transition-colors">
                         <span class="material-symbols-outlined">menu</span>
                     </button>
                 </div>
             </div>
         </div>
+
+        <!-- Mobile Menu Drawer -->
+        <div id="mobileMenuOverlay" onclick="toggleMobileMenu()" class="hidden fixed inset-0 bg-black/50 z-40 sm:hidden"></div>
+        <div id="mobileMenuDrawer" style="display:none" class="fixed top-0 right-0 h-full w-72 bg-white z-50 shadow-2xl transition-transform duration-300 sm:hidden overflow-y-auto">
+            <div class="flex items-center justify-between p-4 border-b border-gray-100">
+                <span class="font-bold text-gray-800">منو</span>
+                <button onclick="toggleMobileMenu()" class="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <nav class="p-4 space-y-1">
+                @auth
+                    <div class="flex items-center gap-3 px-3 py-3 mb-3 bg-primary/5 rounded-xl">
+                        @if(auth()->user()->avatar)
+                            <img src="{{ url('storage/'.auth()->user()->avatar) }}" class="w-10 h-10 rounded-full object-cover border border-primary/30 flex-shrink-0" alt="{{ auth()->user()->name }}">
+                        @else
+                            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined text-primary">person</span>
+                            </div>
+                        @endif
+                        <div>
+                            <p class="font-bold text-gray-800 text-sm">{{ auth()->user()->name }}</p>
+                            <p class="text-xs text-primary">{{ auth()->user()->email }}</p>
+                        </div>
+                    </div>
+                    <a href="{{ route('dashboard') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                        <span class="material-symbols-outlined text-gray-400">dashboard</span>داشبورد
+                    </a>
+                    <a href="{{ route('wallet.show') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                        <span class="material-symbols-outlined text-gray-400">account_balance_wallet</span>کیف پول
+                    </a>
+                    <a href="{{ route('tickets.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                        <span class="material-symbols-outlined text-gray-400">confirmation_number</span>تیکت‌های پشتیبانی
+                    </a>
+                    @if(auth()->user()->role === 'seller')
+                        <a href="{{ route('listings.create') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                            <span class="material-symbols-outlined text-gray-400">add_circle</span>ایجاد آگهی
+                        </a>
+                    @endif
+                    <div class="border-t border-gray-100 my-2"></div>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors text-right">
+                            <span class="material-symbols-outlined">logout</span>خروج
+                        </button>
+                    </form>
+                @else
+                    <a href="{{ route('login') }}" class="flex items-center gap-3 px-3 py-2.5 text-primary font-bold hover:bg-primary/5 rounded-xl transition-colors">
+                        <span class="material-symbols-outlined">person</span>ورود / ثبت نام
+                    </a>
+                @endauth
+                @if($thCats || count($thNav) > 0)
+                    <div class="border-t border-gray-100 my-2"></div>
+                    @foreach($thNav as $navLink)
+                        <a href="{{ $navLink['url'] ?? '#' }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-xl transition-colors">
+                            @if(!empty($navLink['icon']))<span class="material-symbols-outlined text-gray-400">{{ $navLink['icon'] }}</span>@endif
+                            {{ $navLink['label'] ?? '' }}
+                        </a>
+                    @endforeach
+                @endif
+            </nav>
+        </div>
+        <script>
+        function toggleMobileMenu() {
+            const drawer = document.getElementById('mobileMenuDrawer');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const isOpen = drawer.style.display !== 'none';
+            if (isOpen) {
+                drawer.style.display = 'none';
+                overlay.classList.add('hidden');
+            } else {
+                drawer.style.display = 'block';
+                overlay.classList.remove('hidden');
+            }
+        }
+        </script>
         
         <!-- Mega Menu (Categories) -->
         @if($thCats || count($thNav) > 0)
@@ -531,10 +678,10 @@
                         {{ $navLink['label'] ?? '' }}
                     </a>
                     @endforeach
-                    @if($thCats)
-                    <a class="text-red-500 hover:bg-red-50 whitespace-nowrap h-full flex items-center gap-1 px-4 rounded-lg transition-colors mr-auto" href="{{ route('listings.index', ['special' => 'discount']) }}">
+                    @if($thDiscount)
+                    <a class="text-red-500 hover:bg-red-50 whitespace-nowrap h-full flex items-center gap-1 px-4 rounded-lg transition-colors mr-auto" href="{{ $thDiscountUrl }}">
                         <span class="material-symbols-outlined text-[18px]">local_offer</span>
-                        <span>تخفیف‌های ویژه</span>
+                        <span>{{ $thDiscountText }}</span>
                     </a>
                     @endif
                 </nav>
@@ -578,97 +725,124 @@
         $tfSoc    = is_array($tfSocRaw) ? $tfSocRaw : (json_decode($tfSocRaw, true) ?? []);
     @endphp
     @if($tfShow)
-    <footer class="mt-auto" style="background:{{ $tfBg }};">
+    <footer class="border-t border-[#e7ebf3] pt-12 pb-8 mt-auto" style="background:{{ $tfBg }};">
+        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
 
-        {{-- Top section with gradient separator --}}
-        <div class="h-px w-full" style="background:linear-gradient(to left, transparent, rgba(59,130,246,0.3), transparent);"></div>
-
-        {{-- Main content --}}
-        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-10">
-
-                {{-- Brand column - wider --}}
-                <div class="md:col-span-4">
-                    <a href="{{ route('listings.index') }}" class="inline-flex items-center gap-3 mb-5 group">
+                {{-- Brand column --}}
+                <div>
+                    <a href="{{ route('listings.index') }}" class="inline-flex items-center gap-3 mb-4 group">
                         @if($tfLogo)
                             <img src="{{ url('storage/'.$tfLogo) }}" style="height:{{ $tfLogoSz }}px;width:auto;object-fit:contain;" alt="{{ $tfText }}">
                         @else
-                            <div style="width:{{ $tfLogoSz }}px;height:{{ $tfLogoSz }}px;" class="bg-primary/10 rounded-2xl flex items-center justify-center text-primary flex-shrink-0 group-hover:bg-primary/20 transition-colors">
-                                <span class="material-symbols-outlined" style="font-size:{{ round($tfLogoSz*0.6) }}px;">{{ $tfIcon }}</span>
+                            <div style="width:{{ $tfLogoSz }}px;height:{{ $tfLogoSz }}px;" class="bg-primary/10 rounded-lg flex items-center justify-center text-primary flex-shrink-0">
+                                <span class="material-symbols-outlined">{{ $tfIcon }}</span>
                             </div>
                         @endif
-                        <span class="text-2xl font-black text-gray-900">{{ $tfText }}</span>
+                        <h2 class="text-xl font-black text-[#0d121b]">{{ $tfText }}</h2>
                     </a>
-                    <p class="text-sm leading-7 mb-6 max-w-xs" style="color:{{ $tfColor }};">{{ $tfDesc }}</p>
+                    <p class="text-sm leading-relaxed mb-4" style="color:{{ $tfColor }};">{{ $tfDesc }}</p>
 
                     {{-- Social links --}}
                     @if(count($tfSoc) > 0)
-                    <div class="flex gap-2">
+                    <div class="flex gap-3 flex-wrap">
                         @foreach($tfSoc as $soc)
                         <a href="{{ $soc['url'] ?? '#' }}" target="_blank" rel="noopener"
-                           class="w-10 h-10 rounded-2xl border flex items-center justify-center transition-all duration-200 hover:border-primary hover:text-primary hover:bg-primary/5"
-                           style="border-color:rgba(0,0,0,0.1); color:{{ $tfColor }};">
-                            <span class="material-symbols-outlined text-lg">{{ $soc['icon'] ?? 'link' }}</span>
+                           title="{{ $soc['label'] ?? '' }}"
+                           class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors overflow-hidden flex-shrink-0">
+                            @if(!empty($soc['image']))
+                                <img src="{{ url('storage/'.$soc['image']) }}"
+                                     class="w-5 h-5 object-contain"
+                                     alt="{{ $soc['label'] ?? 'social' }}">
+                            @else
+                                <span class="material-symbols-outlined text-gray-500 text-sm">link</span>
+                            @endif
                         </a>
                         @endforeach
+                    </div>
+                    @else
+                    <div class="flex gap-3">
+                        <a class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-primary hover:text-white transition-colors" href="#">
+                            <span class="material-symbols-outlined text-sm">alternate_email</span>
+                        </a>
+                        <a class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-primary hover:text-white transition-colors" href="#">
+                            <span class="material-symbols-outlined text-sm">public</span>
+                        </a>
                     </div>
                     @endif
                 </div>
 
-                {{-- Links columns --}}
-                <div class="md:col-span-{{ ($tfTrustHtml || $tfTrustImg) ? '5' : '8' }} grid grid-cols-2 {{ count($tfCols) > 0 ? 'sm:grid-cols-'.min(count($tfCols)+1, 3) : '' }} gap-8">
+                {{-- Quick links --}}
+                <div>
+                    <h3 class="font-bold text-gray-900 mb-4">دسترسی سریع</h3>
+                    <ul class="space-y-2 text-sm" style="color:{{ $tfColor }};">
+                        <li><a class="hover:text-primary transition-colors" href="{{ route('listings.index') }}">خانه</a></li>
+                        <li><a class="hover:text-primary transition-colors" href="{{ route('listings.index') }}?type=auction">مزایده‌های جاری</a></li>
+                        <li><a class="hover:text-primary transition-colors" href="{{ route('listings.index') }}?type=direct_sale">فروش مستقیم</a></li>
+                        @auth
+                        <li><a class="hover:text-primary transition-colors" href="{{ route('dashboard') }}">داشبورد</a></li>
+                        @else
+                        <li><a class="hover:text-primary transition-colors" href="{{ route('login') }}">ورود / ثبت نام</a></li>
+                        @endauth
+                    </ul>
+                </div>
 
-                    {{-- Default quick links --}}
-                    <div>
-                        <h5 class="font-bold text-gray-900 mb-5 text-sm">دسترسی سریع</h5>
-                        <ul class="space-y-3">
-                            <li><a href="{{ route('listings.index') }}" class="text-sm hover:text-primary transition-colors" style="color:{{ $tfColor }};">خانه</a></li>
-                            <li><a href="{{ route('listings.index') }}" class="text-sm hover:text-primary transition-colors" style="color:{{ $tfColor }};">مزایده‌ها</a></li>
-                            @auth
-                            <li><a href="{{ route('dashboard') }}" class="text-sm hover:text-primary transition-colors" style="color:{{ $tfColor }};">داشبورد</a></li>
-                            @else
-                            <li><a href="{{ route('login') }}" class="text-sm hover:text-primary transition-colors" style="color:{{ $tfColor }};">ورود / ثبت نام</a></li>
-                            @endauth
-                        </ul>
-                    </div>
-
-                    {{-- Custom columns --}}
+                {{-- Custom columns or default guide --}}
+                @if(count($tfCols) > 0)
                     @foreach($tfCols as $col)
                     <div>
-                        <h5 class="font-bold text-gray-900 mb-5 text-sm">{{ $col['title'] ?? '' }}</h5>
-                        <ul class="space-y-3">
+                        <h3 class="font-bold text-gray-900 mb-4">{{ $col['title'] ?? '' }}</h3>
+                        <ul class="space-y-2 text-sm" style="color:{{ $tfColor }};">
                             @foreach($col['links'] ?? [] as $link)
-                            <li><a href="{{ $link['url'] ?? '#' }}" class="text-sm hover:text-primary transition-colors" style="color:{{ $tfColor }};">{{ $link['label'] ?? '' }}</a></li>
+                            <li><a class="hover:text-primary transition-colors" href="{{ $link['url'] ?? '#' }}">{{ $link['label'] ?? '' }}</a></li>
                             @endforeach
                         </ul>
                     </div>
                     @endforeach
-                </div>
-
-                {{-- Trust Badge --}}
-                @if($tfTrustHtml || $tfTrustImg)
-                <div class="md:col-span-3">
-                    <h5 class="font-bold text-gray-900 mb-5 text-sm">نماد اعتماد</h5>
-                    @if($tfTrustHtml)
-                        <div>{!! $tfTrustHtml !!}</div>
-                    @elseif($tfTrustImg)
-                        <img src="{{ url('storage/'.$tfTrustImg) }}" class="max-w-full h-auto max-h-32 object-contain" alt="نماد اعتماد">
-                    @endif
+                @else
+                <div>
+                    <h3 class="font-bold text-gray-900 mb-4">راهنمای مشتریان</h3>
+                    <ul class="space-y-2 text-sm" style="color:{{ $tfColor }};">
+                        <li><a class="hover:text-primary transition-colors" href="#">قوانین و مقررات</a></li>
+                        <li><a class="hover:text-primary transition-colors" href="#">رویه‌های ارسال سفارش</a></li>
+                        <li><a class="hover:text-primary transition-colors" href="#">شیوه‌های پرداخت</a></li>
+                        <li><a class="hover:text-primary transition-colors" href="#">پرسش‌های متداول</a></li>
+                    </ul>
                 </div>
                 @endif
 
-            </div>
-        </div>
+                {{-- Trust Badge --}}
+                <div>
+                    <h3 class="font-bold text-gray-900 mb-4">نماد اعتماد</h3>
+                    @if($tfTrustHtml)
+                        <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-gray-200 inline-block">
+                            {!! $tfTrustHtml !!}
+                        </div>
+                    @elseif($tfTrustImg)
+                        <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-gray-200 inline-block">
+                            <img src="{{ url('storage/'.$tfTrustImg) }}"
+                                 class="max-h-20 w-auto object-contain block"
+                                 alt="نماد اعتماد">
+                        </div>
+                    @else
+                        <div class="bg-gray-50 p-4 rounded-xl border border-dashed border-gray-200 text-center">
+                            <p class="text-xs text-gray-400 mb-2">محل قرارگیری نماد اعتماد الکترونیک</p>
+                            <div class="w-16 h-16 bg-gray-200 rounded-lg mx-auto flex items-center justify-center">
+                                <span class="material-symbols-outlined text-gray-400">verified</span>
+                            </div>
+                        </div>
+                    @endif
+                </div>
 
-        {{-- Bottom bar --}}
-        <div style="border-top:1px solid rgba(0,0,0,0.06);">
-            <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <p class="text-xs" style="color:{{ $tfColor }};">{{ $tfCopy }}</p>
+            </div>
+
+            {{-- Bottom bar --}}
+            <div class="border-t border-gray-100 pt-6 text-sm flex flex-col md:flex-row justify-between items-center gap-4" style="color:{{ $tfColor }};">
+                <p>{{ $tfCopy }}</p>
                 @if(count($tfBtmLinks) > 0)
-                <div class="flex items-center gap-1">
-                    @foreach($tfBtmLinks as $i => $bl)
-                    @if($i > 0)<span class="text-gray-300 text-xs">·</span>@endif
-                    <a href="{{ $bl['url'] ?? '#' }}" class="text-xs hover:text-primary transition-colors px-1" style="color:{{ $tfColor }};">{{ $bl['label'] ?? '' }}</a>
+                <div class="flex gap-6">
+                    @foreach($tfBtmLinks as $bl)
+                    <a class="hover:text-gray-900 transition-colors" href="{{ $bl['url'] ?? '#' }}">{{ $bl['label'] ?? '' }}</a>
                     @endforeach
                 </div>
                 @endif
