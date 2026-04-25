@@ -19,7 +19,7 @@ class NewsletterController extends Controller
         if ($existing) {
             if (!$existing->is_active) {
                 $existing->update(['is_active' => true]);
-                return response()->json(['message' => 'با موفقیت مجدداً عضو شدید.', 'success' => true]);
+                return response()->json(['message' => 'با موفقیت مجددا عضو شدید.', 'success' => true]);
             }
             return response()->json(['message' => 'این ایمیل قبلاً ثبت شده است.', 'success' => false], 422);
         }

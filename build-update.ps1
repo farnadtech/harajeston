@@ -103,3 +103,15 @@ Write-Host "     { `"version`": `"$Version`", `"download_url`": `"https://yoursi
 Write-Host "  3. Tag and push:"
 Write-Host "     git tag v$Version"
 Write-Host "     git push origin main --tags"
+
+# ساخت version.json برای سرور
+$serverVersion = [ordered]@{
+    version      = $Version
+    changelog    = "Update to version $Version"
+    released_at  = (Get-Date -Format "yyyy-MM-dd")
+    download_url = "https://iranbooklet.ir/harajino/$PackageName.zip"
+}
+$serverVersionJson = $serverVersion | ConvertTo-Json
+[System.IO.File]::WriteAllText("$OutputDir\version.json", $serverVersionJson, [System.Text.Encoding]::UTF8)
+Write-Host ""
+Write-Host "Also upload $OutputDir\version.json to https://iranbooklet.ir/harajino/version.json" -ForegroundColor Cyan

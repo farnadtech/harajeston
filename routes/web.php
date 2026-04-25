@@ -376,6 +376,9 @@ Route::middleware('auth')->group(function () {
         // Update System
         Route::get('/update', [\App\Http\Controllers\Admin\UpdateController::class, 'index'])->name('admin.update.index');
         Route::post('/update/run', [\App\Http\Controllers\Admin\UpdateController::class, 'run'])->name('admin.update.run');
+        Route::post('/update/upload', [\App\Http\Controllers\Admin\UpdateController::class, 'upload'])->name('admin.update.upload');
+        Route::post('/update/rollback', [\App\Http\Controllers\Admin\UpdateController::class, 'rollback'])->name('admin.update.rollback');
+        Route::post('/update/backup/delete', [\App\Http\Controllers\Admin\UpdateController::class, 'deleteBackup'])->name('admin.update.backup.delete');
     });
 });
 
