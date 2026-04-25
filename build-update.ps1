@@ -1,32 +1,25 @@
-# ============================================================
-# build-update.ps1 — ساخت پکیج آپدیت از روی git diff
-# استفاده: .\build-update.ps1 -Version "1.2.0" -FromTag "v1.1.0"
-# ============================================================
+# build-update.ps1
+# Usage: .\build-update.ps1 -Version "1.1.0" -FromTag "v1.0.0"
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$Version,
-
-    [Parameter(Mandatory=$true)]
-    [string]$FromTag
+    [Parameter(Mandatory=$true)] [string]$Version,
+    [Parameter(Mandatory=$true)] [string]$FromTag
 )
 
-$OutputDir  = ".\dist"
+$OutputDir   = ".\dist"
 $PackageName = "update-v$Version"
-$TempDir    = "$OutputDir\$PackageName"
+$TempDir     = "$OutputDir\$PackageName"
 
-# فایل‌هایی که هیچ‌وقت توی آپدیت نباید باشن
-$Exclude = @('.env', 'storage/', 'vendor/', 'node_modules/', 'public/storage/')
+$Exclude = @('.env', 'storage/', 'vendor/', 'node_modules/', 'public/storage/', 'dist/')
 
-Write-Host "📦 ساخت پکیج آپدیت $Version از $FromTag ..." -ForegroundColor Cyan
+Write-Host "Building update package $Version from $FromTag ..." -ForegroundColor Cyan
 
-# پاک کردن temp قبلی
 if (Test-Path $TempDir) { Remove-Item -Recurse -Force $TempDir }
 New-Item -ItemType Directory -Path $TempDir | Out-Null
 
-# گرفتن لیست فایل‌های تغییر کرده
-$ChangedFiles = git diff --name-only $FromTag HEAD 2>&1
+# Get changed files
+$ChangedRaw = git diff --name-status "$FromTag" HEAD 2>&1
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ خطا در git diff. مطمئن شو tag '$FromTag' وجود داره." -ForegroundColor Red
+    Write-Host "ERROR: git diff failed. Make sure tag '$FromTag' exists." -ForegroundColor Red
     exit 1
 }
 
@@ -34,43 +27,42 @@ $FilesToInclude = @()
 $MigrationFiles = @()
 $DeletedFiles   = @()
 
-foreach ($file in $ChangedFiles) {
-    $file = $file.Trim()
-    if (-not $file) { continue }
+foreach ($line in $ChangedRaw) {
+    $line = $line.Trim()
+    if (-not $line) { continue }
 
-    # چک حذف شده‌ها
-    $status = git diff --name-status $FromTag HEAD -- $file | Select-String "^D"
-    if ($status) {
+    $parts  = $line -split '\s+', 2
+    $status = $parts[0]
+    $file   = $parts[1]
+
+    if ($status -eq 'D') {
         $DeletedFiles += $file
         continue
     }
 
-    # چک exclude
     $skip = $false
     foreach ($ex in $Exclude) {
         if ($file.StartsWith($ex) -or $file -eq $ex) { $skip = $true; break }
     }
     if ($skip) { continue }
-
     if (-not (Test-Path $file)) { continue }
 
     $FilesToInclude += $file
-
     if ($file -like "database/migrations/*") {
         $MigrationFiles += $file
     }
 }
 
 if ($FilesToInclude.Count -eq 0) {
-    Write-Host "⚠️  هیچ فایلی برای آپدیت پیدا نشد." -ForegroundColor Yellow
+    Write-Host "WARNING: No changed files found." -ForegroundColor Yellow
     exit 0
 }
 
-Write-Host "✅ $($FilesToInclude.Count) فایل تغییر کرده پیدا شد" -ForegroundColor Green
+Write-Host "$($FilesToInclude.Count) changed files found" -ForegroundColor Green
 
-# کپی فایل‌ها با حفظ ساختار پوشه
+# Copy files preserving directory structure
 foreach ($file in $FilesToInclude) {
-    $dest = Join-Path $TempDir $file
+    $dest    = Join-Path $TempDir $file
     $destDir = Split-Path $dest -Parent
     if (-not (Test-Path $destDir)) {
         New-Item -ItemType Directory -Path $destDir -Force | Out-Null
@@ -79,21 +71,22 @@ foreach ($file in $FilesToInclude) {
     Write-Host "  + $file" -ForegroundColor Gray
 }
 
-# ساخت manifest.json
-$manifest = @{
+# Build manifest.json
+$manifest = [ordered]@{
     version      = $Version
-    from_version = $FromTag -replace '^v', ''
+    from_version = ($FromTag -replace '^v', '')
     released_at  = (Get-Date -Format "yyyy-MM-dd")
-    changelog    = "آپدیت نسخه $Version"
+    changelog    = "Update to version $Version"
     files        = $FilesToInclude
     migrations   = $MigrationFiles
     delete       = $DeletedFiles
-} | ConvertTo-Json -Depth 5
+}
 
-$manifest | Set-Content "$TempDir\manifest.json" -Encoding UTF8
+$manifestJson = $manifest | ConvertTo-Json -Depth 5
+[System.IO.File]::WriteAllText("$TempDir\manifest.json", $manifestJson, [System.Text.Encoding]::UTF8)
 Write-Host "  + manifest.json" -ForegroundColor Gray
 
-# ساخت zip
+# Create zip
 if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir | Out-Null }
 $ZipPath = "$OutputDir\$PackageName.zip"
 if (Test-Path $ZipPath) { Remove-Item $ZipPath }
@@ -101,10 +94,12 @@ Compress-Archive -Path "$TempDir\*" -DestinationPath $ZipPath
 Remove-Item -Recurse -Force $TempDir
 
 Write-Host ""
-Write-Host "🎉 پکیج آماده شد: $ZipPath" -ForegroundColor Green
+Write-Host "Package ready: $ZipPath" -ForegroundColor Green
 Write-Host ""
-Write-Host "📋 مراحل بعدی:" -ForegroundColor Yellow
-Write-Host "  1. $ZipPath رو روی سرور آپدیتت آپلود کن"
-Write-Host "  2. version.json رو آپدیت کن:"
+Write-Host "Next steps:" -ForegroundColor Yellow
+Write-Host "  1. Upload $ZipPath to your update server"
+Write-Host "  2. Update version.json on server:"
 Write-Host "     { `"version`": `"$Version`", `"download_url`": `"https://yoursite.com/updates/$PackageName.zip`" }"
-Write-Host "  3. تگ جدید بزن: git tag v$Version && git push --tags"
+Write-Host "  3. Tag and push:"
+Write-Host "     git tag v$Version"
+Write-Host "     git push origin main --tags"
