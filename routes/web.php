@@ -372,6 +372,10 @@ Route::middleware('auth')->group(function () {
         Route::put('/notification-settings/admin-phone', [\App\Http\Controllers\Admin\NotificationSettingController::class, 'updateAdminPhone'])->name('admin.notification-settings.update-admin-phone');
         Route::post('/notification-settings/{setting}/test', [\App\Http\Controllers\Admin\NotificationSettingController::class, 'test'])->name('admin.notification-settings.test');
         Route::post('/notification-settings/{setting}/test-email', [\App\Http\Controllers\Admin\NotificationSettingController::class, 'testEmail'])->name('admin.notification-settings.test-email');
+
+        // Update System
+        Route::get('/update', [\App\Http\Controllers\Admin\UpdateController::class, 'index'])->name('admin.update.index');
+        Route::post('/update/run', [\App\Http\Controllers\Admin\UpdateController::class, 'run'])->name('admin.update.run');
     });
 });
 

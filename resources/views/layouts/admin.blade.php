@@ -440,6 +440,12 @@
                         <span class="material-symbols-outlined text-[18px]">sms</span>
                         <span>درگاه‌های پیامک</span>
                     </a>
+                    <a href="{{ route('admin.update.index') }}"
+                       class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-sm
+                              {{ request()->routeIs('admin.update.*') ? 'bg-primary/10 text-primary font-bold' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
+                        <span class="material-symbols-outlined text-[18px]">system_update</span>
+                        <span>آپدیت سیستم</span>
+                    </a>
                 </div>
             </div>
 
